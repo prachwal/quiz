@@ -13,11 +13,13 @@ import {
   gradeInput,
   profileInput,
   quizInput,
+  reviewSessionInput,
   rolesInput,
   tokenInput,
 } from '../src/shared/quiz/schema'
 import * as admin from './adminRepo'
 import * as progress from './progressRepo'
+import * as reviews from './reviewsRepo'
 import * as tokens from './apiTokens'
 import * as auth0 from './auth0Management'
 import { initSentry, reportServerError } from './sentry'
@@ -263,6 +265,28 @@ export function createApp() {
     res.json(await admin.listAudit())
   })
 
+  router.get('/reviews/summary', async (req, res) => {
+    res.json(await reviews.getReviewSummary(userOf(req)))
+  })
+
+  router.post('/reviews/session', async (req, res) => {
+    const { count } = reviewSessionInput.parse(req.body ?? {})
+    const ids = await reviews.dueVerbIds(userOf(req), count)
+    if (ids.length === 0) throw new HttpError(409, 'Na dziś wszystko powtórzone')
+    const [pool, verbs] = await Promise.all([listVerbs(), listVerbs({ ids })])
+    const order = new Map(ids.map((id, i) => [id, i]))
+    verbs.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
+    const quiz = buildVerbQuiz(
+      verbs,
+      pool,
+      'mixed',
+      'Powtórka dnia',
+      `${verbs.length} czasowników do powtórki - dobrane na podstawie Twoich wcześniejszych odpowiedzi.`,
+    )
+    const id = await repo.createQuiz(quiz, { kind: 'generated', source: 'review', ownerId: userOf(req) })
+    res.status(201).json(await repo.getQuiz(id, false))
+  })
+
   router.get('/progress/summary', async (req, res) => {
     res.json(await progress.getSummary(userOf(req)))
   })
@@ -302,7 +326,10 @@ export function createApp() {
       ? await courses.completeLesson(parseCourseId(req.params.id), lessonId.data, currentUserId(req))
       : null
     if (!result?.found) throw new HttpError(404, 'Lesson not found')
-    if (result.created) await progress.recordActivity(userOf(req), { lessons: 1 })
+    if (result.created) {
+      await progress.recordActivity(userOf(req), { lessons: 1 })
+      await reviews.enqueueLessonVerbs(userOf(req), String(req.params.lessonId))
+    }
     res.json({ ok: true })
   })
 
@@ -388,6 +415,14 @@ export function createApp() {
       answers,
       result,
     })
+    const verbOfQuestion = await repo.getQuestionVerbs(id)
+    await reviews.applyResults(
+      userOf(req),
+      result.results.flatMap((r) => {
+        const verbId = verbOfQuestion.get(r.questionId)
+        return verbId === undefined ? [] : [{ verbId, correct: r.correct }]
+      }),
+    )
     await progress.recordActivity(userOf(req), {
       answered: Object.values(answers).filter((a) => a?.optionIds?.length || a?.text?.trim()).length,
       correct: result.results.filter((r) => r.correct).length,

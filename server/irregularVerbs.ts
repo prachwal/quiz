@@ -195,16 +195,19 @@ export function buildVerbQuiz(
 ): ParsedQuiz {
   const questions = verbs.map((verb): Question => {
     const form = pick<Form>(['pastSimple', 'pastParticiple'])
-    switch (variant) {
-      case 'typing':
-        return formTyping(verb, form)
-      case 'choice':
-        return formChoice(verb, form, pool)
-      case 'translation':
-        return Math.random() < 0.5 ? translationTyping(verb, pool) : translationChoice(verb, pool)
-      default:
-        return Math.random() < 0.5 ? formTyping(verb, form) : formChoice(verb, form, pool)
-    }
+    const question = (() => {
+      switch (variant) {
+        case 'typing':
+          return formTyping(verb, form)
+        case 'choice':
+          return formChoice(verb, form, pool)
+        case 'translation':
+          return Math.random() < 0.5 ? translationTyping(verb, pool) : translationChoice(verb, pool)
+        default:
+          return Math.random() < 0.5 ? formTyping(verb, form) : formChoice(verb, form, pool)
+      }
+    })()
+    return { ...question, verbId: verb.id }
   })
   return { title, description, questions }
 }

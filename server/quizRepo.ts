@@ -174,9 +174,9 @@ export function toGradable(quiz: QuizDetail): GradableQuizQuestion[] {
 async function insertQuestions(client: PoolClient, quizId: string, questions: ParsedQuiz['questions']) {
   for (const [qi, question] of questions.entries()) {
     const inserted = await client.query<{ id: string }>(
-      `INSERT INTO questions (quiz_id, position, type, prompt, explanation, points)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-      [quizId, qi, question.type, question.prompt, question.explanation, question.points],
+      `INSERT INTO questions (quiz_id, position, type, prompt, explanation, points, verb_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+      [quizId, qi, question.type, question.prompt, question.explanation, question.points, question.verbId ?? null],
     )
     const questionId = inserted.rows[0].id
     for (const [oi, option] of question.options.entries()) {
@@ -316,4 +316,13 @@ export async function listAttempts(userId: string | null, limit = 50): Promise<A
     passed: row.passed,
     createdAt: row.created_at.toISOString(),
   }))
+}
+
+/** question id -> verb id for the questions of a quiz that are about a verb. */
+export async function getQuestionVerbs(quizId: string): Promise<Map<string, number>> {
+  const { rows } = await pool().query<{ id: string; verb_id: number }>(
+    'SELECT id, verb_id FROM questions WHERE quiz_id = $1 AND verb_id IS NOT NULL',
+    [quizId],
+  )
+  return new Map(rows.map((r) => [r.id, r.verb_id]))
 }

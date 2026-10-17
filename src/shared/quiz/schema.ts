@@ -13,6 +13,8 @@ export const questionInput = z
     explanation: z.string().trim().max(2000).default(''),
     points: z.number().int().min(1).max(100).default(1),
     options: z.array(optionInput).max(20),
+    /** Irregular verb the question is about (set by quiz generators; feeds spaced repetition). */
+    verbId: z.number().int().positive().optional(),
   })
   .superRefine((question, ctx) => {
     const error = questionTypes[question.type].validate(question)
@@ -92,3 +94,5 @@ export const profileInput = z
     timezone: z.string().trim().min(1).max(64).optional(),
   })
   .refine((v) => v.dailyGoal !== undefined || v.timezone !== undefined, 'Podaj cel dzienny lub strefę czasową')
+
+export const reviewSessionInput = z.object({ count: z.number().int().min(1).max(30).default(10) })

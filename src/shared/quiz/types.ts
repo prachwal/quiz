@@ -222,3 +222,13 @@ export interface ProgressSummary {
   /** Last 7 days (oldest first, today last). */
   last7: { day: string; answered: number; correct: number; lessons: number }[]
 }
+
+export interface ReviewSummary {
+  /** Verbs whose review is due now (including new verbs from completed lessons). */
+  dueCount: number
+  /** Subset of `dueCount` never answered yet. */
+  newCount: number
+  trackedCount: number
+  /** Earliest future review when nothing is due, otherwise null. */
+  nextDueAt: string | null
+}

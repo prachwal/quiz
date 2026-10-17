@@ -10,7 +10,7 @@ import {
 import { Button, Card, Flex, Progress, Tag, Typography, theme } from 'antd'
 import type { ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useGenerateIrregularVerbsQuizMutation, useStartExamMutation } from '../../app/api'
+import { useGenerateIrregularVerbsQuizMutation, useStartExamMutation, useStartReviewMutation } from '../../app/api'
 import SpeakButton from '../audio/SpeakButton'
 import ProgressLine from '../progress/ProgressLine'
 import type { Answer } from '../../shared/quiz/engine'
@@ -216,10 +216,20 @@ export default function ResultView({
   const navigate = useNavigate()
   const [generate, { isLoading: generating }] = useGenerateIrregularVerbsQuizMutation()
   const [startExam, { isLoading: restartingExam }] = useStartExamMutation()
+  const [startReview, { isLoading: startingReview }] = useStartReviewMutation()
   const isGenerated = quiz.source === 'irregular-verbs'
+  const isReview = quiz.source === 'review'
   const drawAnother = async () => {
     const next = await generate({ count: quiz.questions.length, difficulty: quiz.difficulty ?? undefined }).unwrap()
     navigate(`/quizzes/${next.id}/play`)
+  }
+  const nextReview = async () => {
+    try {
+      const next = await startReview({ count: quiz.questions.length }).unwrap()
+      navigate(`/quizzes/${next.id}/play`)
+    } catch {
+      navigate('/') // nothing left to review today
+    }
   }
   const retryExam = async () => {
     if (!result.course) return
@@ -309,6 +319,10 @@ export default function ResultView({
               {result.course ? (
                 <Button size="large" icon={<ReloadOutlined />} loading={restartingExam} onClick={() => void retryExam()}>
                   Nowe podejście
+                </Button>
+              ) : isReview ? (
+                <Button type="primary" size="large" icon={<ReloadOutlined />} loading={startingReview} onClick={() => void nextReview()}>
+                  Kolejna powtórka
                 </Button>
               ) : isGenerated ? (
                 <Button type="primary" size="large" icon={<ReloadOutlined />} loading={generating} onClick={() => void drawAnother()}>

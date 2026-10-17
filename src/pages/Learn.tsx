@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { errorMessage, useListCoursesQuery } from '../app/api'
 import { DifficultyTag, PopularityTag } from '../components/GroupTags'
 import PageHeader from '../components/PageHeader'
+import ReviewCard from '../features/progress/ReviewCard'
 
 export default function Learn() {
   const { data, error, isLoading } = useListCoursesQuery()
@@ -16,6 +17,9 @@ export default function Learn() {
         title="Nauka"
         subtitle="Każdy kurs to seria krótkich lekcji z czasownikami. Po ukończeniu wszystkich lekcji odblokowuje się egzamin końcowy - wynik zapisuje się w historii."
       />
+      <div style={{ marginBottom: 24 }}>
+        <ReviewCard />
+      </div>
       {error ? (
         <Alert type="error" showIcon title={errorMessage(error)} />
       ) : isLoading || !data ? (
