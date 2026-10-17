@@ -47,6 +47,8 @@ export const generateInput = z.object({
   popularity: z.enum(POPULARITIES).optional(),
   /** mixed: typing + choice, typing: all open, choice: all multiple choice, translation: PL -> EN base form */
   variant: z.enum(QUIZ_VARIANTS).default('mixed'),
+  /** Practice only the verbs the user struggles with (difficulty/popularity filters are ignored). */
+  onlyWeak: z.boolean().default(false),
 })
 
 export type GenerateInput = z.input<typeof generateInput>
@@ -96,3 +98,5 @@ export const profileInput = z
   .refine((v) => v.dailyGoal !== undefined || v.timezone !== undefined, 'Podaj cel dzienny lub strefę czasową')
 
 export const reviewSessionInput = z.object({ count: z.number().int().min(1).max(30).default(10) })
+
+export const retryWrongInput = z.object({ questionIds: z.array(z.string().uuid()).min(1).max(60) })

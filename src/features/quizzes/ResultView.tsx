@@ -7,10 +7,16 @@ import {
   ReloadOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons'
-import { Button, Card, Flex, Progress, Tag, Typography, theme } from 'antd'
+import { Button, Card, Flex, Progress, Tag, Typography, App as AntdApp, theme } from 'antd'
 import type { ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useGenerateIrregularVerbsQuizMutation, useStartExamMutation, useStartReviewMutation } from '../../app/api'
+import {
+  errorMessage,
+  useGenerateIrregularVerbsQuizMutation,
+  useRetryWrongMutation,
+  useStartExamMutation,
+  useStartReviewMutation,
+} from '../../app/api'
 import SpeakButton from '../audio/SpeakButton'
 import ProgressLine from '../progress/ProgressLine'
 import type { Answer } from '../../shared/quiz/engine'
@@ -219,6 +225,27 @@ export default function ResultView({
   const [startReview, { isLoading: startingReview }] = useStartReviewMutation()
   const isGenerated = quiz.source === 'irregular-verbs'
   const isReview = quiz.source === 'review'
+  const { message } = AntdApp.useApp()
+  const isWeak = quiz.source === 'weak'
+  const [retryWrong, { isLoading: retrying }] = useRetryWrongMutation()
+  const wrongIds = result.results.filter((r) => !r.correct).map((r) => r.questionId)
+  const canRetryWrong = wrongIds.length > 0 && Boolean(quiz.source)
+  const retryMistakes = async () => {
+    try {
+      const next = await retryWrong({ quizId: quiz.id, questionIds: wrongIds }).unwrap()
+      navigate(`/quizzes/${next.id}/play`)
+    } catch (e) {
+      void message.error(errorMessage(e))
+    }
+  }
+  const nextTraining = async () => {
+    try {
+      const next = await generate({ count: quiz.questions.length, onlyWeak: true }).unwrap()
+      navigate(`/quizzes/${next.id}/play`)
+    } catch {
+      navigate('/results')
+    }
+  }
   const drawAnother = async () => {
     const next = await generate({ count: quiz.questions.length, difficulty: quiz.difficulty ?? undefined }).unwrap()
     navigate(`/quizzes/${next.id}/play`)
@@ -320,6 +347,10 @@ export default function ResultView({
                 <Button size="large" icon={<ReloadOutlined />} loading={restartingExam} onClick={() => void retryExam()}>
                   Nowe podejście
                 </Button>
+              ) : isWeak ? (
+                <Button type="primary" size="large" icon={<ReloadOutlined />} loading={generating} onClick={() => void nextTraining()}>
+                  Kolejny trening błędów
+                </Button>
               ) : isReview ? (
                 <Button type="primary" size="large" icon={<ReloadOutlined />} loading={startingReview} onClick={() => void nextReview()}>
                   Kolejna powtórka
@@ -331,6 +362,11 @@ export default function ResultView({
               ) : (
                 <Button type="primary" size="large" icon={<ReloadOutlined />} onClick={onRestart}>
                   Zagraj ponownie
+                </Button>
+              )}
+              {canRetryWrong && (
+                <Button size="large" loading={retrying} onClick={() => void retryMistakes()}>
+                  Powtórz błędne ({wrongIds.length})
                 </Button>
               )}
               <Link to="/results">

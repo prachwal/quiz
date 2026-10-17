@@ -232,3 +232,12 @@ export interface ReviewSummary {
   /** Earliest future review when nothing is due, otherwise null. */
   nextDueAt: string | null
 }
+
+export interface WeakVerb {
+  verb: IrregularVerb
+  attempts: number
+  correct: number
+  /** Share of correct answers, 0..1. */
+  accuracy: number
+  lastWrongAt: string | null
+}

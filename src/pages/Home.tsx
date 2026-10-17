@@ -8,7 +8,7 @@ import {
   ThunderboltFilled,
   TrophyOutlined,
 } from '@ant-design/icons'
-import { Alert, Button, Card, Empty, Flex, Popconfirm, Segmented, Select, Skeleton, Tag, Typography, App as AntdApp, theme } from 'antd'
+import { Alert, Button, Card, Empty, Flex, Popconfirm, Segmented, Select, Skeleton, Switch, Tag, Typography, App as AntdApp, theme } from 'antd'
 import { useState } from 'react'
 import { useAuth } from '../features/auth/useAuth'
 import { Link, useNavigate } from 'react-router-dom'
@@ -16,6 +16,7 @@ import {
   errorMessage,
   useDeleteQuizMutation,
   useGenerateIrregularVerbsQuizMutation,
+  useGetWeakVerbsQuery,
   useListQuizzesQuery,
 } from '../app/api'
 import { DifficultyTag } from '../components/GroupTags'
@@ -46,6 +47,8 @@ export default function Home() {
   const { isAdmin } = useAuth()
   const { token } = theme.useToken()
   const [count, setCount] = useState(10)
+  const [onlyWeak, setOnlyWeak] = useState(false)
+  const { data: weakVerbs } = useGetWeakVerbsQuery()
   const [difficulty, setDifficulty] = useState<DifficultyCode>()
   const [popularity, setPopularity] = useState<PopularityCode>()
   const [variant, setVariant] = useState<(typeof QUIZ_VARIANTS)[number]>('mixed')
@@ -53,7 +56,7 @@ export default function Home() {
 
   const draw = async () => {
     try {
-      const quiz = await generate({ count, difficulty, popularity, variant }).unwrap()
+      const quiz = await generate({ count, difficulty, popularity, variant, onlyWeak }).unwrap()
       navigate(`/quizzes/${quiz.id}/play`)
     } catch (e) {
       void message.error(errorMessage(e))
@@ -142,6 +145,7 @@ export default function Home() {
                 options={difficultyOptions}
                 value={difficulty}
                 onChange={setDifficulty}
+                disabled={onlyWeak}
                 style={{ width: '100%' }}
               />
             </div>
@@ -153,6 +157,7 @@ export default function Home() {
                 options={popularityOptions}
                 value={popularity}
                 onChange={setPopularity}
+                disabled={onlyWeak}
                 style={{ width: '100%' }}
               />
             </div>
@@ -179,7 +184,19 @@ export default function Home() {
               />
             </div>
           </div>
-          <Flex justify="flex-end">
+          <Flex justify="space-between" align="center" wrap gap={12}>
+            <Flex align="center" gap={10}>
+              <Switch
+                checked={onlyWeak}
+                onChange={setOnlyWeak}
+                disabled={!weakVerbs?.length}
+                aria-label="Tylko moje słabe czasowniki"
+              />
+              <Typography.Text type={weakVerbs?.length ? undefined : 'secondary'} style={{ fontSize: 16 }}>
+                Tylko moje słabe czasowniki
+                {!weakVerbs?.length && ' (pojawią się po kilku quizach)'}
+              </Typography.Text>
+            </Flex>
             <Button
               type="primary"
               size="large"

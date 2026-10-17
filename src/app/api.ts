@@ -7,6 +7,7 @@ import type {
   AdminUser,
   ProgressSummary,
   ReviewSummary,
+  WeakVerb,
   AdminUsersPage,
   ApiTokenSummary,
   AuditEntry,
@@ -128,6 +129,17 @@ export const api = createApi({
       query: () => 'admin/audit',
       providesTags: ['Audit'],
     }),
+    getWeakVerbs: build.query<WeakVerb[], { limit?: number } | void>({
+      query: (params) => ({ url: 'progress/weak-verbs', params: params ?? undefined }),
+      providesTags: ['Review'],
+    }),
+    retryWrong: build.mutation<QuizDetail, { quizId: string; questionIds: string[] }>({
+      query: ({ quizId, questionIds }) => ({
+        url: `quizzes/${quizId}/retry-wrong`,
+        method: 'POST',
+        body: { questionIds },
+      }),
+    }),
     getReviewSummary: build.query<ReviewSummary, void>({
       query: () => 'reviews/summary',
       providesTags: ['Review'],
@@ -192,6 +204,8 @@ export const {
   useSetUserRolesMutation,
   useSetUserBlockedMutation,
   useListAuditQuery,
+  useGetWeakVerbsQuery,
+  useRetryWrongMutation,
   useGetReviewSummaryQuery,
   useStartReviewMutation,
   useGetProgressQuery,

@@ -1,6 +1,8 @@
 import { newReviewState, nextReview } from '../src/shared/quiz/spaced'
 import type { ReviewState } from '../src/shared/quiz/spaced'
 import type { ReviewSummary } from '../src/shared/quiz/types'
+import { accuracyOf, isWeak, rankWeak } from '../src/shared/quiz/weak'
+import type { VerbStat } from '../src/shared/quiz/weak'
 import { pool } from './quizRepo'
 
 export async function getReviewSummary(userId: string): Promise<ReviewSummary> {
@@ -59,14 +61,17 @@ export async function applyResults(userId: string, results: { verbId: number; co
   const updates = results.map((r) => ({ verbId: r.verbId, ...nextReview(current.get(r.verbId) ?? newReviewState(), r.correct, now) }))
 
   await pool().query(
-    `INSERT INTO verb_reviews (user_id, verb_id, box, due_at, repetitions, lapses, attempts, correct, last_reviewed_at)
-     SELECT $1, u.verb_id, u.box, u.due_at, u.repetitions, u.lapses, u.attempts, u.correct, now()
-     FROM unnest($2::int[], $3::int[], $4::timestamptz[], $5::int[], $6::int[], $7::int[], $8::int[])
-       AS u(verb_id, box, due_at, repetitions, lapses, attempts, correct)
+    `INSERT INTO verb_reviews
+       (user_id, verb_id, box, due_at, repetitions, lapses, attempts, correct, last_reviewed_at, last_wrong_at)
+     SELECT $1, u.verb_id, u.box, u.due_at, u.repetitions, u.lapses, u.attempts, u.correct, now(),
+            CASE WHEN u.wrong THEN now() END
+     FROM unnest($2::int[], $3::int[], $4::timestamptz[], $5::int[], $6::int[], $7::int[], $8::int[], $9::boolean[])
+       AS u(verb_id, box, due_at, repetitions, lapses, attempts, correct, wrong)
      ON CONFLICT (user_id, verb_id) DO UPDATE SET
        box = EXCLUDED.box, due_at = EXCLUDED.due_at, repetitions = EXCLUDED.repetitions,
        lapses = EXCLUDED.lapses, attempts = EXCLUDED.attempts, correct = EXCLUDED.correct,
-       last_reviewed_at = EXCLUDED.last_reviewed_at`,
+       last_reviewed_at = EXCLUDED.last_reviewed_at,
+       last_wrong_at = COALESCE(EXCLUDED.last_wrong_at, verb_reviews.last_wrong_at)`,
     [
       userId,
       updates.map((u) => u.verbId),
@@ -76,6 +81,39 @@ export async function applyResults(userId: string, results: { verbId: number; co
       updates.map((u) => u.lapses),
       updates.map((u) => u.attempts),
       updates.map((u) => u.correct),
+      results.map((r) => !r.correct),
     ],
   )
 }
+
+export interface WeakVerbStat extends VerbStat {
+  verbId: number
+  accuracy: number
+}
+
+/** Verbs the user struggles with, weakest first (see `rankWeak`). */
+export async function weakVerbs(userId: string, limit: number): Promise<WeakVerbStat[]> {
+  const { rows } = await pool().query<{
+    verb_id: number
+    attempts: number
+    correct: number
+    box: number
+    last_wrong_at: Date | null
+  }>(
+    'SELECT verb_id, attempts, correct, box, last_wrong_at FROM verb_reviews WHERE user_id = $1 AND attempts >= 1',
+    [userId],
+  )
+  const stats = rows.map((r) => ({
+    verbId: r.verb_id,
+    attempts: r.attempts,
+    correct: r.correct,
+    box: r.box,
+    lastWrongAt: r.last_wrong_at?.toISOString() ?? null,
+    accuracy: 0,
+  }))
+  return rankWeak(stats, limit).map((s) => ({ ...s, accuracy: accuracyOf(s) }))
+}
+
+export const hasWeakVerbs = async (userId: string) => (await weakVerbs(userId, 1)).length > 0
+
+export { isWeak }

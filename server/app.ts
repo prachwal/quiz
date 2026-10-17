@@ -13,6 +13,7 @@ import {
   gradeInput,
   profileInput,
   quizInput,
+  retryWrongInput,
   reviewSessionInput,
   rolesInput,
   tokenInput,
@@ -134,6 +135,34 @@ export function createApp() {
 
   router.post('/quizzes/generate/irregular-verbs', async (req, res) => {
     const options = generateInput.parse(req.body ?? {})
+
+    if (options.onlyWeak) {
+      // error training: the verbs the user struggles with, topped up with random ones if there are too few
+      const weak = await reviews.weakVerbs(userOf(req), options.count)
+      if (weak.length === 0) {
+        throw new HttpError(409, 'Brak danych o słabych czasownikach - rozwiąż kilka quizów, a pojawią się tutaj')
+      }
+      const pool = await listVerbs()
+      const weakIds = new Set(weak.map((w) => w.verbId))
+      const chosen = [
+        ...pool.filter((v) => weakIds.has(v.id)),
+        ...randomSample(
+          pool.filter((v) => !weakIds.has(v.id)),
+          Math.max(0, options.count - weak.length),
+        ),
+      ]
+      const quiz = buildVerbQuiz(
+        chosen,
+        pool,
+        options.variant,
+        'Trening błędów',
+        `${weak.length} słabych czasowników${chosen.length > weak.length ? ` i ${chosen.length - weak.length} uzupełniających` : ''}.`,
+      )
+      const id = await repo.createQuiz(quiz, { kind: 'generated', source: 'weak', ownerId: userOf(req) })
+      res.status(201).json(await repo.getQuiz(id, false))
+      return
+    }
+
     const { quiz, difficulty } = await generateIrregularVerbsQuiz(options)
     if (quiz.questions.length === 0) throw new HttpError(422, 'Brak czasowników dla wybranych kryteriów')
     const id = await repo.createQuiz(quiz, {
@@ -143,6 +172,25 @@ export function createApp() {
       ownerId: currentUserId(req),
     })
     res.status(201).json(await repo.getQuiz(id, false))
+  })
+
+  // "Retry the mistakes": a new quiz from the verbs behind the questions answered wrongly
+  router.post('/quizzes/:id/retry-wrong', async (req, res) => {
+    const id = parseId(req.params.id)
+    const { questionIds } = retryWrongInput.parse(req.body)
+    const verbOf = await repo.getQuestionVerbs(id)
+    const verbIds = [...new Set(questionIds.flatMap((q) => (verbOf.has(q) ? [verbOf.get(q)!] : [])))]
+    if (verbIds.length === 0) throw new HttpError(409, 'Brak czasowników do powtórzenia w tych pytaniach')
+    const [pool, verbs] = await Promise.all([listVerbs(), listVerbs({ ids: verbIds })])
+    const quiz = buildVerbQuiz(
+      verbs,
+      pool,
+      'mixed',
+      'Powtórz błędne',
+      `${verbs.length} czasowników, w których pomyliłeś się w poprzednim quizie.`,
+    )
+    const newId = await repo.createQuiz(quiz, { kind: 'generated', source: 'weak', ownerId: userOf(req) })
+    res.status(201).json(await repo.getQuiz(newId, false))
   })
 
   router.get('/tokens', requireJwt, async (req, res) => {
@@ -285,6 +333,21 @@ export function createApp() {
     )
     const id = await repo.createQuiz(quiz, { kind: 'generated', source: 'review', ownerId: userOf(req) })
     res.status(201).json(await repo.getQuiz(id, false))
+  })
+
+  router.get('/progress/weak-verbs', async (req, res) => {
+    const limit = z.coerce.number().int().min(1).max(30).default(10).parse(req.query.limit ?? 10)
+    const stats = await reviews.weakVerbs(userOf(req), limit)
+    const verbs = await listVerbs({ ids: stats.map((s) => s.verbId) })
+    const byId = new Map(verbs.map((v) => [v.id, v]))
+    res.json(
+      stats.flatMap((s) => {
+        const verb = byId.get(s.verbId)
+        return verb
+          ? [{ verb, attempts: s.attempts, correct: s.correct, accuracy: s.accuracy, lastWrongAt: s.lastWrongAt }]
+          : []
+      }),
+    )
   })
 
   router.get('/progress/summary', async (req, res) => {

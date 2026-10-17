@@ -4,6 +4,7 @@ import { PHONE_QUERY, useMediaQuery } from '../../app/useMediaQuery'
 import { DifficultyTag, PopularityTag } from '../../components/GroupTags'
 import type { IrregularVerb } from '../../shared/quiz/types'
 import SpeakButton from '../audio/SpeakButton'
+import WeakMark from '../progress/WeakMark'
 import { verbSpeechParts } from '../audio/speech'
 import { PATTERN_HINTS, formsText } from './format'
 
@@ -33,6 +34,7 @@ const verbColumns: TableColumnsType<IrregularVerb> = [
         <DifficultyTag value={verb.difficulty} />
         <PopularityTag value={verb.popularity} />
         <Tag title={PATTERN_HINTS[verb.pattern]}>{verb.pattern}</Tag>
+        <WeakMark verbId={verb.id} />
       </Flex>
     ),
   },
@@ -78,6 +80,7 @@ const phoneColumns: TableColumnsType<IrregularVerb> = [
           <Tag>
             {verb.pattern} · {PATTERN_HINTS[verb.pattern].toLowerCase()}
           </Tag>
+          <WeakMark verbId={verb.id} />
         </Flex>
         <Flex vertical>
           <Typography.Text lang="en" italic style={{ fontSize: 15 }}>
