@@ -16,6 +16,8 @@ import { useResolvedTheme } from '../app/useResolvedTheme'
 import { useThemeVars } from '../app/themeVars'
 import { useAuth } from '../features/auth/useAuth'
 import { openFeedback } from '../features/feedback/feedbackSlice'
+import StreakChip from '../features/progress/StreakChip'
+import { useTimezoneSync } from '../features/progress/useTimezoneSync'
 import BottomNav from './BottomNav'
 import BrandMark from './BrandMark'
 import { navItems, selectedNavKey } from './navItems'
@@ -37,6 +39,7 @@ export default function AppLayout() {
   const selected = selectedNavKey(pathname)
   const displayName = user?.name ?? user?.email
   useDocumentTheme(useResolvedTheme() === 'dark')
+  useTimezoneSync()
 
   // soft fade-in on route change, without remounting the page
   useEffect(() => {
@@ -89,6 +92,7 @@ export default function AppLayout() {
           </nav>
 
           <Flex align="center" gap={8} style={{ marginInlineStart: 'auto', minWidth: 0 }}>
+            {isAuthenticated && <StreakChip />}
             {isAuthenticated && (
               <Dropdown
                 trigger={['click']}

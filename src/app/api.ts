@@ -5,6 +5,7 @@ import type { QuizInput } from '../shared/quiz/schema'
 import type { FeedbackInput, GenerateInput, TokenInput } from '../shared/quiz/schema'
 import type {
   AdminUser,
+  ProgressSummary,
   AdminUsersPage,
   ApiTokenSummary,
   AuditEntry,
@@ -35,7 +36,7 @@ export const api = createApi({
       return headers
     },
   }),
-  tagTypes: ['Quiz', 'Attempt', 'Course', 'Token', 'AdminUsers', 'Feedback', 'Audit'],
+  tagTypes: ['Quiz', 'Attempt', 'Course', 'Token', 'AdminUsers', 'Feedback', 'Audit', 'Progress'],
   endpoints: (build) => ({
     listQuizzes: build.query<QuizSummary[], { difficulty?: DifficultyCode; sort?: 'recent' | 'popular' } | void>({
       query: (params) => ({ url: 'quizzes', params: params ?? undefined }),
@@ -69,7 +70,7 @@ export const api = createApi({
     }),
     gradeQuiz: build.mutation<GradedAttempt, { id: string; answers: Record<string, Answer> }>({
       query: ({ id, answers }) => ({ url: `quizzes/${id}/grade`, method: 'POST', body: { answers } }),
-      invalidatesTags: ['Attempt', 'Course', { type: 'Quiz', id: 'LIST' }],
+      invalidatesTags: ['Attempt', 'Course', 'Progress', { type: 'Quiz', id: 'LIST' }],
     }),
     generateIrregularVerbsQuiz: build.mutation<QuizDetail, GenerateInput>({
       query: (body) => ({ url: 'quizzes/generate/irregular-verbs', method: 'POST', body }),
@@ -126,6 +127,14 @@ export const api = createApi({
       query: () => 'admin/audit',
       providesTags: ['Audit'],
     }),
+    getProgress: build.query<ProgressSummary, void>({
+      query: () => 'progress/summary',
+      providesTags: ['Progress'],
+    }),
+    updateProfile: build.mutation<ProgressSummary, { dailyGoal?: number; timezone?: string }>({
+      query: (body) => ({ url: 'progress/profile', method: 'PATCH', body }),
+      invalidatesTags: ['Progress'],
+    }),
     listCourses: build.query<CourseSummary[], void>({
       query: () => 'courses',
       providesTags: ['Course'],
@@ -143,7 +152,7 @@ export const api = createApi({
         url: `courses/${courseId}/lessons/${lessonId}/complete`,
         method: 'POST',
       }),
-      invalidatesTags: ['Course'],
+      invalidatesTags: ['Course', 'Progress'],
     }),
     startExam: build.mutation<QuizDetail, { courseId: string; count?: number }>({
       query: ({ courseId, count }) => ({ url: `courses/${courseId}/exam`, method: 'POST', body: { count } }),
@@ -175,6 +184,8 @@ export const {
   useSetUserRolesMutation,
   useSetUserBlockedMutation,
   useListAuditQuery,
+  useGetProgressQuery,
+  useUpdateProfileMutation,
   useListCoursesQuery,
   useGetCourseQuery,
   useGetLessonQuery,

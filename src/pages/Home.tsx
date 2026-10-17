@@ -21,6 +21,7 @@ import {
 import { DifficultyTag } from '../components/GroupTags'
 import { difficultyOptions, popularityOptions } from '../components/groupOptions'
 import PageHeader from '../components/PageHeader'
+import DailyGoalCard from '../features/progress/DailyGoalCard'
 import { QUIZ_VARIANTS } from '../shared/quiz/schema'
 import type { DifficultyCode, PopularityCode } from '../shared/quiz/types'
 
@@ -89,6 +90,10 @@ export default function Home() {
           )
         }
       />
+
+      <div style={{ marginBottom: 'var(--app-gap, 24px)' }}>
+        <DailyGoalCard />
+      </div>
 
       <Card
         styles={{ body: { padding: 0 } }}

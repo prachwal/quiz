@@ -12,6 +12,7 @@ import type { ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useGenerateIrregularVerbsQuizMutation, useStartExamMutation } from '../../app/api'
 import SpeakButton from '../audio/SpeakButton'
+import ProgressLine from '../progress/ProgressLine'
 import type { Answer } from '../../shared/quiz/engine'
 import type { GradedAttempt, QuizDetail } from '../../shared/quiz/types'
 
@@ -332,6 +333,8 @@ export default function ResultView({
           </Flex>
         </Flex>
       </Card>
+
+      <ProgressLine />
 
       <Typography.Title level={3} style={{ margin: '8px 0 0' }}>
         Przegląd odpowiedzi

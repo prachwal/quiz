@@ -11,11 +11,13 @@ import {
   feedbackStatusInput,
   generateInput,
   gradeInput,
+  profileInput,
   quizInput,
   rolesInput,
   tokenInput,
 } from '../src/shared/quiz/schema'
 import * as admin from './adminRepo'
+import * as progress from './progressRepo'
 import * as tokens from './apiTokens'
 import * as auth0 from './auth0Management'
 import { initSentry, reportServerError } from './sentry'
@@ -79,6 +81,8 @@ const parseCourseId = (value: unknown) => {
   return parsed.data
 }
 
+// Note: handlers answer `{ ok: true }` instead of `204 No Content` - the Netlify function response
+// adapter rejects status codes that must not carry a body (204/304) when the body is an empty string.
 export function createApp() {
   initSentry()
   const app = express()
@@ -163,7 +167,7 @@ export function createApp() {
     if (!id.success || !(await tokens.revokeApiToken(id.data, userOf(req)))) {
       throw new HttpError(404, 'Token not found')
     }
-    res.status(204).end()
+    res.json({ ok: true })
   })
 
   // ---- feedback (any signed-in user) -------------------------------------------------
@@ -259,6 +263,15 @@ export function createApp() {
     res.json(await admin.listAudit())
   })
 
+  router.get('/progress/summary', async (req, res) => {
+    res.json(await progress.getSummary(userOf(req)))
+  })
+
+  router.patch('/progress/profile', async (req, res) => {
+    await progress.updateProfile(userOf(req), profileInput.parse(req.body))
+    res.json(await progress.getSummary(userOf(req)))
+  })
+
   router.get('/irregular-verbs', async (req, res) => {
     const filter = verbQuery.parse(req.query)
     res.json(await listVerbs(filter))
@@ -285,11 +298,12 @@ export function createApp() {
 
   router.post('/courses/:id/lessons/:lessonId/complete', async (req, res) => {
     const lessonId = idSchema.safeParse(req.params.lessonId)
-    const ok =
-      lessonId.success &&
-      (await courses.completeLesson(parseCourseId(req.params.id), lessonId.data, currentUserId(req)))
-    if (!ok) throw new HttpError(404, 'Lesson not found')
-    res.status(204).end()
+    const result = lessonId.success
+      ? await courses.completeLesson(parseCourseId(req.params.id), lessonId.data, currentUserId(req))
+      : null
+    if (!result?.found) throw new HttpError(404, 'Lesson not found')
+    if (result.created) await progress.recordActivity(userOf(req), { lessons: 1 })
+    res.json({ ok: true })
   })
 
   // Final exam: available once every lesson of the course is completed.
@@ -349,7 +363,7 @@ export function createApp() {
 
   router.delete('/quizzes/:id', requirePermission(WRITE_QUIZZES), async (req, res) => {
     if (!(await repo.deleteQuiz(parseId(req.params.id)))) throw notFound()
-    res.status(204).end()
+    res.json({ ok: true })
   })
 
   router.post('/quizzes/:id/grade', async (req, res) => {
@@ -373,6 +387,10 @@ export function createApp() {
       passed,
       answers,
       result,
+    })
+    await progress.recordActivity(userOf(req), {
+      answered: Object.values(answers).filter((a) => a?.optionIds?.length || a?.text?.trim()).length,
+      correct: result.results.filter((r) => r.correct).length,
     })
     res.json({
       ...result,

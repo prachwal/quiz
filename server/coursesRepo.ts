@@ -124,17 +124,22 @@ export async function getLesson(
   }
 }
 
-export async function completeLesson(courseId: string, lessonId: string, userId: string | null) {
+/** `created` is false when the lesson had already been completed (so activity is counted once). */
+export async function completeLesson(
+  courseId: string,
+  lessonId: string,
+  userId: string | null,
+): Promise<{ found: boolean; created: boolean }> {
   const lesson = await pool().query('SELECT 1 FROM lessons WHERE id = $1 AND course_id = $2', [
     lessonId,
     courseId,
   ])
-  if (lesson.rows.length === 0) return false
-  await pool().query(
+  if (lesson.rows.length === 0) return { found: false, created: false }
+  const inserted = await pool().query(
     'INSERT INTO lesson_progress (user_id, lesson_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
     [userId, lessonId],
   )
-  return true
+  return { found: true, created: (inserted.rowCount ?? 0) > 0 }
 }
 
 /** Verb ids of the whole course, for building the final exam. */

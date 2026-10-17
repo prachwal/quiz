@@ -8,6 +8,7 @@ import UsersAdmin from '../features/admin/UsersAdmin'
 import ApiTokens from '../features/auth/ApiTokens'
 import { useAuth } from '../features/auth/useAuth'
 import { openFeedback } from '../features/feedback/feedbackSlice'
+import { useGetProgressQuery, useUpdateProfileMutation } from '../app/api'
 import {
   resetSettings,
   setCompact,
@@ -21,6 +22,27 @@ import {
 import type { SpeechAccent, SpeechRate, ThemeMode } from '../features/settings/settingsSlice'
 import { useSpeech } from '../features/audio/useSpeech'
 import SpeakButton from '../features/audio/SpeakButton'
+
+function DailyGoal() {
+  const { data } = useGetProgressQuery()
+  const [update, { isLoading }] = useUpdateProfileMutation()
+  return (
+    <Card title="Cel dzienny" style={{ marginTop: 16 }}>
+      <Typography.Paragraph type="secondary">
+        Liczba odpowiedzi dziennie, którą chcesz osiągać. Dzień liczy się do serii po pierwszej odpowiedzi lub
+        ukończonej lekcji.
+      </Typography.Paragraph>
+      <Radio.Group
+        optionType="button"
+        buttonStyle="solid"
+        disabled={!data || isLoading}
+        value={data?.dailyGoal}
+        onChange={(e) => void update({ dailyGoal: e.target.value as number })}
+        options={[5, 10, 20, 30].map((value) => ({ label: `${value} odpowiedzi`, value }))}
+      />
+    </Card>
+  )
+}
 
 function Pronunciation() {
   const settings = useAppSelector((state) => state.settings)
@@ -114,6 +136,7 @@ function GeneralSettings() {
           </Button>
         </Form>
       </Card>
+      <DailyGoal />
       <Pronunciation />
       <ApiTokens />
       <Card title="Uwagi" style={{ marginTop: 16 }}>

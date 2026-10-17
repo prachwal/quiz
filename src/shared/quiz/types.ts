@@ -211,3 +211,14 @@ export interface FeedbackItem {
   createdAt: string
   updatedAt: string
 }
+
+export interface ProgressSummary {
+  timezone: string
+  dailyGoal: number
+  currentStreak: number
+  longestStreak: number
+  /** Activity of the current day in the user's time zone. */
+  today: { day: string; answered: number; correct: number; lessons: number }
+  /** Last 7 days (oldest first, today last). */
+  last7: { day: string; answered: number; correct: number; lessons: number }[]
+}

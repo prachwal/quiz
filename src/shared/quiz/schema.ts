@@ -85,3 +85,10 @@ export const feedbackStatusInput = z.object({ status: z.enum(['new', 'in_progres
 
 export const rolesInput = z.object({ roles: z.array(z.enum(['admin', 'student'])).max(2) })
 export const blockedInput = z.object({ blocked: z.boolean() })
+
+export const profileInput = z
+  .object({
+    dailyGoal: z.number().int().min(1).max(200).optional(),
+    timezone: z.string().trim().min(1).max(64).optional(),
+  })
+  .refine((v) => v.dailyGoal !== undefined || v.timezone !== undefined, 'Podaj cel dzienny lub strefę czasową')

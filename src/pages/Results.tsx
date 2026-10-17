@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 import { errorMessage, useListAttemptsQuery } from '../app/api'
 import { PHONE_QUERY, useMediaQuery } from '../app/useMediaQuery'
 import PageHeader from '../components/PageHeader'
+import DailyGoalCard from '../features/progress/DailyGoalCard'
 import type { AttemptSummary } from '../shared/quiz/types'
 
 const formatDate = (value: string) =>
@@ -125,6 +126,9 @@ export default function Results() {
     <>
       <PageHeader title="Historia wyników" subtitle="Wszystkie Twoje podejścia do quizów i egzaminów." />
       {error && <Alert type="error" showIcon title={errorMessage(error)} style={{ marginBottom: 16 }} />}
+      <div style={{ marginBottom: 24 }}>
+        <DailyGoalCard />
+      </div>
       {data && data.length > 0 && (
         <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
           <Col xs={24} sm={8}>
