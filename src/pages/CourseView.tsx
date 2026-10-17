@@ -172,6 +172,7 @@ export default function CourseView() {
             icon={allDone ? undefined : <LockOutlined />}
             disabled={!allDone}
             loading={starting}
+            className="mobile-block"
             onClick={() => void exam()}
           >
             {allDone ? 'Przystąp do egzaminu' : 'Ukończ wszystkie lekcje'}

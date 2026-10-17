@@ -22,9 +22,10 @@ function Stat({ label, value, color }: { label: string; value: ReactNode; color?
     <Flex
       vertical
       gap={2}
+      className="stat-tile"
       style={{
         flex: '1 1 120px',
-        padding: '12px 16px',
+        minWidth: 0,
         borderRadius: token.borderRadiusLG,
         background: token.colorFillQuaternary,
       }}
@@ -32,7 +33,18 @@ function Stat({ label, value, color }: { label: string; value: ReactNode; color?
       <Typography.Text type="secondary" style={{ fontSize: 14 }}>
         {label}
       </Typography.Text>
-      <span style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.2, color: color ?? token.colorText }}>{value}</span>
+      <span
+        style={{
+          fontSize: 'clamp(20px, 2vw + 14px, 26px)',
+          fontWeight: 700,
+          lineHeight: 1.2,
+          whiteSpace: 'nowrap',
+          fontVariantNumeric: 'tabular-nums',
+          color: color ?? token.colorText,
+        }}
+      >
+        {value}
+      </span>
     </Flex>
   )
 }
@@ -99,7 +111,7 @@ function QuestionReview({
       styles={{ body: { padding: 0 } }}
       style={{ overflow: 'hidden', borderInlineStart: `4px solid ${accent}` }}
     >
-      <Flex vertical gap={16} style={{ padding: '20px 24px' }}>
+      <Flex vertical gap={16} className="review-body">
         <Flex gap={14} align="flex-start">
           <span
             aria-hidden
@@ -228,7 +240,7 @@ export default function ResultView({
           background: `linear-gradient(160deg, ${toneBg} 0%, ${token.colorBgContainer} 55%)`,
         }}
       >
-        <Flex wrap align="center" justify="center" gap={32} style={{ padding: '32px 24px' }}>
+        <Flex wrap align="center" justify="center" gap={32} className="result-hero">
           <Progress
             type="circle"
             percent={result.percent}
@@ -244,7 +256,7 @@ export default function ResultView({
             )}
           />
           <Flex vertical gap={12} style={{ flex: '1 1 300px', minWidth: 0 }}>
-            <div>
+            <div className="result-headline">
               <Typography.Title level={2} style={{ margin: 0, color: toneText, letterSpacing: -0.4 }}>
                 {headline}
               </Typography.Title>
@@ -252,12 +264,12 @@ export default function ResultView({
                 {subline}
               </Typography.Text>
             </div>
-            <Flex wrap gap={12}>
+            <Flex wrap gap={12} className="stat-row">
               <Stat label="Punkty" value={`${result.score} / ${result.maxScore}`} />
               <Stat label="Poprawne" value={correctCount} color={token.colorSuccessText} />
               <Stat label="Błędne" value={result.results.length - correctCount} color={token.colorErrorText} />
             </Flex>
-            <Flex wrap gap={8} style={{ marginTop: 4 }}>
+            <Flex wrap gap={8} className="result-actions" style={{ marginTop: 4 }}>
               {result.course && (
                 <Link to={`/learn/${result.course.id}`}>
                   <Button type="primary" size="large" icon={<CheckOutlined />}>

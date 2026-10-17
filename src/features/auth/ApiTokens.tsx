@@ -3,6 +3,7 @@ import { Alert, Button, Card, Flex, Form, Input, Modal, Popconfirm, Select, Swit
 import type { TableColumnsType } from 'antd'
 import { useState } from 'react'
 import { errorMessage, useCreateTokenMutation, useListTokensQuery, useRevokeTokenMutation } from '../../app/api'
+import { PHONE_QUERY, useMediaQuery } from '../../app/useMediaQuery'
 import type { TokenInput } from '../../shared/quiz/schema'
 import type { ApiTokenSummary, CreatedApiToken } from '../../shared/quiz/types'
 import { useAuth } from './useAuth'
@@ -27,6 +28,7 @@ export default function ApiTokens() {
   const [revokeToken] = useRevokeTokenMutation()
   const [created, setCreated] = useState<CreatedApiToken | null>(null)
   const [form] = Form.useForm<FormValues>()
+  const phone = useMediaQuery(PHONE_QUERY)
 
   const onFinish = async (values: FormValues) => {
     try {
@@ -46,31 +48,53 @@ export default function ApiTokens() {
     }
   }
 
+  const permissionTag = (permissions: string[]) =>
+    permissions.length ? <Tag color="gold">odczyt + zapis quizów</Tag> : <Tag>odczyt i nauka</Tag>
+
+  const revokeButton = (token: ApiTokenSummary) => (
+    <Popconfirm
+      title="Unieważnić token?"
+      description="Skrypty używające tego tokenu przestaną działać."
+      okText="Unieważnij"
+      cancelText="Anuluj"
+      okButtonProps={{ danger: true }}
+      onConfirm={() => revoke(token.id)}
+    >
+      <Button danger type="text" icon={<DeleteOutlined />} aria-label="Unieważnij token" />
+    </Popconfirm>
+  )
+
   const columns: TableColumnsType<ApiTokenSummary> = [
     { title: 'Nazwa', dataIndex: 'name' },
     { title: 'Token', dataIndex: 'prefix', render: (prefix: string) => <code>{prefix}…</code> },
-    {
-      title: 'Uprawnienia',
-      dataIndex: 'permissions',
-      render: (permissions: string[]) =>
-        permissions.length ? <Tag color="gold">odczyt + zapis quizów</Tag> : <Tag>odczyt i nauka</Tag>,
-    },
+    { title: 'Uprawnienia', dataIndex: 'permissions', render: permissionTag },
     { title: 'Wygasa', dataIndex: 'expiresAt', render: (v: string | null) => formatDate(v, 'nigdy') },
     { title: 'Ostatnio użyty', dataIndex: 'lastUsedAt', render: (v: string | null) => formatDate(v, 'nie używany') },
+    { title: '', key: 'actions', render: (_v, token) => revokeButton(token) },
+  ]
+
+  // phones: one card-like row per token
+  const phoneColumns: TableColumnsType<ApiTokenSummary> = [
     {
-      title: '',
-      key: 'actions',
+      key: 'token',
       render: (_v, token) => (
-        <Popconfirm
-          title="Unieważnić token?"
-          description="Skrypty używające tego tokenu przestaną działać."
-          okText="Unieważnij"
-          cancelText="Anuluj"
-          okButtonProps={{ danger: true }}
-          onConfirm={() => revoke(token.id)}
-        >
-          <Button danger type="text" icon={<DeleteOutlined />} aria-label="Unieważnij token" />
-        </Popconfirm>
+        <Flex justify="space-between" align="flex-start" gap={8}>
+          <Flex vertical gap={4} style={{ minWidth: 0 }}>
+            <Typography.Text strong style={{ wordBreak: 'break-word' }}>
+              {token.name}
+            </Typography.Text>
+            <Flex wrap gap={6} align="center">
+              <code>{token.prefix}…</code>
+              {permissionTag(token.permissions)}
+            </Flex>
+            <Typography.Text type="secondary" style={{ fontSize: 14 }}>
+              Wygasa: {formatDate(token.expiresAt, 'nigdy')}
+              <br />
+              Ostatnio użyty: {formatDate(token.lastUsedAt, 'nie używany')}
+            </Typography.Text>
+          </Flex>
+          {revokeButton(token)}
+        </Flex>
       ),
     },
   ]
@@ -88,24 +112,24 @@ export default function ApiTokens() {
 
       <Form<FormValues>
         form={form}
-        layout="inline"
+        layout={phone ? 'vertical' : 'inline'}
         initialValues={{ expiresInDays: 90, write: false }}
         onFinish={onFinish}
         style={{ rowGap: 12, marginBottom: 16 }}
       >
         <Form.Item name="name" rules={[{ required: true, whitespace: true, message: 'Podaj nazwę' }]}>
-          <Input placeholder="Nazwa, np. skrypt backupu" maxLength={80} style={{ width: 240 }} />
+          <Input placeholder="Nazwa, np. skrypt backupu" maxLength={80} style={{ width: phone ? '100%' : 240 }} />
         </Form.Item>
         <Form.Item name="expiresInDays">
-          <Select options={EXPIRY_OPTIONS} style={{ width: 170 }} />
+          <Select options={EXPIRY_OPTIONS} aria-label="Ważność tokenu" style={{ width: phone ? '100%' : 170 }} />
         </Form.Item>
         {isAdmin && (
           <Form.Item name="write" valuePropName="checked" label="Zapis quizów">
             <Switch />
           </Form.Item>
         )}
-        <Form.Item>
-          <Button type="primary" htmlType="submit" loading={creating}>
+        <Form.Item style={phone ? { marginBottom: 0 } : undefined}>
+          <Button type="primary" htmlType="submit" loading={creating} block={phone}>
             Utwórz token
           </Button>
         </Form.Item>
@@ -116,10 +140,12 @@ export default function ApiTokens() {
         rowKey="id"
         size="small"
         loading={isLoading}
-        columns={columns}
+        columns={phone ? phoneColumns : columns}
+        showHeader={!phone}
+        className={phone ? 'card-rows card-rows-flush' : undefined}
         dataSource={data}
         pagination={false}
-        scroll={{ x: 'max-content' }}
+        scroll={phone ? undefined : { x: 'max-content' }}
         locale={{ emptyText: 'Brak aktywnych tokenów' }}
       />
 

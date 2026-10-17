@@ -1,0 +1,13 @@
+{
+  "name": "Quiz - czasowniki nieregularne",
+  "short_name": "Quiz",
+  "description": "Kursy, lekcje i quizy z angielskich czasowników nieregularnych.",
+  "lang": "pl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "minimal-ui",
+  "orientation": "any",
+  "background_color": "#f5f6fb",
+  "theme_color": "#ffffff",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

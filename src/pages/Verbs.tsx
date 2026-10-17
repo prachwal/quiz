@@ -2,6 +2,7 @@ import { Alert, Card, Flex, Input, Select, Typography } from 'antd'
 import PageHeader from '../components/PageHeader'
 import { useMemo, useState } from 'react'
 import { errorMessage, useListIrregularVerbsQuery } from '../app/api'
+import { PHONE_QUERY, useMediaQuery } from '../app/useMediaQuery'
 import { difficultyOptions, popularityOptions } from '../components/groupOptions'
 import { formsText } from '../features/learn/format'
 import VerbTable from '../features/learn/VerbTable'
@@ -17,6 +18,7 @@ export default function Verbs() {
   const [popularity, setPopularity] = useState<PopularityCode>()
   const [pattern, setPattern] = useState<PatternCode>()
   const [search, setSearch] = useState('')
+  const phone = useMediaQuery(PHONE_QUERY)
   const { data, error, isFetching } = useListIrregularVerbsQuery({ difficulty, popularity, pattern })
 
   const filtered = useMemo(() => {
@@ -34,11 +36,15 @@ export default function Verbs() {
       <PageHeader
         eyebrow="Słownik"
         title="Czasowniki nieregularne (B2)"
-        subtitle="Wszystkie formy w jednym miejscu. Rozwiń wiersz, aby zobaczyć przykładowe zdanie."
+        subtitle={
+          phone
+            ? 'Wszystkie formy i przykładowe zdania w jednym miejscu.'
+            : 'Wszystkie formy w jednym miejscu. Rozwiń wiersz, aby zobaczyć przykładowe zdanie.'
+        }
       />
       {error && <Alert type="error" showIcon title={errorMessage(error)} style={{ marginBottom: 16 }} />}
       <Card>
-        <Flex gap={12} wrap align="center" style={{ marginBottom: 20 }}>
+        <Flex gap={12} wrap align="center" className="verbs-filters" style={{ marginBottom: 20 }}>
           <Input.Search
             allowClear
             size="large"

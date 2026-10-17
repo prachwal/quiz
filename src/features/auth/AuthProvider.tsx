@@ -41,11 +41,8 @@ function SignInPage() {
 
   return (
     <PublicShell>
-      <Card
-        style={{ width: '100%', maxWidth: 440, boxShadow: 'var(--app-shadow-md)' }}
-        styles={{ body: { padding: 'clamp(28px, 6vw, 44px)' } }}
-      >
-        <Flex vertical align="center" gap={20} style={{ textAlign: 'center' }}>
+      <Card className="signin-card" style={{ width: '100%', maxWidth: 440, boxShadow: 'var(--app-shadow-md)' }}>
+        <Flex vertical align="center" gap={20} className="signin-stack" style={{ textAlign: 'center' }}>
           <BrandMark size={56} showName={false} />
           <div>
             <Typography.Title level={2} style={{ margin: 0, letterSpacing: -0.5 }}>

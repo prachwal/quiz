@@ -179,6 +179,7 @@ export default function Home() {
               icon={<ThunderboltFilled />}
               loading={generating}
               onClick={() => void draw()}
+              className="mobile-block"
               style={{ minWidth: 200 }}
             >
               Losuj quiz
@@ -191,12 +192,14 @@ export default function Home() {
         <Typography.Title level={3} style={{ margin: 0 }}>
           Gotowe quizy
         </Typography.Title>
-        <Flex gap="small" wrap align="center">
-          <Segmented
-            value={filterDifficulty}
-            onChange={setFilterDifficulty}
-            options={[{ label: 'Wszystkie', value: 'all' }, ...difficultyOptions]}
-          />
+        <Flex gap="small" wrap align="center" className="list-toolbar">
+          <div className="scroll-x">
+            <Segmented
+              value={filterDifficulty}
+              onChange={setFilterDifficulty}
+              options={[{ label: 'Wszystkie', value: 'all' }, ...difficultyOptions]}
+            />
+          </div>
           <Select
             value={sort}
             onChange={setSort}
@@ -205,7 +208,7 @@ export default function Home() {
               { value: 'recent', label: 'Najnowsze' },
               { value: 'popular', label: 'Najpopularniejsze' },
             ]}
-            style={{ width: 190 }}
+            className="sort-select"
           />
         </Flex>
       </Flex>

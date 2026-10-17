@@ -3,8 +3,19 @@ import { Alert, Card, Col, Empty, Flex, Progress, Row, Table, Tag, Typography, t
 import type { TableColumnsType } from 'antd'
 import type { ReactNode } from 'react'
 import { errorMessage, useListAttemptsQuery } from '../app/api'
+import { PHONE_QUERY, useMediaQuery } from '../app/useMediaQuery'
 import PageHeader from '../components/PageHeader'
 import type { AttemptSummary } from '../shared/quiz/types'
+
+const formatDate = (value: string) =>
+  new Date(value).toLocaleString('pl-PL', { dateStyle: 'medium', timeStyle: 'short' })
+
+const typeTag = (a: AttemptSummary) =>
+  a.courseId ? (
+    <Tag color={a.passed ? 'success' : 'error'}>{a.passed ? 'Egzamin: zaliczony' : 'Egzamin: niezaliczony'}</Tag>
+  ) : (
+    <Tag>Quiz</Tag>
+  )
 
 const columns: TableColumnsType<AttemptSummary> = [
   {
@@ -12,7 +23,7 @@ const columns: TableColumnsType<AttemptSummary> = [
     dataIndex: 'createdAt',
     render: (value: string) => (
       <Typography.Text type="secondary" style={{ whiteSpace: 'nowrap' }}>
-        {new Date(value).toLocaleString('pl-PL', { dateStyle: 'medium', timeStyle: 'short' })}
+        {formatDate(value)}
       </Typography.Text>
     ),
   },
@@ -20,12 +31,7 @@ const columns: TableColumnsType<AttemptSummary> = [
   {
     title: 'Typ',
     key: 'type',
-    render: (_v, a) =>
-      a.courseId ? (
-        <Tag color={a.passed ? 'success' : 'error'}>{a.passed ? 'Egzamin: zaliczony' : 'Egzamin: niezaliczony'}</Tag>
-      ) : (
-        <Tag>Quiz</Tag>
-      ),
+    render: (_v, a) => typeTag(a),
   },
   {
     title: 'Punkty',
@@ -37,6 +43,42 @@ const columns: TableColumnsType<AttemptSummary> = [
     dataIndex: 'percent',
     width: 200,
     render: (percent: number) => <Progress percent={percent} size="small" status={percent >= 50 ? 'success' : 'exception'} />,
+  },
+]
+
+/** Phones: one card-like row per attempt instead of a five-column table. */
+const phoneColumns: TableColumnsType<AttemptSummary> = [
+  {
+    key: 'attempt',
+    render: (_v, a) => (
+      <Flex vertical gap={6}>
+        <Flex justify="space-between" align="flex-start" gap={12}>
+          <Typography.Text strong style={{ fontSize: 16, minWidth: 0, wordBreak: 'break-word' }}>
+            {a.quizTitle}
+          </Typography.Text>
+          <Typography.Text
+            strong
+            type={a.percent >= 50 ? 'success' : 'danger'}
+            style={{ flex: 'none', fontSize: 18, fontVariantNumeric: 'tabular-nums' }}
+          >
+            {a.percent}%
+          </Typography.Text>
+        </Flex>
+        <Progress
+          percent={a.percent}
+          showInfo={false}
+          size="small"
+          status={a.percent >= 50 ? 'success' : 'exception'}
+          style={{ margin: 0 }}
+        />
+        <Flex wrap gap={6} align="center">
+          {typeTag(a)}
+          <Typography.Text type="secondary" style={{ fontSize: 14 }}>
+            {a.score} / {a.maxScore} pkt · {formatDate(a.createdAt)}
+          </Typography.Text>
+        </Flex>
+      </Flex>
+    ),
   },
 ]
 
@@ -75,6 +117,7 @@ function StatCard({ label, value, icon, color }: { label: string; value: string 
 export default function Results() {
   const { data, error, isLoading } = useListAttemptsQuery()
   const { token } = theme.useToken()
+  const phone = useMediaQuery(PHONE_QUERY)
   const average = data?.length ? Math.round(data.reduce((sum, a) => sum + a.percent, 0) / data.length) : null
   const passedExams = data?.filter((a) => a.courseId && a.passed).length ?? 0
 
@@ -99,10 +142,17 @@ export default function Results() {
         <Table<AttemptSummary>
           rowKey="id"
           loading={isLoading}
-          columns={columns}
+          columns={phone ? phoneColumns : columns}
+          showHeader={!phone}
+          className={phone ? 'card-rows' : undefined}
           dataSource={data}
-          pagination={{ pageSize: 15, showSizeChanger: false, style: { paddingInline: 16 } }}
-          scroll={{ x: 'max-content' }}
+          pagination={{
+            pageSize: 15,
+            showSizeChanger: false,
+            simple: phone ? { readOnly: true } : false,
+            style: { paddingInline: 16 },
+          }}
+          scroll={phone ? undefined : { x: 'max-content' }}
           locale={{ emptyText: <Empty description="Brak zapisanych wyników" style={{ paddingBlock: 24 }} /> }}
         />
       </Card>

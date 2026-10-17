@@ -120,7 +120,7 @@ export default function QuizEditor({ initialValues, submitting, submitLabel, onS
           <Input.TextArea autoSize={{ minRows: 2 }} maxLength={2000} />
         </Form.Item>
         <Form.Item label="Poziom trudności" name="difficulty" style={{ marginBottom: 0 }}>
-          <Select allowClear placeholder="Nie określono" options={difficultyOptions} style={{ width: 220 }} />
+          <Select allowClear placeholder="Nie określono" options={difficultyOptions} style={{ width: 220, maxWidth: '100%' }} />
         </Form.Item>
       </Card>
 
@@ -144,7 +144,14 @@ export default function QuizEditor({ initialValues, submitting, submitLabel, onS
         )}
       </Form.List>
 
-      <Button type="primary" htmlType="submit" loading={submitting} size="large" style={{ marginTop: 24 }}>
+      <Button
+        type="primary"
+        htmlType="submit"
+        loading={submitting}
+        size="large"
+        className="mobile-block"
+        style={{ marginTop: 24 }}
+      >
         {submitLabel}
       </Button>
     </Form>

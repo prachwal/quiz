@@ -1,10 +1,13 @@
 import { ArrowLeftOutlined, ArrowRightOutlined, CheckOutlined } from '@ant-design/icons'
-import { Alert, Button, Flex, Grid, Skeleton, Tag, Typography, App as AntdApp } from 'antd'
-import { useCallback, useEffect, useState } from 'react'
+import { Alert, Button, Flex, Skeleton, Tag, Typography, App as AntdApp } from 'antd'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { errorMessage, useCompleteLessonMutation, useGetLessonQuery } from '../app/api'
 import PageHeader from '../components/PageHeader'
+import { useFocusMode } from '../components/useFocusMode'
 import VerbSlide from '../features/learn/VerbSlide'
+import type { SwipeDirection } from '../features/learn/swipe'
+import { useSwipe } from '../features/learn/useSwipe'
 import type { LessonDetail } from '../shared/quiz/types'
 
 function Slides({ lesson }: { lesson: LessonDetail }) {
@@ -12,10 +15,13 @@ function Slides({ lesson }: { lesson: LessonDetail }) {
   const [complete, { isLoading: saving }] = useCompleteLessonMutation()
   const navigate = useNavigate()
   const { message } = AntdApp.useApp()
-  const screens = Grid.useBreakpoint()
+  const slideRef = useRef<HTMLDivElement>(null)
+  const direction = useRef<1 | -1>(1)
 
   const total = lesson.verbs.length
   const isLast = index === total - 1
+  // phones: tab bar hidden, Cofnij/Dalej live in a sticky bar in the thumb zone
+  useFocusMode(total > 0)
 
   const finish = useCallback(async () => {
     try {
@@ -30,11 +36,38 @@ function Slides({ lesson }: { lesson: LessonDetail }) {
     }
   }, [complete, lesson, message, navigate])
 
-  const back = useCallback(() => setIndex((i) => Math.max(i - 1, 0)), [])
+  const back = useCallback(() => {
+    direction.current = -1
+    setIndex((i) => Math.max(i - 1, 0))
+  }, [])
   const next = useCallback(() => {
+    direction.current = 1
     if (isLast) void finish()
     else setIndex((i) => i + 1)
   }, [isLast, finish])
+
+  // swipe left = next verb, right = previous; finishing the lesson stays a deliberate button tap
+  const onSwipe = useCallback(
+    (dir: SwipeDirection) => {
+      if (dir === 'right') back()
+      else if (!isLast) next()
+    },
+    [back, next, isLast],
+  )
+  useSwipe(slideRef, onSwipe)
+
+  // subtle slide-in in the direction of travel
+  useEffect(() => {
+    const el = slideRef.current
+    if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    el.animate(
+      [
+        { opacity: 0.4, transform: `translateX(${direction.current * 16}px)` },
+        { opacity: 1, transform: 'none' },
+      ],
+      { duration: 200, easing: 'ease-out' },
+    )
+  }, [index])
 
   // arrow keys move between slides (not while typing in a field)
   useEffect(() => {
@@ -52,21 +85,25 @@ function Slides({ lesson }: { lesson: LessonDetail }) {
 
   return (
     <>
-      <VerbSlide verb={lesson.verbs[index]} index={index} total={total} />
-      <Flex justify="space-between" align="center" gap="middle" style={{ marginTop: 20 }}>
+      <div ref={slideRef} className="swipe-area">
+        <VerbSlide verb={lesson.verbs[index]} index={index} total={total} />
+      </div>
+      <Typography.Text type="secondary" className="swipe-hint">
+        Przesuń palcem w lewo lub w prawo, aby zmienić słowo
+      </Typography.Text>
+      <Flex justify="space-between" align="center" gap="middle" className="action-bar action-bar-flat">
         <Button size="large" icon={<ArrowLeftOutlined />} disabled={index === 0} onClick={back}>
           Cofnij
         </Button>
-        {screens.md && (
-          <Typography.Text type="secondary" style={{ fontSize: 14 }}>
-            Możesz też używać strzałek ← →
-          </Typography.Text>
-        )}
+        <Typography.Text type="secondary" className="kbd-hint">
+          Możesz też używać strzałek ← →
+        </Typography.Text>
         <Button
           type="primary"
           size="large"
           icon={isLast ? <CheckOutlined /> : <ArrowRightOutlined />}
           iconPlacement="end"
+          className="action-primary"
           loading={saving}
           onClick={next}
         >

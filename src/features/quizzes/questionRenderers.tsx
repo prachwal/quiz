@@ -55,6 +55,11 @@ const text = ({ value, onChange }: RendererProps) => (
     size="large"
     placeholder="Twoja odpowiedź"
     autoFocus
+    // phone keyboards: no auto-capitalisation / autocorrect turning "learnt" into "Learned"
+    autoCapitalize="none"
+    autoCorrect="off"
+    autoComplete="off"
+    spellCheck={false}
     value={value?.text ?? ''}
     onChange={(e) => onChange({ text: e.target.value })}
     style={{ fontSize: 20, paddingBlock: 10 }}

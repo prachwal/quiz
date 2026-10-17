@@ -6,6 +6,7 @@ import { useAppSelector } from './app/hooks'
 import AuthProvider from './features/auth/AuthProvider'
 import RequireRole from './features/auth/RequireRole'
 import { useResolvedTheme } from './app/useResolvedTheme'
+import { COARSE_QUERY, useMediaQuery } from './app/useMediaQuery'
 import AppLayout from './components/AppLayout'
 import About from './pages/About'
 import CourseView from './pages/CourseView'
@@ -23,8 +24,9 @@ import Settings from './pages/Settings'
 export default function App() {
   const resolved = useResolvedTheme()
   const compact = useAppSelector((state) => state.settings.compact)
+  const touch = useMediaQuery(COARSE_QUERY)
 
-  const themeConfig = useMemo(() => brandTheme(resolved === 'dark', compact), [resolved, compact])
+  const themeConfig = useMemo(() => brandTheme(resolved === 'dark', compact, touch), [resolved, compact, touch])
 
   return (
     <ConfigProvider theme={themeConfig}>

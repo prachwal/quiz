@@ -1,53 +1,44 @@
-import {
-  AppstoreOutlined,
-  BarChartOutlined,
-  BookOutlined,
-  DownOutlined,
-  InfoCircleOutlined,
-  LogoutOutlined,
-  MenuOutlined,
-  ReadOutlined,
-  SettingOutlined,
-} from '@ant-design/icons'
-import { Avatar, Button, Drawer, Dropdown, Flex, Grid, Layout, Menu, Tag, Typography, theme } from 'antd'
+import { DownOutlined, InfoCircleOutlined, LogoutOutlined, MenuOutlined, SettingOutlined } from '@ant-design/icons'
+import { Avatar, Button, Drawer, Dropdown, Flex, Layout, Menu, Tag, Typography, theme } from 'antd'
 import { useEffect, useRef, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useDocumentTheme } from '../app/useDocumentTheme'
+import { PHONE_QUERY } from '../app/useMediaQuery'
+import { useResolvedTheme } from '../app/useResolvedTheme'
 import { useThemeVars } from '../app/themeVars'
 import { useAuth } from '../features/auth/useAuth'
+import BottomNav from './BottomNav'
 import BrandMark from './BrandMark'
+import { navItems, selectedNavKey } from './navItems'
 
 const { Header, Content, Footer } = Layout
 
-const items = [
-  { key: '/', label: 'Quizy', icon: <AppstoreOutlined /> },
-  { key: '/learn', label: 'Nauka', icon: <ReadOutlined /> },
-  { key: '/verbs', label: 'Czasowniki', icon: <BookOutlined /> },
-  { key: '/results', label: 'Wyniki', icon: <BarChartOutlined /> },
-  { key: '/about', label: 'O aplikacji', icon: <InfoCircleOutlined /> },
-  { key: '/settings', label: 'Ustawienia', icon: <SettingOutlined /> },
-]
-
+// Which navigation is visible is decided by CSS media queries in index.css (no JS breakpoints, so
+// nothing flashes on first paint): pill nav >= 992px, hamburger + Drawer 768-991px, bottom tab bar
+// below 768px (the user menu then also holds "O aplikacji").
 export default function AppLayout() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const { token } = theme.useToken()
   const vars = useThemeVars()
-  const screens = Grid.useBreakpoint()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const pageRef = useRef<HTMLDivElement>(null)
   const { isAuthenticated, user, roles, logout } = useAuth()
-  const selected = items.find((item) => item.key !== '/' && pathname.startsWith(item.key))?.key ?? '/'
-  const desktop = Boolean(screens.lg)
+  const selected = selectedNavKey(pathname)
   const displayName = user?.name ?? user?.email
+  useDocumentTheme(useResolvedTheme() === 'dark')
 
   // soft fade-in on route change, without remounting the page
   useEffect(() => {
     window.scrollTo({ top: 0 })
     const el = pageRef.current
     if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    // phones: opacity only - a transform would turn the page into the containing block of the
+    // fixed action bars (quiz / lesson) for the duration of the animation
+    const shift = window.matchMedia(PHONE_QUERY).matches ? 'none' : 'translateY(6px)'
     el.animate(
       [
-        { opacity: 0, transform: 'translateY(6px)' },
+        { opacity: 0, transform: shift },
         { opacity: 1, transform: 'none' },
       ],
       { duration: 260, easing: 'ease-out' },
@@ -61,34 +52,31 @@ export default function AppLayout() {
   ))
 
   return (
-    <Layout className="app-shell" style={{ minHeight: '100vh', ...vars }}>
+    <Layout className="app-shell app-root" style={vars}>
       <Header
         className="app-header"
         style={{
           background: `color-mix(in srgb, ${token.colorBgContainer} 82%, transparent)`,
           borderBottom: `1px solid ${token.colorBorderSecondary}`,
-          lineHeight: 'normal',
         }}
       >
         <Flex align="center" gap={24} className="app-container" style={{ height: '100%' }}>
-          <Link to="/" aria-label="Quiz - strona główna" style={{ flex: 'none' }}>
+          <Link to="/" aria-label="Quiz - strona główna" style={{ flex: 'none' }} className="app-brand-link">
             <BrandMark />
           </Link>
 
-          {desktop && (
-            <nav className="app-nav" aria-label="Główna nawigacja">
-              {items.map((item) => (
-                <Link
-                  key={item.key}
-                  to={item.key}
-                  className="app-nav-link"
-                  aria-current={item.key === selected ? 'page' : undefined}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
-          )}
+          <nav className="app-nav" aria-label="Główna nawigacja">
+            {navItems.map((item) => (
+              <Link
+                key={item.key}
+                to={item.key}
+                className="app-nav-link"
+                aria-current={item.key === selected ? 'page' : undefined}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
 
           <Flex align="center" gap={8} style={{ marginInlineStart: 'auto', minWidth: 0 }}>
             {isAuthenticated && (
@@ -101,18 +89,26 @@ export default function AppLayout() {
                       key: 'who',
                       disabled: true,
                       label: (
-                        <Flex vertical gap={2} style={{ padding: '2px 0', color: token.colorText }}>
-                          <Typography.Text strong>{displayName}</Typography.Text>
+                        <Flex vertical gap={2} style={{ padding: '2px 0', color: token.colorText, maxWidth: 260 }}>
+                          <Typography.Text strong ellipsis>
+                            {displayName}
+                          </Typography.Text>
                           {user?.email && user.email !== displayName && (
-                            <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+                            <Typography.Text type="secondary" ellipsis style={{ fontSize: 13 }}>
                               {user.email}
                             </Typography.Text>
+                          )}
+                          {roleTags.length > 0 && (
+                            <Flex gap={4} wrap className="app-menu-roles">
+                              {roleTags}
+                            </Flex>
                           )}
                         </Flex>
                       ),
                     },
                     { type: 'divider' },
                     { key: 'settings', icon: <SettingOutlined />, label: 'Ustawienia', onClick: () => navigate('/settings') },
+                    { key: 'about', icon: <InfoCircleOutlined />, label: 'O aplikacji', onClick: () => navigate('/about') },
                     { key: 'logout', icon: <LogoutOutlined />, label: 'Wyloguj', danger: true, onClick: logout },
                   ],
                 }}
@@ -130,89 +126,84 @@ export default function AppLayout() {
                     >
                       {displayName?.[0]?.toUpperCase()}
                     </Avatar>
-                    {screens.xl && (
-                      <>
-                        <Typography.Text ellipsis style={{ maxWidth: 160, fontWeight: 500 }}>
-                          {displayName}
-                        </Typography.Text>
-                        {roleTags}
-                      </>
-                    )}
+                    <span className="app-user-name">
+                      <Typography.Text ellipsis style={{ maxWidth: 160, fontWeight: 500 }}>
+                        {displayName}
+                      </Typography.Text>
+                      {roleTags}
+                    </span>
                     <DownOutlined style={{ fontSize: 11, color: token.colorTextTertiary }} />
                   </Flex>
                 </Button>
               </Dropdown>
             )}
-            {!desktop && (
-              <Button
-                type="text"
-                icon={<MenuOutlined />}
-                aria-label="Otwórz menu"
-                onClick={() => setDrawerOpen(true)}
-                style={{ width: 44, height: 44 }}
-              />
-            )}
+            <Button
+              type="text"
+              className="app-menu-btn"
+              icon={<MenuOutlined />}
+              aria-label="Otwórz menu"
+              onClick={() => setDrawerOpen(true)}
+              style={{ width: 44, height: 44 }}
+            />
           </Flex>
         </Flex>
       </Header>
 
-      {!desktop && (
-        <Drawer
-          open={drawerOpen}
-          onClose={() => setDrawerOpen(false)}
-          placement="right"
-          size={300}
-          title={<BrandMark size={28} />}
-          styles={{ body: { padding: 12 } }}
-        >
-          {isAuthenticated && (
-            <Flex
-              align="center"
-              gap={12}
-              style={{
-                padding: 12,
-                marginBottom: 12,
-                borderRadius: token.borderRadiusLG,
-                background: token.colorFillQuaternary,
-              }}
-            >
-              <Avatar src={user?.picture} size={40} style={{ flex: 'none', background: token.colorPrimary }}>
-                {displayName?.[0]?.toUpperCase()}
-              </Avatar>
-              <Flex vertical gap={4} style={{ minWidth: 0 }}>
-                <Typography.Text strong ellipsis>
-                  {displayName}
-                </Typography.Text>
-                <Flex gap={4} wrap>
-                  {roleTags}
-                </Flex>
+      <Drawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        placement="right"
+        size={300}
+        title={<BrandMark size={28} />}
+        styles={{ body: { padding: 12 } }}
+      >
+        {isAuthenticated && (
+          <Flex
+            align="center"
+            gap={12}
+            style={{
+              padding: 12,
+              marginBottom: 12,
+              borderRadius: token.borderRadiusLG,
+              background: token.colorFillQuaternary,
+            }}
+          >
+            <Avatar src={user?.picture} size={40} style={{ flex: 'none', background: token.colorPrimary }}>
+              {displayName?.[0]?.toUpperCase()}
+            </Avatar>
+            <Flex vertical gap={4} style={{ minWidth: 0 }}>
+              <Typography.Text strong ellipsis>
+                {displayName}
+              </Typography.Text>
+              <Flex gap={4} wrap>
+                {roleTags}
               </Flex>
             </Flex>
-          )}
-          <Menu
-            mode="vertical"
-            selectedKeys={[selected]}
-            items={items}
-            onClick={({ key }) => {
-              setDrawerOpen(false)
-              navigate(key)
-            }}
-            style={{ borderInlineEnd: 0, fontSize: 16 }}
-          />
-          {isAuthenticated && (
-            <Button block danger icon={<LogoutOutlined />} onClick={logout} style={{ marginTop: 16 }}>
-              Wyloguj
-            </Button>
-          )}
-        </Drawer>
-      )}
+          </Flex>
+        )}
+        <Menu
+          mode="vertical"
+          selectedKeys={[selected]}
+          items={navItems.map(({ key, label, icon }) => ({ key, label, icon }))}
+          onClick={({ key }) => {
+            setDrawerOpen(false)
+            navigate(key)
+          }}
+          style={{ borderInlineEnd: 0, fontSize: 16 }}
+        />
+        {isAuthenticated && (
+          <Button block danger icon={<LogoutOutlined />} onClick={logout} style={{ marginTop: 16 }}>
+            Wyloguj
+          </Button>
+        )}
+      </Drawer>
 
-      <Content style={{ paddingBlock: '32px 48px' }}>
+      <Content className="app-content">
         <div ref={pageRef} className="app-container">
           <Outlet />
         </div>
       </Content>
-      <Footer style={{ padding: '24px 0 32px', borderTop: `1px solid ${token.colorBorderSecondary}` }}>
+      <Footer className="app-footer" style={{ borderTop: `1px solid ${token.colorBorderSecondary}` }}>
         <Flex className="app-container" justify="space-between" align="center" wrap gap={8}>
           <BrandMark size={22} />
           <Typography.Text type="secondary" style={{ fontSize: 14 }}>
@@ -220,6 +211,7 @@ export default function AppLayout() {
           </Typography.Text>
         </Flex>
       </Footer>
+      <BottomNav selected={selected} />
     </Layout>
   )
 }

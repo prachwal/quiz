@@ -13,6 +13,8 @@ export function useThemeVars(): CSSProperties {
     '--app-text': token.colorText,
     '--app-text-secondary': token.colorTextSecondary,
     '--app-fill': token.colorFillTertiary,
+    '--app-fill-quaternary': token.colorFillQuaternary,
+    '--app-fill-pressed': token.colorFillSecondary,
     '--app-border': token.colorBorderSecondary,
     '--app-surface': token.colorBgContainer,
     '--app-shadow-sm': dark

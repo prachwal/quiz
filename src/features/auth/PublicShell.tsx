@@ -2,6 +2,8 @@ import { ConfigProvider, theme } from 'antd'
 import { useMemo } from 'react'
 import type { ReactNode } from 'react'
 import { brandTheme } from '../../app/brandTheme'
+import { useDocumentTheme } from '../../app/useDocumentTheme'
+import { COARSE_QUERY, useMediaQuery } from '../../app/useMediaQuery'
 import { useThemeVars } from '../../app/themeVars'
 import { useSystemDark } from '../../app/useResolvedTheme'
 
@@ -10,15 +12,9 @@ function Surface({ children }: { children: ReactNode }) {
   const vars = useThemeVars()
   return (
     <div
-      className="app-shell"
+      className="app-shell public-surface"
       style={{
         ...vars,
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 16,
-        boxSizing: 'border-box',
         background: `radial-gradient(80% 60% at 15% 0%, ${token.colorPrimaryBg} 0%, transparent 60%), radial-gradient(70% 60% at 100% 100%, ${token.colorPrimaryBg} 0%, transparent 55%), ${token.colorBgLayout}`,
         color: token.colorText,
       }}
@@ -34,7 +30,9 @@ function Surface({ children }: { children: ReactNode }) {
  */
 export default function PublicShell({ children }: { children: ReactNode }) {
   const dark = useSystemDark()
-  const themeConfig = useMemo(() => brandTheme(dark), [dark])
+  const touch = useMediaQuery(COARSE_QUERY)
+  const themeConfig = useMemo(() => brandTheme(dark, false, touch), [dark, touch])
+  useDocumentTheme(dark)
   return (
     <ConfigProvider theme={themeConfig}>
       <Surface>{children}</Surface>

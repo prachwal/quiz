@@ -21,11 +21,11 @@ export default function PageHeader({
 }) {
   const { token } = theme.useToken()
   return (
-    <header style={{ marginBottom: 28 }}>
+    <header className="page-header">
       {back && (
         <Link
           to={back.to}
-          className="muted-link"
+          className="muted-link page-back"
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -54,12 +54,15 @@ export default function PageHeader({
         </Typography.Text>
       )}
       <Flex justify="space-between" align="flex-end" wrap gap={16}>
-        <div style={{ minWidth: 0, flex: '1 1 320px' }}>
-          <Typography.Title style={{ margin: 0, letterSpacing: -0.6, lineHeight: 1.2 }}>{title}</Typography.Title>
+        <div style={{ minWidth: 0, flex: '1 1 280px' }}>
+          <Typography.Title className="page-title" style={{ margin: 0, letterSpacing: -0.6, lineHeight: 1.2 }}>
+            {title}
+          </Typography.Title>
           {subtitle && (
             <Typography.Paragraph
               type="secondary"
-              style={{ margin: '8px 0 0', fontSize: 17, maxWidth: 720, lineHeight: 1.6 }}
+              className="page-subtitle"
+              style={{ margin: '8px 0 0', maxWidth: 720, lineHeight: 1.6 }}
             >
               {subtitle}
             </Typography.Paragraph>
@@ -70,7 +73,11 @@ export default function PageHeader({
             </Flex>
           )}
         </div>
-        {extra && <Flex gap="small" wrap>{extra}</Flex>}
+        {extra && (
+          <Flex gap="small" wrap className="page-header-extra">
+            {extra}
+          </Flex>
+        )}
       </Flex>
     </header>
   )

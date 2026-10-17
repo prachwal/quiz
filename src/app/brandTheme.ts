@@ -7,8 +7,11 @@ const FONT_FAMILY =
 const BRAND = '#4f46e5'
 const BRAND_DARK = '#7c74f0'
 
-/** App-wide antd theme: indigo brand, 16px body text, softer surfaces; shared by the app and the public shell. */
-export function brandTheme(dark: boolean, compact = false): ThemeConfig {
+/**
+ * App-wide antd theme: indigo brand, 16px body text, softer surfaces; shared by the app and the public shell.
+ * `touch` (coarse pointer) raises control heights so buttons, inputs, selects and pagination are >= 44px.
+ */
+export function brandTheme(dark: boolean, compact = false, touch = false): ThemeConfig {
   const algorithm = [dark ? theme.darkAlgorithm : theme.defaultAlgorithm]
   if (compact) algorithm.push(theme.compactAlgorithm)
 
@@ -36,9 +39,9 @@ export function brandTheme(dark: boolean, compact = false): ThemeConfig {
       borderRadius: 10,
       borderRadiusLG: 16,
       borderRadiusSM: 6,
-      controlHeight: 38,
-      controlHeightLG: 46,
-      controlHeightSM: 28,
+      controlHeight: touch ? 44 : 38,
+      controlHeightLG: touch ? 50 : 46,
+      controlHeightSM: touch ? 32 : 28,
       motionDurationMid: '0.2s',
     },
     components: {

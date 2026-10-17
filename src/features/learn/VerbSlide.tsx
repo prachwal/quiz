@@ -1,4 +1,4 @@
-import { Card, Flex, Progress, Tag, Tooltip, Typography, theme } from 'antd'
+import { Card, Flex, Progress, Tag, Typography, theme } from 'antd'
 import { DifficultyTag, PopularityTag } from '../../components/GroupTags'
 import type { IrregularVerb } from '../../shared/quiz/types'
 import { PATTERN_HINTS, formsText } from './format'
@@ -10,8 +10,8 @@ function Form({ label, value }: { label: string; value: string }) {
       vertical
       align="center"
       gap={6}
+      className="verb-form"
       style={{
-        padding: '16px 20px',
         borderRadius: token.borderRadiusLG,
         background: token.colorBgContainer,
         border: `1px solid ${token.colorBorderSecondary}`,
@@ -26,13 +26,13 @@ function Form({ label, value }: { label: string; value: string }) {
         {label}
       </Typography.Text>
       <span
+        lang="en"
+        className="verb-form-value"
         style={{
-          fontSize: 'clamp(26px, 3vw + 14px, 34px)',
           fontWeight: 700,
           lineHeight: 1.2,
           color: token.colorPrimary,
           textAlign: 'center',
-          wordBreak: 'break-word',
         }}
       >
         {value}
@@ -65,9 +65,7 @@ export default function VerbSlide({
           <Flex wrap gap={6} align="center">
             <DifficultyTag value={verb.difficulty} />
             <PopularityTag value={verb.popularity} />
-            <Tooltip title={PATTERN_HINTS[verb.pattern]}>
-              <Tag>{verb.pattern}</Tag>
-            </Tooltip>
+            <Tag title={PATTERN_HINTS[verb.pattern]}>{verb.pattern}</Tag>
             <Tag>{verb.cefrLevel}</Tag>
           </Flex>
           <Typography.Text style={{ fontSize: 15, fontWeight: 600, color: token.colorTextSecondary }}>
@@ -87,24 +85,23 @@ export default function VerbSlide({
           vertical
           align="center"
           gap={20}
+          className="verb-slide-body"
           style={{
             padding: 'clamp(28px, 5vw, 48px) clamp(16px, 4vw, 32px)',
-            minHeight: 360,
             background: `radial-gradient(90% 70% at 50% 0%, ${token.colorPrimaryBg} 0%, transparent 70%)`,
           }}
         >
           <Flex vertical align="center" gap={6}>
             <h2
               lang="en"
+              className="verb-base"
               style={{
                 margin: 0,
-                fontSize: 'clamp(44px, 7vw + 16px, 72px)',
                 fontWeight: 800,
                 lineHeight: 1.05,
                 letterSpacing: -1.5,
                 color: token.colorTextHeading,
                 textAlign: 'center',
-                wordBreak: 'break-word',
               }}
             >
               {verb.base}
@@ -133,6 +130,10 @@ export default function VerbSlide({
             <Form label="Past simple" value={formsText(verb.pastSimple)} />
             <Form label="Past participle" value={formsText(verb.pastParticiple)} />
           </div>
+          {/* visible text instead of a hover-only tooltip (works on touch screens) */}
+          <Typography.Text type="secondary" style={{ fontSize: 14, marginTop: -8, textAlign: 'center' }}>
+            Wzorzec {verb.pattern}: {PATTERN_HINTS[verb.pattern].toLowerCase()}
+          </Typography.Text>
 
           <Flex
             vertical
