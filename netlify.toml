@@ -2,6 +2,9 @@
   command = "npm run build"
   functions = "netlify/functions"
   publish = "dist"
+  # Build only on the dedicated `deploy` branch; skip builds for every other branch.
+  # (Also set the production branch to `deploy` in the Netlify UI for production deploys.)
+  ignore = "bash -c 'if [ \"$BRANCH\" != \"deploy\" ]; then exit 0; else exit 1; fi'"
 
 # `netlify dev` starts Vite and proxies it, serving functions (e.g. /planets) on the same port
 [dev]
