@@ -6,10 +6,10 @@ export default function NotFound() {
     <Result
       status="404"
       title="404"
-      subTitle="Nie ma takiej strony."
+      subTitle="Nie ma takiej strony - mogła zostać przeniesiona albo adres jest błędny."
       extra={
         <Link to="/">
-          <Button type="primary">Wróć na Home</Button>
+          <Button type="primary" size="large">Wróć do quizów</Button>
         </Link>
       }
     />

@@ -80,7 +80,7 @@ export default function ApiTokens() {
     : ''
 
   return (
-    <Card title="Tokeny API" style={{ marginTop: 16 }}>
+    <Card title="Tokeny API" style={{ marginTop: 24 }}>
       <Typography.Paragraph type="secondary">
         Osobiste tokeny pozwalają wywoływać API z skryptów (nagłówek <code>Authorization: Bearer …</code>) bez
         logowania w przeglądarce. Token działa z Twoimi uprawnieniami, a po utworzeniu widać go tylko raz.

@@ -1,0 +1,323 @@
+import {
+  BulbOutlined,
+  CheckCircleFilled,
+  CheckOutlined,
+  CloseCircleFilled,
+  HistoryOutlined,
+  ReloadOutlined,
+  UnorderedListOutlined,
+} from '@ant-design/icons'
+import { Button, Card, Flex, Progress, Tag, Typography, theme } from 'antd'
+import type { ReactNode } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useGenerateIrregularVerbsQuizMutation, useStartExamMutation } from '../../app/api'
+import type { Answer } from '../../shared/quiz/engine'
+import type { GradedAttempt, QuizDetail } from '../../shared/quiz/types'
+
+type Tone = 'success' | 'warning' | 'error'
+
+function Stat({ label, value, color }: { label: string; value: ReactNode; color?: string }) {
+  const { token } = theme.useToken()
+  return (
+    <Flex
+      vertical
+      gap={2}
+      style={{
+        flex: '1 1 120px',
+        padding: '12px 16px',
+        borderRadius: token.borderRadiusLG,
+        background: token.colorFillQuaternary,
+      }}
+    >
+      <Typography.Text type="secondary" style={{ fontSize: 14 }}>
+        {label}
+      </Typography.Text>
+      <span style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.2, color: color ?? token.colorText }}>{value}</span>
+    </Flex>
+  )
+}
+
+function AnswerBox({ label, value, tone }: { label: string; value: ReactNode; tone: 'success' | 'error' | 'neutral' }) {
+  const { token } = theme.useToken()
+  const palette = {
+    success: { bg: token.colorSuccessBg, border: token.colorSuccessBorder, label: token.colorSuccessText },
+    error: { bg: token.colorErrorBg, border: token.colorErrorBorder, label: token.colorErrorText },
+    neutral: { bg: token.colorFillQuaternary, border: token.colorBorderSecondary, label: token.colorTextSecondary },
+  }[tone]
+  return (
+    <div
+      style={{
+        padding: '12px 16px',
+        borderRadius: token.borderRadius,
+        background: palette.bg,
+        border: `1px solid ${palette.border}`,
+        minWidth: 0,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 13,
+          fontWeight: 600,
+          letterSpacing: 0.6,
+          textTransform: 'uppercase',
+          color: palette.label,
+          marginBottom: 4,
+        }}
+      >
+        {label}
+      </div>
+      <div style={{ fontSize: 18, lineHeight: 1.5, color: token.colorText, wordBreak: 'break-word' }}>{value}</div>
+    </div>
+  )
+}
+
+function QuestionReview({
+  index,
+  prompt,
+  correct,
+  earned,
+  points,
+  givenText,
+  correctLabel,
+  correctText,
+  explanation,
+}: {
+  index: number
+  prompt: string
+  correct: boolean
+  earned: number
+  points: number
+  givenText: string | undefined
+  correctLabel: string
+  correctText: string
+  explanation: string | null | undefined
+}) {
+  const { token } = theme.useToken()
+  const accent = correct ? token.colorSuccess : token.colorError
+  return (
+    <Card
+      styles={{ body: { padding: 0 } }}
+      style={{ overflow: 'hidden', borderInlineStart: `4px solid ${accent}` }}
+    >
+      <Flex vertical gap={16} style={{ padding: '20px 24px' }}>
+        <Flex gap={14} align="flex-start">
+          <span
+            aria-hidden
+            style={{ flex: 'none', fontSize: 26, lineHeight: 1, color: accent, marginTop: 2 }}
+          >
+            {correct ? <CheckCircleFilled /> : <CloseCircleFilled />}
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <Typography.Text type="secondary" style={{ fontSize: 14, fontWeight: 500 }}>
+              Pytanie {index + 1} · {correct ? 'dobrze' : 'źle'}
+            </Typography.Text>
+            <div style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.4, wordBreak: 'break-word' }}>{prompt}</div>
+          </div>
+          <Tag
+            color={earned === points ? 'success' : earned > 0 ? 'warning' : 'error'}
+            style={{ flex: 'none', marginInlineEnd: 0, fontSize: 14, paddingInline: 10, lineHeight: '26px' }}
+          >
+            {earned} / {points} pkt
+          </Tag>
+        </Flex>
+
+        <div
+          style={{
+            display: 'grid',
+            gap: 12,
+            gridTemplateColumns: correct ? '1fr' : 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))',
+          }}
+        >
+          <AnswerBox
+            label="Twoja odpowiedź"
+            tone={correct ? 'success' : 'error'}
+            value={givenText || <em style={{ color: token.colorTextTertiary }}>brak odpowiedzi</em>}
+          />
+          {!correct && <AnswerBox label={correctLabel} tone="success" value={correctText} />}
+        </div>
+
+        {explanation && (
+          <Flex
+            gap={12}
+            align="flex-start"
+            style={{
+              padding: '12px 16px',
+              borderRadius: token.borderRadius,
+              background: token.colorInfoBg,
+              border: `1px dashed ${token.colorInfoBorder}`,
+            }}
+          >
+            <BulbOutlined style={{ fontSize: 18, color: token.colorInfo, marginTop: 4 }} />
+            <Typography.Paragraph style={{ margin: 0, fontSize: 16, lineHeight: 1.6 }}>{explanation}</Typography.Paragraph>
+          </Flex>
+        )}
+      </Flex>
+    </Card>
+  )
+}
+
+export default function ResultView({
+  quiz,
+  questions,
+  answers,
+  result,
+  showExplanations,
+  onRestart,
+}: {
+  quiz: QuizDetail
+  questions: QuizDetail['questions']
+  answers: Record<string, Answer>
+  result: GradedAttempt
+  showExplanations: boolean
+  onRestart: () => void
+}) {
+  const { token } = theme.useToken()
+  const navigate = useNavigate()
+  const [generate, { isLoading: generating }] = useGenerateIrregularVerbsQuizMutation()
+  const [startExam, { isLoading: restartingExam }] = useStartExamMutation()
+  const isGenerated = quiz.source === 'irregular-verbs'
+  const drawAnother = async () => {
+    const next = await generate({ count: quiz.questions.length, difficulty: quiz.difficulty ?? undefined }).unwrap()
+    navigate(`/quizzes/${next.id}/play`)
+  }
+  const retryExam = async () => {
+    if (!result.course) return
+    const next = await startExam({ courseId: result.course.id, count: quiz.questions.length }).unwrap()
+    navigate(`/quizzes/${next.id}/play`)
+  }
+  const byId = new Map(result.results.map((r) => [r.questionId, r]))
+  const optionText = (questionId: string, ids: string[] | undefined) =>
+    questions
+      .find((q) => q.id === questionId)
+      ?.options.filter((o) => ids?.includes(o.id))
+      .map((o) => o.text)
+      .join(', ')
+
+  const tone: Tone = result.course
+    ? result.course.passed
+      ? 'success'
+      : 'error'
+    : result.percent >= 50
+      ? 'success'
+      : 'warning'
+  const toneColor = { success: token.colorSuccess, warning: token.colorWarning, error: token.colorError }[tone]
+  const toneText = { success: token.colorSuccessText, warning: token.colorWarningText, error: token.colorErrorText }[tone]
+  const toneBg = { success: token.colorSuccessBg, warning: token.colorWarningBg, error: token.colorErrorBg }[tone]
+  const correctCount = result.results.filter((r) => r.correct).length
+  const headline = result.course
+    ? result.course.passed
+      ? 'Egzamin zaliczony!'
+      : 'Egzamin niezaliczony'
+    : result.percent >= 90
+      ? 'Znakomicie!'
+      : result.percent >= 70
+        ? 'Świetna robota!'
+        : result.percent >= 50
+          ? 'Dobry wynik'
+          : 'Spróbuj jeszcze raz'
+  const subline = result.course
+    ? `${result.course.title} · próg zaliczenia ${result.course.passPercent}%`
+    : quiz.title
+
+  return (
+    <Flex vertical gap={24}>
+      <Card
+        styles={{ body: { padding: 0 } }}
+        style={{
+          overflow: 'hidden',
+          background: `linear-gradient(160deg, ${toneBg} 0%, ${token.colorBgContainer} 55%)`,
+        }}
+      >
+        <Flex wrap align="center" justify="center" gap={32} style={{ padding: '32px 24px' }}>
+          <Progress
+            type="circle"
+            percent={result.percent}
+            size={168}
+            strokeWidth={9}
+            strokeColor={toneColor}
+            railColor={token.colorFillSecondary}
+            format={(p) => (
+              <Flex vertical align="center" gap={2}>
+                <span style={{ fontSize: 44, fontWeight: 700, lineHeight: 1, color: token.colorText }}>{p}%</span>
+                <span style={{ fontSize: 14, color: token.colorTextSecondary }}>wynik</span>
+              </Flex>
+            )}
+          />
+          <Flex vertical gap={12} style={{ flex: '1 1 300px', minWidth: 0 }}>
+            <div>
+              <Typography.Title level={2} style={{ margin: 0, color: toneText, letterSpacing: -0.4 }}>
+                {headline}
+              </Typography.Title>
+              <Typography.Text type="secondary" style={{ fontSize: 17 }}>
+                {subline}
+              </Typography.Text>
+            </div>
+            <Flex wrap gap={12}>
+              <Stat label="Punkty" value={`${result.score} / ${result.maxScore}`} />
+              <Stat label="Poprawne" value={correctCount} color={token.colorSuccessText} />
+              <Stat label="Błędne" value={result.results.length - correctCount} color={token.colorErrorText} />
+            </Flex>
+            <Flex wrap gap={8} style={{ marginTop: 4 }}>
+              {result.course && (
+                <Link to={`/learn/${result.course.id}`}>
+                  <Button type="primary" size="large" icon={<CheckOutlined />}>
+                    Wróć do kursu
+                  </Button>
+                </Link>
+              )}
+              {result.course ? (
+                <Button size="large" icon={<ReloadOutlined />} loading={restartingExam} onClick={() => void retryExam()}>
+                  Nowe podejście
+                </Button>
+              ) : isGenerated ? (
+                <Button type="primary" size="large" icon={<ReloadOutlined />} loading={generating} onClick={() => void drawAnother()}>
+                  Losuj nowy quiz
+                </Button>
+              ) : (
+                <Button type="primary" size="large" icon={<ReloadOutlined />} onClick={onRestart}>
+                  Zagraj ponownie
+                </Button>
+              )}
+              <Link to="/results">
+                <Button size="large" icon={<HistoryOutlined />}>
+                  Historia wyników
+                </Button>
+              </Link>
+              <Link to="/">
+                <Button size="large" type="text" icon={<UnorderedListOutlined />}>
+                  Wszystkie quizy
+                </Button>
+              </Link>
+            </Flex>
+          </Flex>
+        </Flex>
+      </Card>
+
+      <Typography.Title level={3} style={{ margin: '8px 0 0' }}>
+        Przegląd odpowiedzi
+      </Typography.Title>
+      <Flex vertical gap={16}>
+        {questions.map((question, i) => {
+          const r = byId.get(question.id)
+          if (!r) return null
+          const given = answers[question.id]
+          const givenText = question.type === 'text' ? given?.text : optionText(question.id, given?.optionIds)
+          return (
+            <QuestionReview
+              key={question.id}
+              index={i}
+              prompt={question.prompt}
+              correct={r.correct}
+              earned={r.earned}
+              points={r.points}
+              givenText={givenText}
+              correctLabel={question.type === 'text' ? 'Akceptowane odpowiedzi' : 'Poprawna odpowiedź'}
+              correctText={r.correctAnswers.join(', ')}
+              explanation={showExplanations ? r.explanation : null}
+            />
+          )
+        })}
+      </Flex>
+    </Flex>
+  )
+}

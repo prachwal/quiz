@@ -1,0 +1,160 @@
+import { Card, Flex, Progress, Tag, Tooltip, Typography, theme } from 'antd'
+import { DifficultyTag, PopularityTag } from '../../components/GroupTags'
+import type { IrregularVerb } from '../../shared/quiz/types'
+import { PATTERN_HINTS, formsText } from './format'
+
+function Form({ label, value }: { label: string; value: string }) {
+  const { token } = theme.useToken()
+  return (
+    <Flex
+      vertical
+      align="center"
+      gap={6}
+      style={{
+        padding: '16px 20px',
+        borderRadius: token.borderRadiusLG,
+        background: token.colorBgContainer,
+        border: `1px solid ${token.colorBorderSecondary}`,
+        boxShadow: 'var(--app-shadow-sm)',
+        minWidth: 0,
+      }}
+    >
+      <Typography.Text
+        type="secondary"
+        style={{ fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1.2 }}
+      >
+        {label}
+      </Typography.Text>
+      <span
+        style={{
+          fontSize: 'clamp(26px, 3vw + 14px, 34px)',
+          fontWeight: 700,
+          lineHeight: 1.2,
+          color: token.colorPrimary,
+          textAlign: 'center',
+          wordBreak: 'break-word',
+        }}
+      >
+        {value}
+      </span>
+    </Flex>
+  )
+}
+
+/** One verb as a slide: group info on top, forms + Polish meaning + example below. */
+export default function VerbSlide({
+  verb,
+  index,
+  total,
+}: {
+  verb: IrregularVerb
+  index: number
+  total: number
+}) {
+  const { token } = theme.useToken()
+  return (
+    <Card styles={{ body: { padding: 0 } }} style={{ overflow: 'hidden' }}>
+      <Flex vertical>
+        <Flex
+          justify="space-between"
+          align="center"
+          wrap
+          gap="small"
+          style={{ padding: '16px clamp(16px, 4vw, 28px) 12px' }}
+        >
+          <Flex wrap gap={6} align="center">
+            <DifficultyTag value={verb.difficulty} />
+            <PopularityTag value={verb.popularity} />
+            <Tooltip title={PATTERN_HINTS[verb.pattern]}>
+              <Tag>{verb.pattern}</Tag>
+            </Tooltip>
+            <Tag>{verb.cefrLevel}</Tag>
+          </Flex>
+          <Typography.Text style={{ fontSize: 15, fontWeight: 600, color: token.colorTextSecondary }}>
+            <span style={{ color: token.colorPrimary }}>{index + 1}</span> / {total}
+          </Typography.Text>
+        </Flex>
+        <Progress
+          percent={Math.round(((index + 1) / total) * 100)}
+          showInfo={false}
+          size={{ height: 4 }}
+          strokeColor={{ from: token.colorPrimary, to: '#a855f7' }}
+          railColor={token.colorFillSecondary}
+          style={{ padding: '0 clamp(16px, 4vw, 28px)', margin: 0, lineHeight: 0 }}
+        />
+
+        <Flex
+          vertical
+          align="center"
+          gap={20}
+          style={{
+            padding: 'clamp(28px, 5vw, 48px) clamp(16px, 4vw, 32px)',
+            minHeight: 360,
+            background: `radial-gradient(90% 70% at 50% 0%, ${token.colorPrimaryBg} 0%, transparent 70%)`,
+          }}
+        >
+          <Flex vertical align="center" gap={6}>
+            <h2
+              lang="en"
+              style={{
+                margin: 0,
+                fontSize: 'clamp(44px, 7vw + 16px, 72px)',
+                fontWeight: 800,
+                lineHeight: 1.05,
+                letterSpacing: -1.5,
+                color: token.colorTextHeading,
+                textAlign: 'center',
+                wordBreak: 'break-word',
+              }}
+            >
+              {verb.base}
+            </h2>
+            <span
+              style={{
+                fontSize: 'clamp(20px, 1.5vw + 14px, 24px)',
+                lineHeight: 1.4,
+                color: token.colorTextSecondary,
+                textAlign: 'center',
+              }}
+            >
+              {verb.meanings.join(', ')}
+            </span>
+          </Flex>
+
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 560,
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))',
+              gap: 12,
+            }}
+          >
+            <Form label="Past simple" value={formsText(verb.pastSimple)} />
+            <Form label="Past participle" value={formsText(verb.pastParticiple)} />
+          </div>
+
+          <Flex
+            vertical
+            gap={4}
+            style={{
+              width: '100%',
+              maxWidth: 560,
+              padding: '12px 18px',
+              borderInlineStart: `3px solid ${token.colorPrimary}`,
+              borderRadius: `0 ${token.borderRadius}px ${token.borderRadius}px 0`,
+              background: token.colorFillQuaternary,
+            }}
+          >
+            <Typography.Text lang="en" italic style={{ fontSize: 18, lineHeight: 1.5 }}>
+              „{verb.exampleEn}”
+            </Typography.Text>
+            <Typography.Text type="secondary" style={{ fontSize: 16 }}>
+              {verb.examplePl}
+            </Typography.Text>
+          </Flex>
+        </Flex>
+      </Flex>
+    </Card>
+  )
+}

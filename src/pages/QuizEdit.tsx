@@ -1,4 +1,5 @@
-import { Alert, Skeleton, Typography, App as AntdApp } from 'antd'
+import { Alert, Skeleton, App as AntdApp } from 'antd'
+import PageHeader from '../components/PageHeader'
 import { useNavigate, useParams } from 'react-router-dom'
 import { errorMessage, useGetQuizQuery, useUpdateQuizMutation } from '../app/api'
 import QuizEditor from '../features/quizzes/QuizEditor'
@@ -29,7 +30,7 @@ export default function QuizEdit() {
 
   return (
     <>
-      <Typography.Title>Edycja quizu</Typography.Title>
+      <PageHeader back={{ to: '/', label: 'Wszystkie quizy' }} title="Edycja quizu" subtitle={data.title} />
       <QuizEditor
         initialValues={initialValues}
         submitting={saving}

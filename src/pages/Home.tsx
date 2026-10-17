@@ -1,5 +1,14 @@
-import { DeleteOutlined, EditOutlined, PlayCircleOutlined, PlusOutlined } from '@ant-design/icons'
-import { Alert, Button, Card, Empty, Flex, Popconfirm, Segmented, Select, Skeleton, Tag, Typography, App as AntdApp } from 'antd'
+import {
+  DeleteOutlined,
+  EditOutlined,
+  FireOutlined,
+  PlayCircleOutlined,
+  PlusOutlined,
+  QuestionCircleOutlined,
+  ThunderboltFilled,
+  TrophyOutlined,
+} from '@ant-design/icons'
+import { Alert, Button, Card, Empty, Flex, Popconfirm, Segmented, Select, Skeleton, Tag, Typography, App as AntdApp, theme } from 'antd'
 import { useState } from 'react'
 import { useAuth } from '../features/auth/useAuth'
 import { Link, useNavigate } from 'react-router-dom'
@@ -11,6 +20,7 @@ import {
 } from '../app/api'
 import { DifficultyTag } from '../components/GroupTags'
 import { difficultyOptions, popularityOptions } from '../components/groupOptions'
+import PageHeader from '../components/PageHeader'
 import { QUIZ_VARIANTS } from '../shared/quiz/schema'
 import type { DifficultyCode, PopularityCode } from '../shared/quiz/types'
 
@@ -32,6 +42,7 @@ export default function Home() {
   const { message } = AntdApp.useApp()
   const navigate = useNavigate()
   const { isAdmin } = useAuth()
+  const { token } = theme.useToken()
   const [count, setCount] = useState(10)
   const [difficulty, setDifficulty] = useState<DifficultyCode>()
   const [popularity, setPopularity] = useState<PopularityCode>()
@@ -56,152 +67,234 @@ export default function Home() {
     }
   }
 
+  const label = (text: string) => (
+    <Typography.Text style={{ display: 'block', marginBottom: 6, fontSize: 14, fontWeight: 500, color: token.colorTextSecondary }}>
+      {text}
+    </Typography.Text>
+  )
+
   return (
     <>
-      <Flex justify="space-between" align="center" wrap gap="small">
-        <Typography.Title style={{ margin: 0 }}>Quizy</Typography.Title>
-        {isAdmin && (
-          <Link to="/quizzes/new">
-            <Button type="primary" icon={<PlusOutlined />}>
-              Nowy quiz
-            </Button>
-          </Link>
-        )}
-      </Flex>
+      <PageHeader
+        eyebrow="Angielski · czasowniki nieregularne"
+        title="Quizy"
+        subtitle="Wylosuj świeży zestaw pytań albo wybierz jeden z gotowych quizów. Każdy wynik trafia do historii."
+        extra={
+          isAdmin && (
+            <Link to="/quizzes/new">
+              <Button type="primary" size="large" icon={<PlusOutlined />}>
+                Nowy quiz
+              </Button>
+            </Link>
+          )
+        }
+      />
 
-      <Card style={{ marginTop: 24 }}>
-        <Flex vertical gap="middle">
-          <div>
-            <Typography.Title level={4} style={{ margin: 0 }}>
-              Czasowniki nieregularne (B2) – losowy quiz
-            </Typography.Title>
-            <Typography.Text type="secondary">
-              Wybierz grupę czasowników i wariant pytań. Wynik zapisuje się w historii.
-            </Typography.Text>
+      <Card
+        styles={{ body: { padding: 0 } }}
+        style={{
+          overflow: 'hidden',
+          borderColor: token.colorPrimaryBorder,
+          background: `radial-gradient(120% 140% at 0% 0%, ${token.colorPrimaryBg} 0%, ${token.colorBgContainer} 60%)`,
+        }}
+      >
+        <Flex vertical gap={24} style={{ padding: 'clamp(20px, 4vw, 32px)' }}>
+          <Flex gap={16} align="flex-start">
+            <span
+              aria-hidden
+              style={{
+                flex: 'none',
+                width: 48,
+                height: 48,
+                display: 'grid',
+                placeItems: 'center',
+                borderRadius: 14,
+                fontSize: 22,
+                color: '#fff',
+                background: `linear-gradient(135deg, ${token.colorPrimary}, #a855f7)`,
+                boxShadow: `0 8px 20px -8px ${token.colorPrimary}`,
+              }}
+            >
+              <ThunderboltFilled />
+            </span>
+            <div style={{ minWidth: 0 }}>
+              <Typography.Title level={3} style={{ margin: 0 }}>
+                Losowy quiz z czasowników (B2)
+              </Typography.Title>
+              <Typography.Text type="secondary" style={{ fontSize: 16 }}>
+                Wybierz grupę czasowników i wariant pytań. Wynik zapisuje się w historii.
+              </Typography.Text>
+            </div>
+          </Flex>
+          <div className="filter-grid">
+            <div>
+              {label('Trudność')}
+              <Select
+                allowClear
+                placeholder="Wszystkie"
+                options={difficultyOptions}
+                value={difficulty}
+                onChange={setDifficulty}
+                style={{ width: '100%' }}
+              />
+            </div>
+            <div>
+              {label('Popularność')}
+              <Select
+                allowClear
+                placeholder="Wszystkie"
+                options={popularityOptions}
+                value={popularity}
+                onChange={setPopularity}
+                style={{ width: '100%' }}
+              />
+            </div>
+            <div>
+              {label('Wariant pytań')}
+              <Select
+                value={variant}
+                onChange={setVariant}
+                options={QUIZ_VARIANTS.map((value) => ({ value, label: VARIANT_LABELS[value] }))}
+                style={{ width: '100%' }}
+              />
+            </div>
+            <div>
+              {label('Liczba pytań')}
+              <Segmented
+                block
+                value={count}
+                onChange={setCount}
+                options={[
+                  { label: '10', value: 10 },
+                  { label: '20', value: 20 },
+                  { label: '30', value: 30 },
+                ]}
+              />
+            </div>
           </div>
-          <Flex gap="small" align="center" wrap>
-            <Select
-              allowClear
-              placeholder="Trudność: wszystkie"
-              options={difficultyOptions}
-              value={difficulty}
-              onChange={setDifficulty}
-              style={{ width: 180 }}
-            />
-            <Select
-              allowClear
-              placeholder="Popularność: wszystkie"
-              options={popularityOptions}
-              value={popularity}
-              onChange={setPopularity}
-              style={{ width: 200 }}
-            />
-            <Select
-              value={variant}
-              onChange={setVariant}
-              options={QUIZ_VARIANTS.map((value) => ({ value, label: VARIANT_LABELS[value] }))}
-              style={{ width: 200 }}
-            />
-            <Segmented
-              value={count}
-              onChange={setCount}
-              options={[
-                { label: '10', value: 10 },
-                { label: '20', value: 20 },
-                { label: '30', value: 30 },
-              ]}
-            />
-            <Button type="primary" loading={generating} onClick={() => void draw()}>
+          <Flex justify="flex-end">
+            <Button
+              type="primary"
+              size="large"
+              icon={<ThunderboltFilled />}
+              loading={generating}
+              onClick={() => void draw()}
+              style={{ minWidth: 200 }}
+            >
               Losuj quiz
             </Button>
           </Flex>
         </Flex>
       </Card>
 
-      <Flex gap="small" wrap align="center" style={{ marginTop: 24 }}>
-        <Segmented
-          value={filterDifficulty}
-          onChange={setFilterDifficulty}
-          options={[{ label: 'Wszystkie', value: 'all' }, ...difficultyOptions]}
-        />
-        <Select
-          value={sort}
-          onChange={setSort}
-          options={[
-            { value: 'recent', label: 'Najnowsze' },
-            { value: 'popular', label: 'Najpopularniejsze' },
-          ]}
-          style={{ width: 190 }}
-        />
+      <Flex justify="space-between" align="center" wrap gap={12} style={{ marginTop: 48, marginBottom: 20 }}>
+        <Typography.Title level={3} style={{ margin: 0 }}>
+          Gotowe quizy
+        </Typography.Title>
+        <Flex gap="small" wrap align="center">
+          <Segmented
+            value={filterDifficulty}
+            onChange={setFilterDifficulty}
+            options={[{ label: 'Wszystkie', value: 'all' }, ...difficultyOptions]}
+          />
+          <Select
+            value={sort}
+            onChange={setSort}
+            aria-label="Sortowanie"
+            options={[
+              { value: 'recent', label: 'Najnowsze' },
+              { value: 'popular', label: 'Najpopularniejsze' },
+            ]}
+            style={{ width: 190 }}
+          />
+        </Flex>
       </Flex>
 
-      <div style={{ marginTop: 16 }}>
-        {error ? (
-          <Alert
-            type="error"
-            showIcon
-            title="Nie udało się pobrać quizów"
-            description={`${errorMessage(error)}. Sprawdź, czy działa \`netlify dev\` i czy migracje zostały zastosowane.`}
-            action={<Button onClick={refetch}>Spróbuj ponownie</Button>}
-          />
-        ) : isLoading || !data ? (
-          <Skeleton active paragraph={{ rows: 6 }} />
-        ) : data.length === 0 ? (
-          <Empty description="Nie ma jeszcze żadnych quizów">
+      {error ? (
+        <Alert
+          type="error"
+          showIcon
+          title="Nie udało się pobrać quizów"
+          description={`${errorMessage(error)}. Sprawdź, czy działa \`netlify dev\` i czy migracje zostały zastosowane.`}
+          action={<Button onClick={refetch}>Spróbuj ponownie</Button>}
+        />
+      ) : isLoading || !data ? (
+        <div className="quiz-grid">
+          {[0, 1, 2, 3].map((i) => (
+            <Card key={i}>
+              <Skeleton active paragraph={{ rows: 3 }} />
+            </Card>
+          ))}
+        </div>
+      ) : data.length === 0 ? (
+        <Card>
+          <Empty description="Nie ma jeszcze żadnych quizów" style={{ paddingBlock: 24 }}>
             {isAdmin && (
               <Link to="/quizzes/new">
                 <Button type="primary">Utwórz pierwszy quiz</Button>
               </Link>
             )}
           </Empty>
-        ) : (
-          <Flex vertical gap="middle">
-            {data.map((quiz) => (
-              <Card
-                key={quiz.id}
-                title={quiz.title}
-                extra={
-                  <Flex gap="small" wrap>
-                    <DifficultyTag value={quiz.difficulty} />
-                    <Tag>{quiz.questionCount} pytań</Tag>
-                    <Tag>{quiz.totalPoints} pkt</Tag>
-                    <Tag>{quiz.plays} podejść</Tag>
-                  </Flex>
-                }
-                actions={[
-                  <Link key="play" to={`/quizzes/${quiz.id}/play`}>
-                    <PlayCircleOutlined /> Graj
-                  </Link>,
-                  ...(quiz.canEdit
-                    ? [
-                        <Link key="edit" to={`/quizzes/${quiz.id}/edit`}>
-                          <EditOutlined /> Edytuj
-                        </Link>,
-                        <Popconfirm
-                          key="delete"
-                          title="Usunąć ten quiz?"
-                          description="Tej operacji nie można cofnąć."
-                          okText="Usuń"
-                          cancelText="Anuluj"
-                          okButtonProps={{ danger: true, loading: deleting }}
-                          onConfirm={() => remove(quiz.id)}
-                        >
-                          <a style={{ color: '#ff4d4f' }}>
-                            <DeleteOutlined /> Usuń
-                          </a>
-                        </Popconfirm>,
-                      ]
-                    : []),
-                ]}
-              >
-                <Typography.Paragraph type="secondary" style={{ margin: 0 }}>
+        </Card>
+      ) : (
+        <div className="quiz-grid">
+          {data.map((quiz) => (
+            <Card
+              key={quiz.id}
+              className="lift-card"
+              style={{ display: 'flex', flexDirection: 'column' }}
+              styles={{ body: { flex: 1 } }}
+              actions={[
+                <Link key="play" to={`/quizzes/${quiz.id}/play`} style={{ fontWeight: 600 }}>
+                  <PlayCircleOutlined /> Graj
+                </Link>,
+                ...(quiz.canEdit
+                  ? [
+                      <Link key="edit" to={`/quizzes/${quiz.id}/edit`}>
+                        <EditOutlined /> Edytuj
+                      </Link>,
+                      <Popconfirm
+                        key="delete"
+                        title="Usunąć ten quiz?"
+                        description="Tej operacji nie można cofnąć."
+                        okText="Usuń"
+                        cancelText="Anuluj"
+                        okButtonProps={{ danger: true, loading: deleting }}
+                        onConfirm={() => remove(quiz.id)}
+                      >
+                        <a style={{ color: token.colorError }}>
+                          <DeleteOutlined /> Usuń
+                        </a>
+                      </Popconfirm>,
+                    ]
+                  : []),
+              ]}
+            >
+              <Flex vertical gap={10} style={{ height: '100%' }}>
+                <Flex wrap gap={6} align="center">
+                  <DifficultyTag value={quiz.difficulty} />
+                  <Tag icon={<FireOutlined />}>{quiz.plays} podejść</Tag>
+                </Flex>
+                <Link to={`/quizzes/${quiz.id}/play`} className="text-link">
+                  <Typography.Title level={4} style={{ margin: 0, color: 'inherit' }}>
+                    {quiz.title}
+                  </Typography.Title>
+                </Link>
+                <Typography.Paragraph
+                  type="secondary"
+                  ellipsis={{ rows: 2 }}
+                  style={{ margin: 0, flex: 1 }}
+                >
                   {quiz.description || 'Brak opisu'}
                 </Typography.Paragraph>
-              </Card>
-            ))}
-          </Flex>
-        )}
-      </div>
+                <Typography.Text type="secondary" style={{ fontSize: 14 }}>
+                  <QuestionCircleOutlined /> {quiz.questionCount} pytań · <TrophyOutlined /> {quiz.totalPoints} pkt
+                </Typography.Text>
+              </Flex>
+            </Card>
+          ))}
+        </div>
+      )}
     </>
   )
 }

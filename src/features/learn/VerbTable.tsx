@@ -1,22 +1,15 @@
-import { Table, Tag, Typography } from 'antd'
+import { Flex, Table, Tag, Typography } from 'antd'
 import type { TableColumnsType } from 'antd'
 import { DifficultyTag, PopularityTag } from '../../components/GroupTags'
 import type { IrregularVerb } from '../../shared/quiz/types'
-import { formsText } from './format'
-
-const PATTERN_HINTS: Record<IrregularVerb['pattern'], string> = {
-  AAA: 'Trzy takie same formy',
-  ABA: 'Past participle jak bezokolicznik',
-  ABB: 'Past simple = past participle',
-  ABC: 'Trzy różne formy',
-}
+import { PATTERN_HINTS, formsText } from './format'
 
 const verbColumns: TableColumnsType<IrregularVerb> = [
   {
     title: 'Bezokolicznik',
     dataIndex: 'base',
     sorter: (a, b) => a.base.localeCompare(b.base),
-    render: (value: string) => <Typography.Text strong>{value}</Typography.Text>,
+    render: (value: string) => <Typography.Text strong style={{ fontSize: 17 }}>{value}</Typography.Text>,
   },
   { title: 'Past simple', dataIndex: 'pastSimple', render: formsText },
   { title: 'Past participle', dataIndex: 'pastParticiple', render: formsText },
@@ -25,11 +18,11 @@ const verbColumns: TableColumnsType<IrregularVerb> = [
     title: 'Grupa',
     key: 'group',
     render: (_v, verb) => (
-      <>
+      <Flex gap={4} wrap>
         <DifficultyTag value={verb.difficulty} />
         <PopularityTag value={verb.popularity} />
         <Tag title={PATTERN_HINTS[verb.pattern]}>{verb.pattern}</Tag>
-      </>
+      </Flex>
     ),
   },
 ]
@@ -54,12 +47,12 @@ export default function VerbTable({
       scroll={{ x: 'max-content' }}
       expandable={{
         expandedRowRender: (verb) => (
-          <>
-            <Typography.Paragraph style={{ marginBottom: 0 }} italic>
-              {verb.exampleEn}
+          <div style={{ paddingInlineStart: 12 }}>
+            <Typography.Paragraph lang="en" style={{ marginBottom: 2, fontSize: 17 }} italic>
+              „{verb.exampleEn}”
             </Typography.Paragraph>
             <Typography.Text type="secondary">{verb.examplePl}</Typography.Text>
-          </>
+          </div>
         ),
       }}
     />

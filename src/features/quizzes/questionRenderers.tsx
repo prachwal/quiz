@@ -1,7 +1,8 @@
-import { Checkbox, Input, Radio, Space } from 'antd'
+import { Input, Typography } from 'antd'
 import type { ReactNode } from 'react'
 import type { Answer, QuestionType } from '../../shared/quiz/engine'
 import type { QuizQuestion } from '../../shared/quiz/types'
+import ChoiceTile, { LETTERS } from './ChoiceTile'
 
 interface RendererProps {
   question: QuizQuestion
@@ -9,46 +10,54 @@ interface RendererProps {
   onChange: (value: Answer) => void
 }
 
-const choiceStyle = { display: 'flex', width: '100%' }
-
 const single = ({ question, value, onChange }: RendererProps) => (
-  <Radio.Group
-    value={value?.optionIds?.[0]}
-    onChange={(e) => onChange({ optionIds: [e.target.value as string] })}
-    style={{ width: '100%' }}
-  >
-    <Space orientation="vertical" style={{ width: '100%' }}>
-      {question.options.map((option) => (
-        <Radio key={option.id} value={option.id} style={choiceStyle}>
-          {option.text}
-        </Radio>
-      ))}
-    </Space>
-  </Radio.Group>
+  <div className="choice-grid" role="radiogroup">
+    {question.options.map((option, i) => (
+      <ChoiceTile
+        key={option.id}
+        kind="radio"
+        label={LETTERS[i]}
+        text={option.text}
+        selected={value?.optionIds?.[0] === option.id}
+        onClick={() => onChange({ optionIds: [option.id] })}
+      />
+    ))}
+  </div>
 )
 
-const multiple = ({ question, value, onChange }: RendererProps) => (
-  <Checkbox.Group
-    value={value?.optionIds ?? []}
-    onChange={(ids) => onChange({ optionIds: ids as string[] })}
-    style={{ width: '100%' }}
-  >
-    <Space orientation="vertical" style={{ width: '100%' }}>
-      {question.options.map((option) => (
-        <Checkbox key={option.id} value={option.id} style={choiceStyle}>
-          {option.text}
-        </Checkbox>
-      ))}
-    </Space>
-  </Checkbox.Group>
-)
+const multiple = ({ question, value, onChange }: RendererProps) => {
+  const selected = value?.optionIds ?? []
+  const toggle = (id: string) =>
+    onChange({ optionIds: selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id] })
+  return (
+    <>
+      <Typography.Paragraph type="secondary" style={{ marginBottom: 12, fontSize: 15 }}>
+        Wybierz wszystkie poprawne odpowiedzi.
+      </Typography.Paragraph>
+      <div className="choice-grid" role="group">
+        {question.options.map((option, i) => (
+          <ChoiceTile
+            key={option.id}
+            kind="checkbox"
+            label={LETTERS[i]}
+            text={option.text}
+            selected={selected.includes(option.id)}
+            onClick={() => toggle(option.id)}
+          />
+        ))}
+      </div>
+    </>
+  )
+}
 
 const text = ({ value, onChange }: RendererProps) => (
   <Input
     size="large"
     placeholder="Twoja odpowiedź"
+    autoFocus
     value={value?.text ?? ''}
     onChange={(e) => onChange({ text: e.target.value })}
+    style={{ fontSize: 20, paddingBlock: 10 }}
   />
 )
 

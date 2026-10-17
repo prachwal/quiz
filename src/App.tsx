@@ -1,4 +1,6 @@
-import { App as AntdApp, ConfigProvider, theme } from 'antd'
+import { App as AntdApp, ConfigProvider } from 'antd'
+import { brandTheme } from './app/brandTheme'
+import { useMemo } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { useAppSelector } from './app/hooks'
 import AuthProvider from './features/auth/AuthProvider'
@@ -22,11 +24,10 @@ export default function App() {
   const resolved = useResolvedTheme()
   const compact = useAppSelector((state) => state.settings.compact)
 
-  const algorithm = [resolved === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm]
-  if (compact) algorithm.push(theme.compactAlgorithm)
+  const themeConfig = useMemo(() => brandTheme(resolved === 'dark', compact), [resolved, compact])
 
   return (
-    <ConfigProvider theme={{ algorithm, token: { borderRadius: 10 } }}>
+    <ConfigProvider theme={themeConfig}>
       <AntdApp>
         <BrowserRouter>
           <AuthProvider>

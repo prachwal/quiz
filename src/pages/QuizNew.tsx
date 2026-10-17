@@ -1,4 +1,5 @@
-import { Typography, App as AntdApp } from 'antd'
+import { App as AntdApp } from 'antd'
+import PageHeader from '../components/PageHeader'
 import { useNavigate } from 'react-router-dom'
 import { errorMessage, useCreateQuizMutation } from '../app/api'
 import QuizEditor from '../features/quizzes/QuizEditor'
@@ -11,7 +12,7 @@ export default function QuizNew() {
 
   return (
     <>
-      <Typography.Title>Nowy quiz</Typography.Title>
+      <PageHeader back={{ to: '/', label: 'Wszystkie quizy' }} title="Nowy quiz" />
       <QuizEditor
         initialValues={emptyQuiz()}
         submitting={isLoading}

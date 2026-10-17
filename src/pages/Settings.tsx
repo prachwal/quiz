@@ -1,4 +1,5 @@
-import { Button, Card, Form, Radio, Switch, Typography } from 'antd'
+import { Button, Card, Form, Radio, Switch } from 'antd'
+import PageHeader from '../components/PageHeader'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
 import ApiTokens from '../features/auth/ApiTokens'
 import {
@@ -16,11 +17,8 @@ export default function Settings() {
 
   return (
     <>
-      <Typography.Title>Settings</Typography.Title>
-      <Typography.Paragraph type="secondary">
-        Ustawienia zapisują się automatycznie w localStorage tej przeglądarki.
-      </Typography.Paragraph>
-      <Card>
+      <PageHeader title="Ustawienia" subtitle="Ustawienia zapisują się automatycznie w tej przeglądarce." />
+      <Card title="Wygląd i quizy">
         <Form layout="vertical">
           <Form.Item label="Motyw">
             <Radio.Group

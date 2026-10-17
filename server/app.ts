@@ -66,6 +66,13 @@ const parseCourseId = (value: unknown) => {
 export function createApp() {
   const app = express()
   app.disable('x-powered-by')
+  // Responses are private and per user: no ETag / conditional GET (a 304 breaks the Netlify
+  // function response adapter) and nothing should be cached by browsers or proxies.
+  app.set('etag', false)
+  app.use((_req, res, next) => {
+    res.set('Cache-Control', 'no-store')
+    next()
+  })
   app.use(express.json({ limit: '1mb' }))
 
   // Netlify rewrites /api/* to the function, so strip either prefix before routing.

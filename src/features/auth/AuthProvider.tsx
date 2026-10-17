@@ -1,11 +1,12 @@
 import { Auth0Provider, useAuth0 } from '@auth0/auth0-react'
 import type { AppState } from '@auth0/auth0-react'
-import { LoginOutlined, RocketOutlined, UserAddOutlined } from '@ant-design/icons'
-import { Button, Result, Space, Spin } from 'antd'
+import { LoginOutlined, UserAddOutlined } from '@ant-design/icons'
+import { Button, Card, Flex, Result, Spin, Typography } from 'antd'
 import { useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { auth0Config, authEnabled } from './config'
+import BrandMark from '../../components/BrandMark'
 import PublicShell from './PublicShell'
 import { setTokenGetter } from './token'
 
@@ -40,21 +41,30 @@ function SignInPage() {
 
   return (
     <PublicShell>
-      <Result
-        icon={<RocketOutlined />}
-        title="Quiz"
-        subTitle="Zaloguj się lub załóż konto, aby korzystać z quizów i nauki."
-        extra={
-          <Space wrap style={{ justifyContent: 'center' }}>
-            <Button type="primary" size="large" icon={<LoginOutlined />} onClick={() => go()}>
+      <Card
+        style={{ width: '100%', maxWidth: 440, boxShadow: 'var(--app-shadow-md)' }}
+        styles={{ body: { padding: 'clamp(28px, 6vw, 44px)' } }}
+      >
+        <Flex vertical align="center" gap={20} style={{ textAlign: 'center' }}>
+          <BrandMark size={56} showName={false} />
+          <div>
+            <Typography.Title level={2} style={{ margin: 0, letterSpacing: -0.5 }}>
+              Witaj w Quiz
+            </Typography.Title>
+            <Typography.Paragraph type="secondary" style={{ margin: '8px 0 0', fontSize: 17 }}>
+              Zaloguj się lub załóż konto, aby korzystać z quizów i nauki.
+            </Typography.Paragraph>
+          </div>
+          <Flex vertical gap={10} style={{ width: '100%' }}>
+            <Button type="primary" size="large" block icon={<LoginOutlined />} onClick={() => go()}>
               Zaloguj się
             </Button>
-            <Button size="large" icon={<UserAddOutlined />} onClick={() => go('signup')}>
+            <Button size="large" block icon={<UserAddOutlined />} onClick={() => go('signup')}>
               Zarejestruj się
             </Button>
-          </Space>
-        }
-      />
+          </Flex>
+        </Flex>
+      </Card>
     </PublicShell>
   )
 }
