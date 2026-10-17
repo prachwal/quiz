@@ -11,7 +11,8 @@
     "test": "esbuild tests/*.test.ts --bundle --platform=node --format=esm --outdir=.test-build --out-extension:.js=.mjs --log-level=warning && node --test .test-build/*.mjs",
     "test:ui": "vitest run",
     "test:ui:watch": "vitest",
-    "test:ui:coverage": "vitest run --coverage"
+    "test:ui:coverage": "vitest run --coverage",
+    "test:integration": "esbuild tests/integration/*.test.ts --bundle --platform=node --format=esm --outdir=.test-build --out-extension:.js=.mjs --log-level=warning && node --test .test-build/integration*.mjs"
   },
   "dependencies": {
     "@ant-design/icons": "^6.3.4",
@@ -44,6 +45,7 @@
     "@vitest/coverage-v8": "^5.0.5",
     "esbuild": "^0.28.2",
     "jsdom": "^30.1.3",
+    "msw": "^3.0.3",
     "oxlint": "^1.88.0",
     "typescript": "~6.0.2",
     "vite": "^8.3.4",

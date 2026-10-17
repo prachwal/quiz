@@ -1,5 +1,6 @@
 import { MANAGED_ROLES } from '../src/shared/quiz/types'
 import type { AdminUser, AdminUsersPage, ManagedRole } from '../src/shared/quiz/types'
+import { toAdminUser, buildUserQuery } from './auth0AdminPure'
 
 const domain = process.env.AUTH0_DOMAIN
 const clientId = process.env.AUTH0_MGMT_CLIENT_ID
@@ -110,24 +111,9 @@ interface Auth0User {
 
 const FIELDS = 'user_id,email,name,nickname,picture,last_login,logins_count,blocked,identities'
 
-const toAdminUser = (user: Auth0User, roles: ManagedRole[]): AdminUser => ({
-  id: user.user_id,
-  email: user.email ?? null,
-  name: user.name ?? user.nickname ?? null,
-  picture: user.picture ?? null,
-  provider: user.identities?.[0]?.connection ?? user.user_id.split('|')[0],
-  lastLogin: user.last_login ?? null,
-  loginsCount: user.logins_count ?? 0,
-  blocked: user.blocked ?? false,
-  roles,
-})
 
 export async function listUsers(search: string, page: number, perPage: number): Promise<AdminUsersPage> {
-  // keep only characters that are safe inside a Lucene query
-  const term = search.replace(/[^\p{L}\p{N}@._ -]/gu, ' ').trim()
-  const query = term
-    ? `&q=${encodeURIComponent(term.split(/\s+/).map((t) => `(email:*${t}* OR name:*${t}* OR nickname:*${t}*)`).join(' AND '))}`
-    : ''
+  const query = buildUserQuery(search)
   const [result, members] = await Promise.all([
     management<{ users: Auth0User[]; total: number }>(
       `/users?search_engine=v3&include_totals=true&fields=${FIELDS}&include_fields=true&sort=last_login:-1&page=${page}&per_page=${perPage}${query}`,
