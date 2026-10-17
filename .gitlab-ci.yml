@@ -1,0 +1,41 @@
+stages:
+  - test
+
+variables:
+  NODE_VERSION: "22"
+
+default:
+  image: node:22
+  before_script:
+    - npm ci
+
+unit-tests:
+  stage: test
+  script:
+    - mkdir -p reports
+    - npm run build
+    - npx esbuild tests/*.test.ts --bundle --platform=node --format=esm --outdir=.test-build --out-extension:.js=.mjs --log-level=warning
+    - node --test --test-reporter=junit --test-reporter-destination=reports/junit.xml .test-build/*.mjs
+  artifacts:
+    when: always
+    paths:
+      - reports/junit.xml
+    reports:
+      junit: reports/junit.xml
+
+ui-tests:
+  stage: test
+  script:
+    - mkdir -p reports
+    - npx vitest run --reporter=junit --outputFile=reports/vitest.xml
+  artifacts:
+    when: always
+    paths:
+      - reports/vitest.xml
+    reports:
+      junit: reports/vitest.xml
+
+lint:
+  stage: test
+  script:
+    - npm run lint
