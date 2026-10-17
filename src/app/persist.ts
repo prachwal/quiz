@@ -22,6 +22,11 @@ export const loadSettings = (): SettingsState => {
         typeof saved.shuffleQuestions === 'boolean'
           ? saved.shuffleQuestions
           : defaultSettings.shuffleQuestions,
+      speechAccent: ['en-US', 'en-GB'].includes(saved.speechAccent as string)
+        ? saved.speechAccent!
+        : defaultSettings.speechAccent,
+      speechRate: [0.8, 1, 1.2].includes(saved.speechRate as number) ? saved.speechRate! : defaultSettings.speechRate,
+      autoSpeak: typeof saved.autoSpeak === 'boolean' ? saved.autoSpeak : defaultSettings.autoSpeak,
     }
   } catch {
     return defaultSettings

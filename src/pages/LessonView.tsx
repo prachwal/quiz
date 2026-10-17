@@ -5,6 +5,9 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { errorMessage, useCompleteLessonMutation, useGetLessonQuery } from '../app/api'
 import PageHeader from '../components/PageHeader'
 import { useFocusMode } from '../components/useFocusMode'
+import { useAppSelector } from '../app/hooks'
+import { verbSpeechParts } from '../features/audio/speech'
+import { useSpeech } from '../features/audio/useSpeech'
 import VerbSlide from '../features/learn/VerbSlide'
 import type { SwipeDirection } from '../features/learn/swipe'
 import { useSwipe } from '../features/learn/useSwipe'
@@ -18,6 +21,8 @@ function Slides({ lesson }: { lesson: LessonDetail }) {
   const slideRef = useRef<HTMLDivElement>(null)
   const direction = useRef<1 | -1>(1)
 
+  const autoSpeak = useAppSelector((state) => state.settings.autoSpeak)
+  const { available, speak, stop } = useSpeech()
   const total = lesson.verbs.length
   const isLast = index === total - 1
   // phones: tab bar hidden, Cofnij/Dalej live in a sticky bar in the thumb zone
@@ -80,6 +85,15 @@ function Slides({ lesson }: { lesson: LessonDetail }) {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [back, next])
+
+  // optional autoplay of the whole verb when the slide changes (stops when leaving the lesson)
+  const current = lesson.verbs[index]
+  useEffect(() => {
+    if (!autoSpeak || !available || !current) return
+    speak(`verb-${current.id}-all`, verbSpeechParts(current))
+    return () => stop()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSpeak, available, current?.id])
 
   if (total === 0) return <Alert type="info" showIcon title="Ta lekcja nie ma jeszcze czasowników" />
 

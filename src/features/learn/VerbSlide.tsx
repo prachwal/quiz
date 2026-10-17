@@ -1,9 +1,11 @@
 import { Card, Flex, Progress, Tag, Typography, theme } from 'antd'
 import { DifficultyTag, PopularityTag } from '../../components/GroupTags'
+import SpeakButton from '../audio/SpeakButton'
+import { verbSpeechParts } from '../audio/speech'
 import type { IrregularVerb } from '../../shared/quiz/types'
 import { PATTERN_HINTS, formsText } from './format'
 
-function Form({ label, value }: { label: string; value: string }) {
+function Form({ label, value, speak }: { label: string; value: string; speak: { key: string; parts: string[] } }) {
   const { token } = theme.useToken()
   return (
     <Flex
@@ -37,6 +39,7 @@ function Form({ label, value }: { label: string; value: string }) {
       >
         {value}
       </span>
+      <SpeakButton speakKey={speak.key} parts={speak.parts} label={`Odsłuchaj: ${value}`} />
     </Flex>
   )
 }
@@ -106,6 +109,12 @@ export default function VerbSlide({
             >
               {verb.base}
             </h2>
+            <SpeakButton
+              speakKey={`verb-${verb.id}-all`}
+              parts={verbSpeechParts(verb)}
+              label={`Odsłuchaj wszystkie formy: ${verb.base}`}
+              size="large"
+            />
             <span
               style={{
                 fontSize: 'clamp(20px, 1.5vw + 14px, 24px)',
@@ -127,8 +136,16 @@ export default function VerbSlide({
               gap: 12,
             }}
           >
-            <Form label="Past simple" value={formsText(verb.pastSimple)} />
-            <Form label="Past participle" value={formsText(verb.pastParticiple)} />
+            <Form
+              label="Past simple"
+              value={formsText(verb.pastSimple)}
+              speak={{ key: `verb-${verb.id}-ps`, parts: verb.pastSimple }}
+            />
+            <Form
+              label="Past participle"
+              value={formsText(verb.pastParticiple)}
+              speak={{ key: `verb-${verb.id}-pp`, parts: verb.pastParticiple }}
+            />
           </div>
           {/* visible text instead of a hover-only tooltip (works on touch screens) */}
           <Typography.Text type="secondary" style={{ fontSize: 14, marginTop: -8, textAlign: 'center' }}>
@@ -147,9 +164,17 @@ export default function VerbSlide({
               background: token.colorFillQuaternary,
             }}
           >
-            <Typography.Text lang="en" italic style={{ fontSize: 18, lineHeight: 1.5 }}>
-              „{verb.exampleEn}”
-            </Typography.Text>
+            <Flex align="flex-start" gap={10}>
+              <Typography.Text lang="en" italic style={{ fontSize: 18, lineHeight: 1.5, flex: 1 }}>
+                „{verb.exampleEn}”
+              </Typography.Text>
+              <SpeakButton
+                speakKey={`verb-${verb.id}-ex`}
+                parts={[verb.exampleEn]}
+                label="Odsłuchaj zdanie"
+                size="small"
+              />
+            </Flex>
             <Typography.Text type="secondary" style={{ fontSize: 16 }}>
               {verb.examplePl}
             </Typography.Text>

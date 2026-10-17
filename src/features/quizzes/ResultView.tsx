@@ -11,6 +11,7 @@ import { Button, Card, Flex, Progress, Tag, Typography, theme } from 'antd'
 import type { ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useGenerateIrregularVerbsQuizMutation, useStartExamMutation } from '../../app/api'
+import SpeakButton from '../audio/SpeakButton'
 import type { Answer } from '../../shared/quiz/engine'
 import type { GradedAttempt, QuizDetail } from '../../shared/quiz/types'
 
@@ -49,7 +50,17 @@ function Stat({ label, value, color }: { label: string; value: ReactNode; color?
   )
 }
 
-function AnswerBox({ label, value, tone }: { label: string; value: ReactNode; tone: 'success' | 'error' | 'neutral' }) {
+function AnswerBox({
+  label,
+  value,
+  tone,
+  action,
+}: {
+  label: string
+  value: ReactNode
+  tone: 'success' | 'error' | 'neutral'
+  action?: ReactNode
+}) {
   const { token } = theme.useToken()
   const palette = {
     success: { bg: token.colorSuccessBg, border: token.colorSuccessBorder, label: token.colorSuccessText },
@@ -78,7 +89,10 @@ function AnswerBox({ label, value, tone }: { label: string; value: ReactNode; to
       >
         {label}
       </div>
-      <div style={{ fontSize: 18, lineHeight: 1.5, color: token.colorText, wordBreak: 'break-word' }}>{value}</div>
+      <Flex align="center" justify="space-between" gap={8}>
+        <div style={{ fontSize: 18, lineHeight: 1.5, color: token.colorText, wordBreak: 'break-word' }}>{value}</div>
+        {action}
+      </Flex>
     </div>
   )
 }
@@ -92,6 +106,7 @@ function QuestionReview({
   givenText,
   correctLabel,
   correctText,
+  speakParts,
   explanation,
 }: {
   index: number
@@ -102,6 +117,8 @@ function QuestionReview({
   givenText: string | undefined
   correctLabel: string
   correctText: string
+  /** English texts to read aloud (only for generated verb quizzes). */
+  speakParts?: string[]
   explanation: string | null | undefined
 }) {
   const { token } = theme.useToken()
@@ -145,7 +162,18 @@ function QuestionReview({
             tone={correct ? 'success' : 'error'}
             value={givenText || <em style={{ color: token.colorTextTertiary }}>brak odpowiedzi</em>}
           />
-          {!correct && <AnswerBox label={correctLabel} tone="success" value={correctText} />}
+          {!correct && (
+            <AnswerBox
+              label={correctLabel}
+              tone="success"
+              value={correctText}
+              action={
+                speakParts && (
+                  <SpeakButton speakKey={`answer-${index}`} parts={speakParts} label="Odsłuchaj poprawną odpowiedź" />
+                )
+              }
+            />
+          )}
         </div>
 
         {explanation && (
@@ -325,6 +353,7 @@ export default function ResultView({
               givenText={givenText}
               correctLabel={question.type === 'text' ? 'Akceptowane odpowiedzi' : 'Poprawna odpowiedź'}
               correctText={r.correctAnswers.join(', ')}
+              speakParts={quiz.source ? r.correctAnswers : undefined}
               explanation={showExplanations ? r.explanation : null}
             />
           )

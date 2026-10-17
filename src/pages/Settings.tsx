@@ -12,10 +12,66 @@ import {
   resetSettings,
   setCompact,
   setShowExplanations,
+  setAutoSpeak,
   setShuffleQuestions,
+  setSpeechAccent,
+  setSpeechRate,
   setThemeMode,
 } from '../features/settings/settingsSlice'
-import type { ThemeMode } from '../features/settings/settingsSlice'
+import type { SpeechAccent, SpeechRate, ThemeMode } from '../features/settings/settingsSlice'
+import { useSpeech } from '../features/audio/useSpeech'
+import SpeakButton from '../features/audio/SpeakButton'
+
+function Pronunciation() {
+  const settings = useAppSelector((state) => state.settings)
+  const dispatch = useAppDispatch()
+  const { available } = useSpeech()
+
+  return (
+    <Card title="Wymowa" style={{ marginTop: 16 }}>
+      {!available && (
+        <Typography.Paragraph type="secondary">
+          Na tym urządzeniu nie ma angielskiego głosu, więc przyciski odsłuchu są ukryte. Zainstaluj głos
+          angielski w ustawieniach systemu.
+        </Typography.Paragraph>
+      )}
+      <Form layout="vertical">
+        <Form.Item label="Akcent">
+          <Radio.Group
+            optionType="button"
+            buttonStyle="solid"
+            value={settings.speechAccent}
+            onChange={(e) => dispatch(setSpeechAccent(e.target.value as SpeechAccent))}
+            options={[
+              { label: 'Amerykański', value: 'en-US' },
+              { label: 'Brytyjski', value: 'en-GB' },
+            ]}
+          />
+        </Form.Item>
+        <Form.Item label="Tempo">
+          <Radio.Group
+            optionType="button"
+            buttonStyle="solid"
+            value={settings.speechRate}
+            onChange={(e) => dispatch(setSpeechRate(e.target.value as SpeechRate))}
+            options={[
+              { label: 'Wolne', value: 0.8 },
+              { label: 'Normalne', value: 1 },
+              { label: 'Szybkie', value: 1.2 },
+            ]}
+          />
+        </Form.Item>
+        <Form.Item label="Czytaj automatycznie po zmianie slajdu w lekcji">
+          <Switch checked={settings.autoSpeak} onChange={(v) => dispatch(setAutoSpeak(v))} />
+        </Form.Item>
+        <Flex align="center" gap={12}>
+          <SpeakButton speakKey="settings-test" parts={['went', 'gone']} label="Przetestuj głos" />
+          <Typography.Text type="secondary">Przetestuj głos (went, gone)</Typography.Text>
+        </Flex>
+      </Form>
+    </Card>
+  )
+}
 
 function GeneralSettings() {
   const settings = useAppSelector((state) => state.settings)
@@ -58,6 +114,7 @@ function GeneralSettings() {
           </Button>
         </Form>
       </Card>
+      <Pronunciation />
       <ApiTokens />
       <Card title="Uwagi" style={{ marginTop: 16 }}>
         <Flex justify="space-between" align="center" wrap gap="middle">

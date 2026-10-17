@@ -3,6 +3,8 @@ import type { TableColumnsType } from 'antd'
 import { PHONE_QUERY, useMediaQuery } from '../../app/useMediaQuery'
 import { DifficultyTag, PopularityTag } from '../../components/GroupTags'
 import type { IrregularVerb } from '../../shared/quiz/types'
+import SpeakButton from '../audio/SpeakButton'
+import { verbSpeechParts } from '../audio/speech'
 import { PATTERN_HINTS, formsText } from './format'
 
 const verbColumns: TableColumnsType<IrregularVerb> = [
@@ -15,6 +17,14 @@ const verbColumns: TableColumnsType<IrregularVerb> = [
   { title: 'Past simple', dataIndex: 'pastSimple', render: formsText },
   { title: 'Past participle', dataIndex: 'pastParticiple', render: formsText },
   { title: 'Po polsku', dataIndex: 'meanings', render: (m: string[]) => m.join(', ') },
+  {
+    title: '',
+    key: 'audio',
+    width: 56,
+    render: (_v, verb) => (
+      <SpeakButton speakKey={`verb-${verb.id}-all`} parts={verbSpeechParts(verb)} label={`Odsłuchaj: ${verb.base}`} />
+    ),
+  },
   {
     title: 'Grupa',
     key: 'group',
@@ -48,9 +58,12 @@ const phoneColumns: TableColumnsType<IrregularVerb> = [
     render: (_v, verb) => (
       <Flex vertical gap={8}>
         <Flex justify="space-between" align="baseline" gap={12} wrap>
-          <Typography.Text lang="en" strong style={{ fontSize: 20, lineHeight: 1.3 }}>
-            {verb.base}
-          </Typography.Text>
+          <Flex align="center" gap={10}>
+            <Typography.Text lang="en" strong style={{ fontSize: 20, lineHeight: 1.3 }}>
+              {verb.base}
+            </Typography.Text>
+            <SpeakButton speakKey={`verb-${verb.id}-all`} parts={verbSpeechParts(verb)} label={`Odsłuchaj: ${verb.base}`} />
+          </Flex>
           <Typography.Text type="secondary" style={{ fontSize: 15 }}>
             {verb.meanings.join(', ')}
           </Typography.Text>
