@@ -1,6 +1,5 @@
-import { describe, it, expect, afterEach, vi } from 'vitest'
+import { describe, it, afterEach, vi } from 'vitest'
 import { renderHook, cleanup } from '@testing-library/react'
-import { useRef } from 'react'
 import { useSwipe } from './useSwipe'
 
 describe('useSwipe', () => {
