@@ -135,11 +135,12 @@ function Runner({ quiz, onRestart }: { quiz: QuizDetail; onRestart: () => void }
 }
 
 export default function QuizPlayer({ id }: { id: string }) {
-  const { data, error, isLoading } = useGetQuizQuery({ id })
+  // currentData (not data): while a different quiz id is loading, `data` would still hold the previous quiz
+  const { currentData: data, error } = useGetQuizQuery({ id })
   const [run, setRun] = useState(0)
 
   if (error) return <Alert type="error" showIcon title={errorMessage(error)} />
-  if (isLoading || !data) return <Skeleton active paragraph={{ rows: 6 }} />
+  if (!data) return <Skeleton active paragraph={{ rows: 6 }} />
 
   return (
     <div style={{ maxWidth: 880, margin: '0 auto' }}>
@@ -154,7 +155,7 @@ export default function QuizPlayer({ id }: { id: string }) {
           </>
         }
       />
-      <Runner key={run} quiz={data} onRestart={() => setRun((n) => n + 1)} />
+      <Runner key={`${data.id}:${run}`} quiz={data} onRestart={() => setRun((n) => n + 1)} />
     </div>
   )
 }

@@ -3,5 +3,6 @@ import QuizPlayer from '../features/quizzes/QuizPlayer'
 
 export default function QuizPlay() {
   const { id = '' } = useParams()
-  return <QuizPlayer id={id} />
+  // key: a new quiz id must start a fresh player (answers, progress and result belong to one quiz)
+  return <QuizPlayer key={id} id={id} />
 }

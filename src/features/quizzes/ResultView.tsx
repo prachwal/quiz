@@ -18,6 +18,7 @@ import {
   useStartReviewMutation,
 } from '../../app/api'
 import SpeakButton from '../audio/SpeakButton'
+import { EXAM_COUNT, GENERATE_COUNT, REVIEW_COUNT, clampCount } from './counts'
 import ProgressLine from '../progress/ProgressLine'
 import type { Answer } from '../../shared/quiz/engine'
 import type { GradedAttempt, QuizDetail } from '../../shared/quiz/types'
@@ -240,28 +241,43 @@ export default function ResultView({
   }
   const nextTraining = async () => {
     try {
-      const next = await generate({ count: quiz.questions.length, onlyWeak: true }).unwrap()
+      const next = await generate({ count: clampCount(quiz.questions.length, GENERATE_COUNT), onlyWeak: true }).unwrap()
       navigate(`/quizzes/${next.id}/play`)
-    } catch {
-      navigate('/results')
+    } catch (e) {
+      void message.error(errorMessage(e))
     }
   }
   const drawAnother = async () => {
-    const next = await generate({ count: quiz.questions.length, difficulty: quiz.difficulty ?? undefined }).unwrap()
-    navigate(`/quizzes/${next.id}/play`)
+    try {
+      const next = await generate({
+        count: clampCount(quiz.questions.length, GENERATE_COUNT),
+        difficulty: quiz.difficulty ?? undefined,
+      }).unwrap()
+      navigate(`/quizzes/${next.id}/play`)
+    } catch (e) {
+      void message.error(errorMessage(e))
+    }
   }
   const nextReview = async () => {
     try {
-      const next = await startReview({ count: quiz.questions.length }).unwrap()
+      const next = await startReview({ count: clampCount(quiz.questions.length, REVIEW_COUNT) }).unwrap()
       navigate(`/quizzes/${next.id}/play`)
-    } catch {
-      navigate('/') // nothing left to review today
+    } catch (e) {
+      void message.info(errorMessage(e)) // e.g. nothing left to review today
+      navigate('/')
     }
   }
   const retryExam = async () => {
     if (!result.course) return
-    const next = await startExam({ courseId: result.course.id, count: quiz.questions.length }).unwrap()
-    navigate(`/quizzes/${next.id}/play`)
+    try {
+      const next = await startExam({
+        courseId: result.course.id,
+        count: clampCount(quiz.questions.length, EXAM_COUNT),
+      }).unwrap()
+      navigate(`/quizzes/${next.id}/play`)
+    } catch (e) {
+      void message.error(errorMessage(e))
+    }
   }
   const byId = new Map(result.results.map((r) => [r.questionId, r]))
   const optionText = (questionId: string, ids: string[] | undefined) =>
