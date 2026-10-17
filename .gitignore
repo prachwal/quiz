@@ -31,3 +31,4 @@ dist-ssr
 
 # compiled tests
 .test-build
+coverage/*
