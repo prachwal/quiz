@@ -1,21 +1,19 @@
-# example netlify.toml
 [build]
-  command = "npm"
+  command = "npm run build"
   functions = "netlify/functions"
   publish = "dist"
 
-  ## Uncomment to use this redirect for Single Page Applications like create-react-app.
-  ## Not needed for static site generators.
-  #[[redirects]]
-  #  from = "/*"
-  #  to = "/index.html"
-  #  status = 200
+# `netlify dev` starts Vite and proxies it, serving functions (e.g. /planets) on the same port
+[dev]
+  command = "npm run dev"
+  framework = "#custom"
+  targetPort = 5173
+  port = 8888
+  publish = "dist"
+  autoLaunch = false
 
-  ## (optional) Settings for Netlify Dev
-  ## https://github.com/netlify/cli/blob/main/docs/netlify-dev.md#project-detection
-  #[dev]
-  #  command = "yarn start" # Command to start your dev server
-  #  port = 3000 # Port that the dev server will be listening on
-  #  publish = "dist" # Folder with the static content for _redirect file
-
-  ## more info on configuring this file: https://ntl.fyi/file-based-build-config
+# /api/planets -> /.netlify/functions/planets
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
