@@ -21,6 +21,8 @@ export interface QuizSummary {
   title: string
   description: string
   difficulty: DifficultyCode | null
+  /** The current user may edit/delete this quiz (owner, or legacy quiz without an owner). */
+  canEdit: boolean
   /** Number of times the quiz has been played (saved attempts). */
   plays: number
   questionCount: number
@@ -54,6 +56,7 @@ export interface QuizDetail {
   kind: 'manual' | 'generated'
   difficulty: DifficultyCode | null
   courseId: string | null
+  canEdit: boolean
   /** Set for generated quizzes, e.g. `irregular-verbs`. */
   source: string | null
   createdAt: string

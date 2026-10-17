@@ -1,6 +1,7 @@
-import { RocketOutlined } from '@ant-design/icons'
-import { Layout, Menu, Space, Typography } from 'antd'
+import { LoginOutlined, LogoutOutlined, RocketOutlined } from '@ant-design/icons'
+import { Avatar, Button, Dropdown, Layout, Menu, Space, Tag, Typography } from 'antd'
 import { Link, Outlet, useLocation } from 'react-router-dom'
+import { useAuth } from '../features/auth/useAuth'
 
 const { Header, Content, Footer } = Layout
 
@@ -15,6 +16,7 @@ const items = [
 
 export default function AppLayout() {
   const { pathname } = useLocation()
+  const { enabled, isAuthenticated, user, roles, login, logout } = useAuth()
   const selected = items.find((item) => item.key !== '/' && pathname.startsWith(item.key))?.key ?? '/'
 
   return (
@@ -33,6 +35,30 @@ export default function AppLayout() {
           items={items}
           style={{ flex: 1, minWidth: 0 }}
         />
+        {enabled &&
+          (isAuthenticated ? (
+            <Dropdown
+              menu={{
+                items: [{ key: 'logout', icon: <LogoutOutlined />, label: 'Wyloguj', onClick: logout }],
+              }}
+            >
+              <Space style={{ cursor: 'pointer', color: '#fff' }}>
+                <Avatar src={user?.picture} size="small">
+                  {user?.name?.[0]}
+                </Avatar>
+                {user?.name ?? user?.email}
+                {roles.map((role) => (
+                  <Tag key={role} color={role === 'admin' ? 'gold' : 'blue'} style={{ marginInlineEnd: 0 }}>
+                    {role}
+                  </Tag>
+                ))}
+              </Space>
+            </Dropdown>
+          ) : (
+            <Button icon={<LoginOutlined />} onClick={() => void login()}>
+              Zaloguj
+            </Button>
+          ))}
       </Header>
       <Content style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px' }}>
         <Outlet />

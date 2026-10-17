@@ -11,11 +11,13 @@
   },
   "dependencies": {
     "@ant-design/icons": "^6.3.4",
+    "@auth0/auth0-react": "^2.28.2",
     "@netlify/database": "^2.0.1",
     "@netlify/functions": "^6.0.2",
     "@reduxjs/toolkit": "^2.13.0",
     "antd": "^6.6.6",
     "express": "^5.3.0",
+    "express-oauth2-jwt-bearer": "^1.11.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-redux": "^9.3.0",

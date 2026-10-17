@@ -1,4 +1,5 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
+import { getAccessToken } from '../features/auth/token'
 import type { Answer } from '../shared/quiz/engine'
 import type { QuizInput } from '../shared/quiz/schema'
 import type { GenerateInput } from '../shared/quiz/schema'
@@ -18,7 +19,14 @@ import type {
 
 export const api = createApi({
   reducerPath: 'api',
-  baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
+  baseQuery: fetchBaseQuery({
+    baseUrl: '/api',
+    prepareHeaders: async (headers) => {
+      const token = await getAccessToken()
+      if (token) headers.set('authorization', `Bearer ${token}`)
+      return headers
+    },
+  }),
   tagTypes: ['Quiz', 'Attempt', 'Course'],
   endpoints: (build) => ({
     listQuizzes: build.query<QuizSummary[], { difficulty?: DifficultyCode; sort?: 'recent' | 'popular' } | void>({

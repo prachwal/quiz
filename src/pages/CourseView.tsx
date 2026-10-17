@@ -3,6 +3,7 @@ import { Alert, Button, Card, Flex, List, Progress, Skeleton, Tag, Typography, A
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { errorMessage, useGetCourseQuery, useStartExamMutation } from '../app/api'
 import { DifficultyTag, PopularityTag } from '../components/GroupTags'
+import { useAuth } from '../features/auth/useAuth'
 
 export default function CourseView() {
   const { courseId = '' } = useParams()
@@ -10,6 +11,7 @@ export default function CourseView() {
   const [startExam, { isLoading: starting }] = useStartExamMutation()
   const navigate = useNavigate()
   const { message } = AntdApp.useApp()
+  const { enabled, isAuthenticated, login } = useAuth()
 
   if (error) return <Alert type="error" showIcon title={errorMessage(error)} />
   if (isLoading || !course) return <Skeleton active paragraph={{ rows: 6 }} />
@@ -18,6 +20,7 @@ export default function CourseView() {
   const nextLesson = course.lessons.find((l) => !l.completed) ?? course.lessons[0]
 
   const exam = async () => {
+    if (enabled && !isAuthenticated) return login()
     try {
       const quiz = await startExam({ courseId }).unwrap()
       navigate(`/quizzes/${quiz.id}/play`)
@@ -35,6 +38,16 @@ export default function CourseView() {
         <Tag>{course.verbCount} czasowników</Tag>
       </div>
       <Typography.Paragraph type="secondary">{course.description}</Typography.Paragraph>
+
+      {enabled && !isAuthenticated && (
+        <Alert
+          type="info"
+          showIcon
+          title="Zaloguj się, aby zapisywać postęp i przystępować do egzaminu"
+          action={<Button onClick={() => void login()}>Zaloguj</Button>}
+          style={{ marginBottom: 16 }}
+        />
+      )}
 
       <Card title="Lekcje">
         <Progress

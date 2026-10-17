@@ -3,7 +3,7 @@ import type { ErrorRequestHandler, RequestHandler } from 'express'
 import { ZodError, z } from 'zod'
 import { gradeQuiz } from '../src/shared/quiz/engine'
 import { DIFFICULTIES, POPULARITIES, generateInput, gradeInput, quizInput } from '../src/shared/quiz/schema'
-import { currentUserId } from './auth'
+import { WRITE_QUIZZES, authenticate, currentUserId, hasPermission, requirePermission, requireUser } from './auth'
 import * as courses from './coursesRepo'
 import {
   buildVerbQuiz,
@@ -28,6 +28,9 @@ const parseId = (value: unknown) => {
   if (!parsed.success) throw new HttpError(404, 'Quiz not found')
   return parsed.data
 }
+
+/** Id of the signed-in user; only call behind `requireUser`. */
+const userOf = (req: Parameters<typeof currentUserId>[0]) => currentUserId(req) as string
 
 const notFound = () => new HttpError(404, 'Quiz not found')
 const courseNotFound = () => new HttpError(404, 'Course not found')
@@ -62,6 +65,9 @@ export function createApp() {
     next()
   }) satisfies RequestHandler)
 
+  // validates a Bearer token if present (anonymous otherwise); protected routes add requireUser
+  app.use(authenticate)
+
   const router = express.Router()
 
   router.get('/health', (_req, res) => {
@@ -70,20 +76,26 @@ export function createApp() {
 
   router.get('/quizzes', async (req, res) => {
     const { difficulty, sort } = listQuery.parse(req.query)
-    res.json(await repo.listQuizzes({ difficulty, sort }))
+    res.json(await repo.listQuizzes({ difficulty, sort }, hasPermission(req, WRITE_QUIZZES)))
   })
 
-  router.post('/quizzes', async (req, res) => {
+  router.post('/quizzes', requirePermission(WRITE_QUIZZES), async (req, res) => {
     const input = quizInput.parse(req.body)
-    const id = await repo.createQuiz(input)
-    res.status(201).json(await repo.getQuiz(id, true))
+    const userId = userOf(req)
+    const id = await repo.createQuiz(input, { kind: 'manual', difficulty: input.difficulty, ownerId: userId })
+    res.status(201).json(await repo.getQuiz(id, true, true))
   })
 
   router.post('/quizzes/generate/irregular-verbs', async (req, res) => {
     const options = generateInput.parse(req.body ?? {})
     const { quiz, difficulty } = await generateIrregularVerbsQuiz(options)
     if (quiz.questions.length === 0) throw new HttpError(422, 'Brak czasowników dla wybranych kryteriów')
-    const id = await repo.createQuiz(quiz, { kind: 'generated', source: 'irregular-verbs', difficulty })
+    const id = await repo.createQuiz(quiz, {
+      kind: 'generated',
+      source: 'irregular-verbs',
+      difficulty,
+      ownerId: currentUserId(req),
+    })
     res.status(201).json(await repo.getQuiz(id, false))
   })
 
@@ -111,7 +123,7 @@ export function createApp() {
     res.json(lesson)
   })
 
-  router.post('/courses/:id/lessons/:lessonId/complete', async (req, res) => {
+  router.post('/courses/:id/lessons/:lessonId/complete', requireUser, async (req, res) => {
     const lessonId = idSchema.safeParse(req.params.lessonId)
     const ok =
       lessonId.success &&
@@ -121,7 +133,7 @@ export function createApp() {
   })
 
   // Final exam: available once every lesson of the course is completed.
-  router.post('/courses/:id/exam', async (req, res) => {
+  router.post('/courses/:id/exam', requireUser, async (req, res) => {
     const courseId = parseCourseId(req.params.id)
     const course = await courses.getCourse(courseId, currentUserId(req))
     if (!course) throw courseNotFound()
@@ -147,28 +159,35 @@ export function createApp() {
       source: 'course-exam',
       difficulty: course.difficulty,
       courseId,
+      ownerId: currentUserId(req),
     })
     res.status(201).json(await repo.getQuiz(id, false))
   })
 
-  router.get('/attempts', async (req, res) => {
-    res.json(await repo.listAttempts(currentUserId(req)))
+  router.get('/attempts', requireUser, async (req, res) => {
+    res.json(await repo.listAttempts(userOf(req)))
   })
 
   router.get('/quizzes/:id', async (req, res) => {
-    const quiz = await repo.getQuiz(parseId(req.params.id), req.query.include === 'answers')
+    const withAnswers = req.query.include === 'answers'
+    const canEdit = hasPermission(req, WRITE_QUIZZES)
+    // correct answers are only revealed to people who may edit quizzes
+    if (withAnswers && !canEdit) {
+      throw new HttpError(currentUserId(req) ? 403 : 401, 'Ta operacja wymaga roli admin')
+    }
+    const quiz = await repo.getQuiz(parseId(req.params.id), withAnswers, canEdit)
     if (!quiz) throw notFound()
     res.json(quiz)
   })
 
-  router.put('/quizzes/:id', async (req, res) => {
+  router.put('/quizzes/:id', requirePermission(WRITE_QUIZZES), async (req, res) => {
     const id = parseId(req.params.id)
     const input = quizInput.parse(req.body)
     if (!(await repo.replaceQuiz(id, input))) throw notFound()
-    res.json(await repo.getQuiz(id, true))
+    res.json(await repo.getQuiz(id, true, true))
   })
 
-  router.delete('/quizzes/:id', async (req, res) => {
+  router.delete('/quizzes/:id', requirePermission(WRITE_QUIZZES), async (req, res) => {
     if (!(await repo.deleteQuiz(parseId(req.params.id)))) throw notFound()
     res.status(204).end()
   })
@@ -176,15 +195,20 @@ export function createApp() {
   router.post('/quizzes/:id/grade', async (req, res) => {
     const id = parseId(req.params.id)
     const { answers } = gradeInput.parse(req.body)
+    const userId = currentUserId(req)
     const quiz = await repo.getQuiz(id, true)
     if (!quiz) throw notFound()
+    // course exams are personal: only the signed-in user who started the exam can submit it
+    if (quiz.courseId && (!userId || userId !== (await repo.getOwnerId(id)))) {
+      throw new HttpError(userId ? 403 : 401, 'Egzamin wymaga zalogowania')
+    }
     const result = gradeQuiz(repo.toGradable(quiz), answers)
     const course = quiz.courseId ? await courses.coursePassInfo(quiz.courseId) : null
     const passed = course ? result.percent >= course.passPercent : null
     const attemptId = await repo.saveAttempt({
       quizId: id,
       quizTitle: quiz.title,
-      userId: currentUserId(req),
+      userId,
       courseId: course?.id ?? null,
       passed,
       answers,

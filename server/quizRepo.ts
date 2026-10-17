@@ -38,6 +38,7 @@ interface QuizRow {
   source: string | null
   difficulty: DifficultyCode | null
   course_id: string | null
+  owner_id: string | null
   created_at: Date
   updated_at: Date
 }
@@ -62,7 +63,7 @@ export interface ListFilter {
   sort?: 'recent' | 'popular'
 }
 
-export async function listQuizzes(filter: ListFilter = {}): Promise<QuizSummary[]> {
+export async function listQuizzes(filter: ListFilter = {}, canEdit = false): Promise<QuizSummary[]> {
   const values: unknown[] = []
   let difficultyCondition = ''
   if (filter.difficulty) {
@@ -87,6 +88,7 @@ export async function listQuizzes(filter: ListFilter = {}): Promise<QuizSummary[
     title: row.title,
     description: row.description,
     difficulty: row.difficulty,
+    canEdit,
     plays: row.plays,
     questionCount: row.question_count,
     totalPoints: row.total_points,
@@ -100,7 +102,11 @@ export async function listQuizzes(filter: ListFilter = {}): Promise<QuizSummary[
  * `withAnswers: false` (player view) strips correctness flags, explanations and
  * the accepted answers of text questions.
  */
-export async function getQuiz(id: string, withAnswers: boolean): Promise<QuizDetail | null> {
+export async function getQuiz(
+  id: string,
+  withAnswers: boolean,
+  canEdit = false,
+): Promise<QuizDetail | null> {
   const db = pool()
   const quizzes = await db.query<QuizRow>(
     `SELECT q.*, d.code AS difficulty
@@ -130,6 +136,7 @@ export async function getQuiz(id: string, withAnswers: boolean): Promise<QuizDet
     source: quiz.source,
     difficulty: quiz.difficulty,
     courseId: quiz.course_id,
+    canEdit,
     createdAt: quiz.created_at.toISOString(),
     updatedAt: quiz.updated_at.toISOString(),
     questions: questions.rows.map((question): QuizQuestion => {
@@ -201,22 +208,24 @@ export interface QuizMeta {
   source?: string
   difficulty?: DifficultyCode | null
   courseId?: string
+  ownerId?: string | null
 }
 
 export async function createQuiz(
   input: ParsedQuiz,
-  meta: QuizMeta = { kind: 'manual', difficulty: input.difficulty },
+  meta: QuizMeta,
 ): Promise<string> {
   return inTransaction(async (client) => {
     const created = await client.query<{ id: string }>(
-      `INSERT INTO quizzes (title, description, kind, source, course_id, difficulty_id)
-       VALUES ($1, $2, $3, $4, $5, (SELECT id FROM difficulty_levels WHERE code = $6)) RETURNING id`,
+      `INSERT INTO quizzes (title, description, kind, source, course_id, owner_id, difficulty_id)
+       VALUES ($1, $2, $3, $4, $5, $6, (SELECT id FROM difficulty_levels WHERE code = $7)) RETURNING id`,
       [
         input.title,
         input.description,
         meta.kind,
         meta.source ?? null,
         meta.courseId ?? null,
+        meta.ownerId ?? null,
         meta.difficulty ?? null,
       ],
     )
@@ -246,6 +255,15 @@ export async function replaceQuiz(id: string, input: ParsedQuiz): Promise<boolea
 export async function deleteQuiz(id: string): Promise<boolean> {
   const result = await pool().query('DELETE FROM quizzes WHERE id = $1', [id])
   return (result.rowCount ?? 0) > 0
+}
+
+/** Author of a quiz (null for anonymous/legacy quizzes). Course exams belong to the user who started them. */
+export async function getOwnerId(id: string): Promise<string | null> {
+  const { rows } = await pool().query<{ owner_id: string | null }>(
+    'SELECT owner_id FROM quizzes WHERE id = $1',
+    [id],
+  )
+  return rows[0]?.owner_id ?? null
 }
 
 export async function saveAttempt(attempt: {

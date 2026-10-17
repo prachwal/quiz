@@ -1,6 +1,7 @@
 import { DeleteOutlined, EditOutlined, PlayCircleOutlined, PlusOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Empty, Flex, Popconfirm, Segmented, Select, Skeleton, Tag, Typography, App as AntdApp } from 'antd'
 import { useState } from 'react'
+import { useAuth } from '../features/auth/useAuth'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   errorMessage,
@@ -30,6 +31,7 @@ export default function Home() {
   const [deleteQuiz, { isLoading: deleting }] = useDeleteQuizMutation()
   const { message } = AntdApp.useApp()
   const navigate = useNavigate()
+  const { isAdmin } = useAuth()
   const [count, setCount] = useState(10)
   const [difficulty, setDifficulty] = useState<DifficultyCode>()
   const [popularity, setPopularity] = useState<PopularityCode>()
@@ -58,11 +60,13 @@ export default function Home() {
     <>
       <Flex justify="space-between" align="center" wrap gap="small">
         <Typography.Title style={{ margin: 0 }}>Quizy</Typography.Title>
-        <Link to="/quizzes/new">
-          <Button type="primary" icon={<PlusOutlined />}>
-            Nowy quiz
-          </Button>
-        </Link>
+        {isAdmin && (
+          <Link to="/quizzes/new">
+            <Button type="primary" icon={<PlusOutlined />}>
+              Nowy quiz
+            </Button>
+          </Link>
+        )}
       </Flex>
 
       <Card style={{ marginTop: 24 }}>
@@ -144,9 +148,11 @@ export default function Home() {
           <Skeleton active paragraph={{ rows: 6 }} />
         ) : data.length === 0 ? (
           <Empty description="Nie ma jeszcze żadnych quizów">
-            <Link to="/quizzes/new">
-              <Button type="primary">Utwórz pierwszy quiz</Button>
-            </Link>
+            {isAdmin && (
+              <Link to="/quizzes/new">
+                <Button type="primary">Utwórz pierwszy quiz</Button>
+              </Link>
+            )}
           </Empty>
         ) : (
           <Flex vertical gap="middle">
@@ -166,22 +172,26 @@ export default function Home() {
                   <Link key="play" to={`/quizzes/${quiz.id}/play`}>
                     <PlayCircleOutlined /> Graj
                   </Link>,
-                  <Link key="edit" to={`/quizzes/${quiz.id}/edit`}>
-                    <EditOutlined /> Edytuj
-                  </Link>,
-                  <Popconfirm
-                    key="delete"
-                    title="Usunąć ten quiz?"
-                    description="Tej operacji nie można cofnąć."
-                    okText="Usuń"
-                    cancelText="Anuluj"
-                    okButtonProps={{ danger: true, loading: deleting }}
-                    onConfirm={() => remove(quiz.id)}
-                  >
-                    <a style={{ color: '#ff4d4f' }}>
-                      <DeleteOutlined /> Usuń
-                    </a>
-                  </Popconfirm>,
+                  ...(quiz.canEdit
+                    ? [
+                        <Link key="edit" to={`/quizzes/${quiz.id}/edit`}>
+                          <EditOutlined /> Edytuj
+                        </Link>,
+                        <Popconfirm
+                          key="delete"
+                          title="Usunąć ten quiz?"
+                          description="Tej operacji nie można cofnąć."
+                          okText="Usuń"
+                          cancelText="Anuluj"
+                          okButtonProps={{ danger: true, loading: deleting }}
+                          onConfirm={() => remove(quiz.id)}
+                        >
+                          <a style={{ color: '#ff4d4f' }}>
+                            <DeleteOutlined /> Usuń
+                          </a>
+                        </Popconfirm>,
+                      ]
+                    : []),
                 ]}
               >
                 <Typography.Paragraph type="secondary" style={{ margin: 0 }}>
