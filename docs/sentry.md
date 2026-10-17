@@ -1,9 +1,17 @@
 # Sentry – śledzenie błędów
 
-Stan na 2026-10-17. Kod integracji jest wdrożony na produkcji (`dab9fcc`), ale **Sentry nie jest jeszcze
-włączony**: brakuje adresu DSN. Bez DSN nic nie jest wysyłane (błędy serwera nadal trafiają do logów Netlify).
+Stan na 2026-10-18. Integracja jest **włączona**: projekty istnieją w organizacji `prachwal` (region EU,
+`de.sentry.io`), a DSN są ustawione w Netlify (wszystkie konteksty) i lokalnym `.env`.
 
-## Do zrobienia (po stronie właściciela konta)
+| Projekt    | Platforma    | Zmienna           | Gdzie działa |
+| ---------- | ------------ | ----------------- | ------------ |
+| `quiz-web` | React        | `VITE_SENTRY_DSN` | przeglądarka (wbudowana w paczkę przy buildzie) |
+| `quiz-api` | Node/Express | `SENTRY_DSN`      | funkcja `api` na Netlify |
+
+Narzędzia: wtyczka Sentry dla Claude Code (`sentry@anthropic-plugin-directory`, logowanie MCP) oraz `sentry-cli`
+z tokenem organizacyjnym o jedynym uprawnieniu `org:ci` (releasy i source mapy; nie tworzy projektów).
+
+## Jak to zostało skonfigurowane (historia / odtworzenie)
 
 1. Zaloguj się na https://sentry.io i utwórz organizację (plan Developer jest bezpłatny).
 2. Utwórz projekt **React** (np. `quiz-web`) i skopiuj jego **DSN**, np.
@@ -25,7 +33,7 @@ włączony**: brakuje adresu DSN. Bez DSN nic nie jest wysyłane (błędy serwer
 5. Wdróż ponownie (`git push` na `main` uruchamia build na Netlify). Zmienne `VITE_*` są wbudowywane
    w czasie builda, więc sama zmiana zmiennej bez nowego wdrożenia nic nie da.
 
-Zmienne `SENTRY_DSN` i `VITE_SENTRY_DSN` są już dodane do `SECRETS_SCAN_OMIT_KEYS` na Netlify, więc skaner
+Zmienne `SENTRY_DSN` i `VITE_SENTRY_DSN` są dodane do `SECRETS_SCAN_OMIT_KEYS` na Netlify, więc skaner
 sekretów nie zablokuje builda (DSN znajdzie się w paczce JS).
 
 ## Co jest zintegrowane
@@ -59,8 +67,9 @@ Odpowiedź przy błędzie 500 zawiera `requestId` i `eventId`, które trafiają 
 
 ## Czego NIE ma (świadomie lub jeszcze)
 
-- **Source mapy.** Stosy z produkcji będą zminifikowane. Aby je odczytywać, dodaj wtyczkę Sentry do Vite
-  (`@sentry/vite-plugin`) i token `SENTRY_AUTH_TOKEN` (sekret!) w Netlify. Nie jest to zrobione.
+- **Source mapy.** Stosy z produkcji są zminifikowane. Aby je odczytywać, dodaj wtyczkę Sentry do Vite
+  (`@sentry/vite-plugin`) i token `SENTRY_AUTH_TOKEN` (sekret! istniejący token `org:ci` wystarczy) wraz z
+  `SENTRY_ORG=prachwal` i `SENTRY_PROJECT=quiz-web` w Netlify. Nie jest to zrobione.
 - **Monitoring wydajności / tracing** (`tracesSampleRate: 0`) i **Session Replay**.
 - **Alerty** (e-mail, Slack). Skonfiguruj reguły w Sentry: Alerts → Create Alert.
 - **Osobne środowiska.** Środowisko to `production` (build) lub `development`; podglądy wdrożeń (deploy
