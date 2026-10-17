@@ -1,6 +1,8 @@
 import { configureStore } from '@reduxjs/toolkit'
 import { setupListeners } from '@reduxjs/toolkit/query'
 import { api } from './api'
+import { apiErrorMiddleware } from './errorTracking'
+import feedbackUiReducer from '../features/feedback/feedbackSlice'
 import { loadSettings, saveSettings } from './persist'
 import settingsReducer, { hydrateSettings } from '../features/settings/settingsSlice'
 
@@ -8,9 +10,10 @@ export const store = configureStore({
   reducer: {
     [api.reducerPath]: api.reducer,
     settings: settingsReducer,
+    feedbackUi: feedbackUiReducer,
   },
   preloadedState: { settings: loadSettings() },
-  middleware: (getDefault) => getDefault().concat(api.middleware),
+  middleware: (getDefault) => getDefault().concat(api.middleware, apiErrorMiddleware),
 })
 
 setupListeners(store.dispatch)

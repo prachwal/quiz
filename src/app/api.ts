@@ -2,9 +2,15 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 import { getAccessToken } from '../features/auth/token'
 import type { Answer } from '../shared/quiz/engine'
 import type { QuizInput } from '../shared/quiz/schema'
-import type { GenerateInput, TokenInput } from '../shared/quiz/schema'
+import type { FeedbackInput, GenerateInput, TokenInput } from '../shared/quiz/schema'
 import type {
+  AdminUser,
+  AdminUsersPage,
   ApiTokenSummary,
+  AuditEntry,
+  FeedbackItem,
+  FeedbackStatus,
+  ManagedRole,
   AttemptSummary,
   CreatedApiToken,
   CourseDetail,
@@ -29,7 +35,7 @@ export const api = createApi({
       return headers
     },
   }),
-  tagTypes: ['Quiz', 'Attempt', 'Course', 'Token'],
+  tagTypes: ['Quiz', 'Attempt', 'Course', 'Token', 'AdminUsers', 'Feedback', 'Audit'],
   endpoints: (build) => ({
     listQuizzes: build.query<QuizSummary[], { difficulty?: DifficultyCode; sort?: 'recent' | 'popular' } | void>({
       query: (params) => ({ url: 'quizzes', params: params ?? undefined }),
@@ -84,6 +90,42 @@ export const api = createApi({
       query: (id) => ({ url: `tokens/${id}`, method: 'DELETE' }),
       invalidatesTags: ['Token'],
     }),
+    sendFeedback: build.mutation<{ id: string }, FeedbackInput>({
+      query: (body) => ({ url: 'feedback', method: 'POST', body }),
+      invalidatesTags: ['Feedback'],
+    }),
+    listAdminFeedback: build.query<FeedbackItem[], FeedbackStatus | void>({
+      query: (status) => ({ url: 'admin/feedback', params: status ? { status } : undefined }),
+      providesTags: ['Feedback'],
+    }),
+    setFeedbackStatus: build.mutation<FeedbackItem, { id: string; status: FeedbackStatus }>({
+      query: ({ id, status }) => ({ url: `admin/feedback/${id}`, method: 'PATCH', body: { status } }),
+      invalidatesTags: ['Feedback', 'Audit'],
+    }),
+    listAdminUsers: build.query<AdminUsersPage, { q: string; page: number }>({
+      query: (params) => ({ url: 'admin/users', params }),
+      providesTags: ['AdminUsers'],
+    }),
+    setUserRoles: build.mutation<AdminUser, { id: string; roles: ManagedRole[] }>({
+      query: ({ id, roles }) => ({
+        url: `admin/users/${encodeURIComponent(id)}/roles`,
+        method: 'PUT',
+        body: { roles },
+      }),
+      invalidatesTags: ['AdminUsers', 'Audit'],
+    }),
+    setUserBlocked: build.mutation<AdminUser, { id: string; blocked: boolean }>({
+      query: ({ id, blocked }) => ({
+        url: `admin/users/${encodeURIComponent(id)}/blocked`,
+        method: 'PATCH',
+        body: { blocked },
+      }),
+      invalidatesTags: ['AdminUsers', 'Audit'],
+    }),
+    listAudit: build.query<AuditEntry[], void>({
+      query: () => 'admin/audit',
+      providesTags: ['Audit'],
+    }),
     listCourses: build.query<CourseSummary[], void>({
       query: () => 'courses',
       providesTags: ['Course'],
@@ -126,6 +168,13 @@ export const {
   useListTokensQuery,
   useCreateTokenMutation,
   useRevokeTokenMutation,
+  useSendFeedbackMutation,
+  useListAdminFeedbackQuery,
+  useSetFeedbackStatusMutation,
+  useListAdminUsersQuery,
+  useSetUserRolesMutation,
+  useSetUserBlockedMutation,
+  useListAuditQuery,
   useListCoursesQuery,
   useGetCourseQuery,
   useGetLessonQuery,

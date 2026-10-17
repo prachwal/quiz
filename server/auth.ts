@@ -83,6 +83,8 @@ export const requireJwt: RequestHandler = (req, res, next) => {
 
 /** Role-based permissions: from the JWT's `permissions` claim, or the snapshot stored on the token. */
 export const WRITE_QUIZZES = 'write:quizzes'
+/** User management, feedback triage and the audit log (admin panel in Settings) - JWT sessions only. */
+export const MANAGE_USERS = 'manage:users'
 
 export const hasPermission = (req: Request, permission: string): boolean =>
   identityOf(req)?.permissions.includes(permission) ?? false

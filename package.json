@@ -16,6 +16,8 @@
     "@netlify/database": "^2.0.1",
     "@netlify/functions": "^6.0.2",
     "@reduxjs/toolkit": "^2.13.0",
+    "@sentry/node": "^11.8.0",
+    "@sentry/react": "^11.8.0",
     "antd": "^6.6.6",
     "express": "^5.3.0",
     "express-oauth2-jwt-bearer": "^1.11.0",

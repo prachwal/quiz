@@ -1,12 +1,21 @@
-import { DownOutlined, InfoCircleOutlined, LogoutOutlined, MenuOutlined, SettingOutlined } from '@ant-design/icons'
+import {
+  CommentOutlined,
+  DownOutlined,
+  InfoCircleOutlined,
+  LogoutOutlined,
+  MenuOutlined,
+  SettingOutlined,
+} from '@ant-design/icons'
 import { Avatar, Button, Drawer, Dropdown, Flex, Layout, Menu, Tag, Typography, theme } from 'antd'
 import { useEffect, useRef, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useAppDispatch } from '../app/hooks'
 import { useDocumentTheme } from '../app/useDocumentTheme'
 import { PHONE_QUERY } from '../app/useMediaQuery'
 import { useResolvedTheme } from '../app/useResolvedTheme'
 import { useThemeVars } from '../app/themeVars'
 import { useAuth } from '../features/auth/useAuth'
+import { openFeedback } from '../features/feedback/feedbackSlice'
 import BottomNav from './BottomNav'
 import BrandMark from './BrandMark'
 import { navItems, selectedNavKey } from './navItems'
@@ -19,6 +28,7 @@ const { Header, Content, Footer } = Layout
 export default function AppLayout() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
+  const dispatch = useAppDispatch()
   const { token } = theme.useToken()
   const vars = useThemeVars()
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -109,6 +119,12 @@ export default function AppLayout() {
                     { type: 'divider' },
                     { key: 'settings', icon: <SettingOutlined />, label: 'Ustawienia', onClick: () => navigate('/settings') },
                     { key: 'about', icon: <InfoCircleOutlined />, label: 'O aplikacji', onClick: () => navigate('/about') },
+                    {
+                      key: 'feedback',
+                      icon: <CommentOutlined />,
+                      label: 'Zgłoś uwagę',
+                      onClick: () => dispatch(openFeedback()),
+                    },
                     { key: 'logout', icon: <LogoutOutlined />, label: 'Wyloguj', danger: true, onClick: logout },
                   ],
                 }}
@@ -192,7 +208,20 @@ export default function AppLayout() {
           style={{ borderInlineEnd: 0, fontSize: 16 }}
         />
         {isAuthenticated && (
-          <Button block danger icon={<LogoutOutlined />} onClick={logout} style={{ marginTop: 16 }}>
+          <Button
+            block
+            icon={<CommentOutlined />}
+            onClick={() => {
+              setDrawerOpen(false)
+              dispatch(openFeedback())
+            }}
+            style={{ marginTop: 16 }}
+          >
+            Zgłoś uwagę
+          </Button>
+        )}
+        {isAuthenticated && (
+          <Button block danger icon={<LogoutOutlined />} onClick={logout} style={{ marginTop: 12 }}>
             Wyloguj
           </Button>
         )}

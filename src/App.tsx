@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { useAppSelector } from './app/hooks'
 import AuthProvider from './features/auth/AuthProvider'
+import FeedbackModal from './features/feedback/FeedbackModal'
 import RequireRole from './features/auth/RequireRole'
 import { useResolvedTheme } from './app/useResolvedTheme'
 import { COARSE_QUERY, useMediaQuery } from './app/useMediaQuery'
@@ -33,6 +34,7 @@ export default function App() {
       <AntdApp>
         <BrowserRouter>
           <AuthProvider>
+            <FeedbackModal />
           <Routes>
             <Route element={<AppLayout />}>
               <Route index element={<Home />} />

@@ -151,3 +151,63 @@ export interface ApiTokenSummary {
 
 /** Returned once, right after creation - the plain token is never stored. */
 export type CreatedApiToken = ApiTokenSummary & { token: string }
+
+export const MANAGED_ROLES = ['admin', 'student'] as const
+export type ManagedRole = (typeof MANAGED_ROLES)[number]
+
+export interface AdminUser {
+  id: string
+  email: string | null
+  name: string | null
+  picture: string | null
+  /** Login method, e.g. google-oauth2, discord, auth0 (e-mail + password) */
+  provider: string
+  lastLogin: string | null
+  loginsCount: number
+  blocked: boolean
+  /** Only the roles managed by this app; other tenant roles are left alone. */
+  roles: ManagedRole[]
+}
+
+export interface AdminUsersPage {
+  users: AdminUser[]
+  total: number
+  page: number
+  perPage: number
+}
+
+export interface AuditEntry {
+  id: string
+  actorId: string
+  actorLabel: string | null
+  action: 'roles.update' | 'user.block' | 'user.unblock' | 'feedback.status'
+  targetId: string | null
+  targetLabel: string | null
+  details: Record<string, unknown>
+  createdAt: string
+}
+
+export type FeedbackKind = 'bug' | 'idea' | 'other'
+export type FeedbackStatus = 'new' | 'in_progress' | 'done'
+
+export interface FeedbackContext {
+  route?: string
+  appVersion?: string
+  userAgent?: string
+  viewport?: string
+  theme?: string
+  sentryEventId?: string
+  requestId?: string
+}
+
+export interface FeedbackItem {
+  id: string
+  userId: string
+  userLabel: string | null
+  kind: FeedbackKind
+  message: string
+  status: FeedbackStatus
+  context: FeedbackContext
+  createdAt: string
+  updatedAt: string
+}

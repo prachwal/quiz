@@ -5,6 +5,7 @@ import { Button, Card, Flex, Result, Spin, Typography } from 'antd'
 import { useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Sentry, sentryEnabled } from '../../app/sentry'
 import { auth0Config, authEnabled } from './config'
 import BrandMark from '../../components/BrandMark'
 import PublicShell from './PublicShell'
@@ -12,11 +13,16 @@ import { setTokenGetter } from './token'
 
 /** Publishes the token getter for the API layer and holds rendering until the SDK is ready. */
 function AuthGate({ children }: { children: ReactNode }) {
-  const { isLoading, isAuthenticated, getAccessTokenSilently } = useAuth0()
+  const { isLoading, isAuthenticated, getAccessTokenSilently, user } = useAuth0()
 
   // set during render (not in an effect) so child queries fired on mount already see the getter
   setTokenGetter(isAuthenticated ? () => getAccessTokenSilently() : null)
   useEffect(() => () => setTokenGetter(null), [])
+
+  // errors are attributed to the Auth0 user id only (no e-mail / name)
+  useEffect(() => {
+    if (sentryEnabled) Sentry.setUser(isAuthenticated && user?.sub ? { id: user.sub } : null)
+  }, [isAuthenticated, user?.sub])
 
   if (isLoading) {
     return (

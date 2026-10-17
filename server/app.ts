@@ -1,10 +1,26 @@
 import express from 'express'
 import type { ErrorRequestHandler, RequestHandler } from 'express'
+import { randomUUID } from 'node:crypto'
 import { ZodError, z } from 'zod'
 import { gradeQuiz } from '../src/shared/quiz/engine'
-import { DIFFICULTIES, POPULARITIES, generateInput, gradeInput, quizInput, tokenInput } from '../src/shared/quiz/schema'
-import * as tokens from './apiTokens'
 import {
+  DIFFICULTIES,
+  POPULARITIES,
+  blockedInput,
+  feedbackInput,
+  feedbackStatusInput,
+  generateInput,
+  gradeInput,
+  quizInput,
+  rolesInput,
+  tokenInput,
+} from '../src/shared/quiz/schema'
+import * as admin from './adminRepo'
+import * as tokens from './apiTokens'
+import * as auth0 from './auth0Management'
+import { initSentry, reportServerError } from './sentry'
+import {
+  MANAGE_USERS,
   WRITE_QUIZZES,
   authenticate,
   currentUserId,
@@ -64,8 +80,16 @@ const parseCourseId = (value: unknown) => {
 }
 
 export function createApp() {
+  initSentry()
   const app = express()
   app.disable('x-powered-by')
+  // correlate logs, Sentry events, the error screen and feedback reports
+  app.use((req, res, next) => {
+    const requestId = String(req.headers['x-nf-request-id'] ?? randomUUID())
+    res.locals.requestId = requestId
+    res.set('X-Request-Id', requestId)
+    next()
+  })
   // Responses are private and per user: no ETag / conditional GET (a 304 breaks the Netlify
   // function response adapter) and nothing should be cached by browsers or proxies.
   app.set('etag', false)
@@ -140,6 +164,99 @@ export function createApp() {
       throw new HttpError(404, 'Token not found')
     }
     res.status(204).end()
+  })
+
+  // ---- feedback (any signed-in user) -------------------------------------------------
+  router.post('/feedback', async (req, res) => {
+    const input = feedbackInput.parse(req.body)
+    const id = await admin.createFeedback({
+      userId: userOf(req),
+      userLabel: input.userLabel,
+      kind: input.kind,
+      message: input.message,
+      context: input.context,
+    })
+    res.status(201).json({ id })
+  })
+
+  // ---- admin panel: feedback, users, audit (permission manage:users, JWT sessions only) ----
+  const adminOnly = requirePermission(MANAGE_USERS)
+  const idParam = (value: unknown) => {
+    const parsed = idSchema.safeParse(value)
+    if (!parsed.success) throw new HttpError(404, 'Not found')
+    return parsed.data
+  }
+
+  router.get('/admin/feedback', adminOnly, async (req, res) => {
+    const status = z.enum(['new', 'in_progress', 'done']).optional().parse(req.query.status)
+    res.json(await admin.listFeedback(status))
+  })
+
+  router.patch('/admin/feedback/:id', adminOnly, async (req, res) => {
+    const { status } = feedbackStatusInput.parse(req.body)
+    const item = await admin.setFeedbackStatus(idParam(req.params.id), status)
+    if (!item) throw new HttpError(404, 'Feedback not found')
+    await admin.writeAudit({
+      actorId: userOf(req),
+      actorLabel: await auth0.userLabel(userOf(req)),
+      action: 'feedback.status',
+      targetId: item.id,
+      targetLabel: item.message.slice(0, 80),
+      details: { status },
+    })
+    res.json(item)
+  })
+
+  router.get('/admin/users', adminOnly, async (req, res) => {
+    const { q, page } = z
+      .object({ q: z.string().max(100).default(''), page: z.coerce.number().int().min(0).max(1000).default(0) })
+      .parse(req.query)
+    res.json(await auth0.listUsers(q, page, 20))
+  })
+
+  router.put('/admin/users/:id/roles', adminOnly, async (req, res) => {
+    const targetId = String(req.params.id)
+    const { roles } = rolesInput.parse(req.body)
+    const desired = [...new Set(roles)]
+    const target = await auth0.getUser(targetId)
+    const removingAdmin = target.roles.includes('admin') && !desired.includes('admin')
+    if (removingAdmin) {
+      if (targetId === userOf(req)) throw new HttpError(409, 'Nie możesz odebrać sobie roli admin')
+      if ((await auth0.countAdmins()) <= 1) throw new HttpError(409, 'Nie można odebrać roli ostatniemu adminowi')
+    }
+    await auth0.setManagedRoles(targetId, target.roles, desired)
+    await admin.writeAudit({
+      actorId: userOf(req),
+      actorLabel: await auth0.userLabel(userOf(req)),
+      action: 'roles.update',
+      targetId,
+      targetLabel: target.email ?? target.name,
+      details: { from: target.roles, to: desired },
+    })
+    res.json({ ...target, roles: desired })
+  })
+
+  router.patch('/admin/users/:id/blocked', adminOnly, async (req, res) => {
+    const targetId = String(req.params.id)
+    const { blocked } = blockedInput.parse(req.body)
+    if (blocked && targetId === userOf(req)) throw new HttpError(409, 'Nie możesz zablokować własnego konta')
+    const target = await auth0.getUser(targetId)
+    if (blocked && target.roles.includes('admin') && (await auth0.countAdmins()) <= 1) {
+      throw new HttpError(409, 'Nie można zablokować ostatniego admina')
+    }
+    await auth0.setBlocked(targetId, blocked)
+    await admin.writeAudit({
+      actorId: userOf(req),
+      actorLabel: await auth0.userLabel(userOf(req)),
+      action: blocked ? 'user.block' : 'user.unblock',
+      targetId,
+      targetLabel: target.email ?? target.name,
+    })
+    res.json({ ...target, blocked })
+  })
+
+  router.get('/admin/audit', adminOnly, async (_req, res) => {
+    res.json(await admin.listAudit())
   })
 
   router.get('/irregular-verbs', async (req, res) => {
@@ -270,7 +387,8 @@ export function createApp() {
     res.status(404).json({ error: 'Not found' })
   }) satisfies RequestHandler)
 
-  app.use(((error, _req, res, _next) => {
+  app.use((async (error, req, res, _next) => {
+    const requestId = String(res.locals.requestId ?? '')
     if (error instanceof ZodError) {
       res.status(400).json({
         error: 'Validation failed',
@@ -278,11 +396,30 @@ export function createApp() {
       })
     } else if (error instanceof HttpError) {
       res.status(error.status).json({ error: error.message })
+    } else if (error instanceof auth0.ManagementError) {
+      res.status(error.status).json({ error: error.message, requestId })
     } else if (error instanceof SyntaxError) {
       res.status(400).json({ error: 'Invalid JSON body' })
     } else {
-      console.error(error)
-      res.status(500).json({ error: 'Internal server error' })
+      // unexpected: structured log + Sentry; the client gets the request id to quote in a report
+      console.error(
+        JSON.stringify({
+          level: 'error',
+          requestId,
+          method: req.method,
+          path: req.path,
+          userId: currentUserId(req),
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        }),
+      )
+      const eventId = await reportServerError(error, {
+        requestId,
+        userId: currentUserId(req),
+        method: req.method,
+        path: req.path,
+      })
+      res.status(500).json({ error: 'Internal server error', requestId, eventId })
     }
   }) satisfies ErrorRequestHandler)
 

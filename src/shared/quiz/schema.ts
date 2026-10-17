@@ -58,3 +58,30 @@ export const tokenInput = z.object({
 })
 
 export type TokenInput = z.input<typeof tokenInput>
+
+const shortText = (max: number) => z.string().trim().max(max).optional()
+
+export const feedbackInput = z.object({
+  kind: z.enum(['bug', 'idea', 'other']),
+  message: z.string().trim().min(3, 'Opisz uwagę (min. 3 znaki)').max(2000),
+  userLabel: shortText(120),
+  /** Diagnostics attached by the app; every field is optional and length-limited. */
+  context: z
+    .object({
+      route: shortText(300),
+      appVersion: shortText(80),
+      userAgent: shortText(300),
+      viewport: shortText(40),
+      theme: shortText(20),
+      sentryEventId: shortText(64),
+      requestId: shortText(80),
+    })
+    .default({}),
+})
+
+export type FeedbackInput = z.input<typeof feedbackInput>
+
+export const feedbackStatusInput = z.object({ status: z.enum(['new', 'in_progress', 'done']) })
+
+export const rolesInput = z.object({ roles: z.array(z.enum(['admin', 'student'])).max(2) })
+export const blockedInput = z.object({ blocked: z.boolean() })
