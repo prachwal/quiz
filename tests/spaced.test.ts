@@ -43,3 +43,25 @@ test('accuracy is null without attempts', () => {
   assert.equal(accuracy({ attempts: 0, correct: 0 }), null)
   assert.equal(accuracy({ attempts: 4, correct: 3 }), 0.75)
 })
+
+test('newReviewState starts at box 0 with zeros', () => {
+  assert.deepEqual(newReviewState(), { box: 0, repetitions: 0, lapses: 0, attempts: 0, correct: 0 })
+})
+
+test('accuracy returns null with no attempts', () => {
+  assert.equal(accuracy({ attempts: 0, correct: 0 }), null)
+})
+
+test('accuracy returns ratio', () => {
+  assert.equal(accuracy({ attempts: 4, correct: 2 }), 0.5)
+})
+
+test('BOX_INTERVAL_DAYS has 7 entries and MAX_BOX is 6', () => {
+  assert.equal(BOX_INTERVAL_DAYS.length, 7)
+  assert.equal(MAX_BOX, 6)
+})
+
+test('correct answer increments box but caps at MAX_BOX', () => {
+  const next = nextReview({ box: MAX_BOX, repetitions: 1, lapses: 0, attempts: 1, correct: 1 }, true, new Date('2026-06-10T10:00:00Z'))
+  assert.equal(next.box, MAX_BOX)
+})

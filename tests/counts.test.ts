@@ -17,3 +17,14 @@ test('valid counts pass through', () => {
   assert.equal(clampCount(10, GENERATE_COUNT), 10)
   assert.equal(clampCount(1, REVIEW_COUNT), 1)
 })
+
+test('count limits constants', () => {
+  assert.deepEqual(GENERATE_COUNT, { min: 5, max: 50 })
+  assert.deepEqual(EXAM_COUNT, { min: 5, max: 40 })
+  assert.deepEqual(REVIEW_COUNT, { min: 1, max: 30 })
+})
+
+test('clampCount rounds and clamps lower bound', () => {
+  assert.equal(clampCount(4.6, GENERATE_COUNT), 5)
+  assert.equal(clampCount(0, REVIEW_COUNT), 1)
+})

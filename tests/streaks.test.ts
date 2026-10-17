@@ -59,3 +59,23 @@ test('isValidTimeZone', () => {
   assert.equal(isValidTimeZone('Europe/Warsaw'), true)
   assert.equal(isValidTimeZone('Mars/Olympus'), false)
 })
+
+test('isValidTimeZone validates zones', () => {
+  assert.equal(isValidTimeZone('Europe/Warsaw'), true)
+  assert.equal(isValidTimeZone('Not/AZone'), false)
+})
+
+test('isActiveDay counts answered or lessons', () => {
+  assert.equal(isActiveDay({ answered: 0, lessons: 0 }), false)
+  assert.equal(isActiveDay({ answered: 1, lessons: 0 }), true)
+  assert.equal(isActiveDay({ answered: 0, lessons: 1 }), true)
+})
+
+test('lastSevenDays fills zeros for missing days', () => {
+  const today = '2026-06-10'
+  const byDay = new Map([['2026-06-10', { day: '2026-06-10', answered: 2, correct: 1, lessons: 0 }]])
+  const res = lastSevenDays(byDay, today)
+  assert.equal(res.length, 7)
+  assert.equal(res[6].answered, 2)
+  assert.equal(res[0].answered, 0)
+})

@@ -36,3 +36,36 @@ test('accuracyOf treats no attempts as perfect', () => {
   assert.equal(accuracyOf({ attempts: 0, correct: 0 }), 1)
   assert.equal(accuracyOf({ attempts: 4, correct: 1 }), 0.25)
 })
+
+import { MIN_ATTEMPTS, WEAK_ACCURACY, RECOVERED_BOX } from '../src/shared/quiz/weak.ts'
+
+test('constants have expected values', () => {
+  assert.equal(MIN_ATTEMPTS, 3)
+  assert.equal(WEAK_ACCURACY, 0.75)
+  assert.equal(RECOVERED_BOX, 4)
+})
+
+test('isWeak false when not enough attempts', () => {
+  assert.equal(isWeak({ attempts: 2, correct: 0, box: 0, lastWrongAt: null }), false)
+})
+
+test('isWeak false when accuracy is high', () => {
+  assert.equal(isWeak({ attempts: 4, correct: 4, box: 0, lastWrongAt: null }), false)
+})
+
+test('isWeak false when recovered (box >= 4)', () => {
+  assert.equal(isWeak({ attempts: 4, correct: 1, box: 4, lastWrongAt: null }), false)
+})
+
+test('rankWeak respects limit 0', () => {
+  const items = [{ id: 'a', attempts: 4, correct: 1, box: 0, lastWrongAt: '2026-06-01' }]
+  assert.deepEqual(rankWeak(items, 0), [])
+})
+
+test('rankWeak sorts by most recent mistake when accuracy and attempts tie', () => {
+  const items = [
+    { id: 'a', attempts: 4, correct: 2, box: 0, lastWrongAt: '2026-06-01' },
+    { id: 'b', attempts: 4, correct: 2, box: 0, lastWrongAt: '2026-06-09' },
+  ]
+  assert.deepEqual(rankWeak(items, 10).map((i) => i.id), ['b', 'a'])
+})
