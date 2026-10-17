@@ -14,8 +14,14 @@ export const loadSettings = (): SettingsState => {
         ? saved.themeMode!
         : defaultSettings.themeMode,
       compact: typeof saved.compact === 'boolean' ? saved.compact : defaultSettings.compact,
-      showShareBar:
-        typeof saved.showShareBar === 'boolean' ? saved.showShareBar : defaultSettings.showShareBar,
+      showExplanations:
+        typeof saved.showExplanations === 'boolean'
+          ? saved.showExplanations
+          : defaultSettings.showExplanations,
+      shuffleQuestions:
+        typeof saved.shuffleQuestions === 'boolean'
+          ? saved.shuffleQuestions
+          : defaultSettings.shuffleQuestions,
     }
   } catch {
     return defaultSettings

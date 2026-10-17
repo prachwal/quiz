@@ -3,7 +3,8 @@ import { useAppDispatch, useAppSelector } from '../app/hooks'
 import {
   resetSettings,
   setCompact,
-  setShowShareBar,
+  setShowExplanations,
+  setShuffleQuestions,
   setThemeMode,
 } from '../features/settings/settingsSlice'
 import type { ThemeMode } from '../features/settings/settingsSlice'
@@ -36,8 +37,17 @@ export default function Settings() {
           <Form.Item label="Kompaktowy układ">
             <Switch checked={settings.compact} onChange={(v) => dispatch(setCompact(v))} />
           </Form.Item>
-          <Form.Item label="Pasek udziału masy w tabeli planet">
-            <Switch checked={settings.showShareBar} onChange={(v) => dispatch(setShowShareBar(v))} />
+          <Form.Item label="Pokazuj wyjaśnienia po zakończeniu quizu">
+            <Switch
+              checked={settings.showExplanations}
+              onChange={(v) => dispatch(setShowExplanations(v))}
+            />
+          </Form.Item>
+          <Form.Item label="Losowa kolejność pytań w quizie">
+            <Switch
+              checked={settings.shuffleQuestions}
+              onChange={(v) => dispatch(setShuffleQuestions(v))}
+            />
           </Form.Item>
           <Button danger onClick={() => dispatch(resetSettings())}>
             Przywróć domyślne

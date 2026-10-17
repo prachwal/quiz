@@ -12,10 +12,10 @@
   publish = "dist"
   autoLaunch = false
 
-# /api/planets -> /.netlify/functions/planets
+# /api/* -> the Express app in netlify/functions/api.mts
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions/:splat"
+  to = "/.netlify/functions/api/:splat"
   status = 200
 
 # SPA fallback for client-side routes (must come after the /api rule)

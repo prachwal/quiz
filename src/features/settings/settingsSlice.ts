@@ -6,13 +6,15 @@ export type ThemeMode = 'light' | 'dark' | 'system'
 export interface SettingsState {
   themeMode: ThemeMode
   compact: boolean
-  showShareBar: boolean
+  showExplanations: boolean
+  shuffleQuestions: boolean
 }
 
 export const defaultSettings: SettingsState = {
   themeMode: 'system',
   compact: false,
-  showShareBar: true,
+  showExplanations: true,
+  shuffleQuestions: false,
 }
 
 const settingsSlice = createSlice({
@@ -25,13 +27,16 @@ const settingsSlice = createSlice({
     setCompact(state, action: PayloadAction<boolean>) {
       state.compact = action.payload
     },
-    setShowShareBar(state, action: PayloadAction<boolean>) {
-      state.showShareBar = action.payload
+    setShowExplanations(state, action: PayloadAction<boolean>) {
+      state.showExplanations = action.payload
+    },
+    setShuffleQuestions(state, action: PayloadAction<boolean>) {
+      state.shuffleQuestions = action.payload
     },
     resetSettings: () => defaultSettings,
     hydrateSettings: (_state, action: PayloadAction<SettingsState>) => action.payload,
   },
 })
 
-export const { setThemeMode, setCompact, setShowShareBar, resetSettings, hydrateSettings } = settingsSlice.actions
+export const { setThemeMode, setCompact, setShowExplanations, setShuffleQuestions, resetSettings, hydrateSettings } = settingsSlice.actions
 export default settingsSlice.reducer

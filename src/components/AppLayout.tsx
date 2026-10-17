@@ -5,7 +5,10 @@ import { Link, Outlet, useLocation } from 'react-router-dom'
 const { Header, Content, Footer } = Layout
 
 const items = [
-  { key: '/', label: <Link to="/">Home</Link> },
+  { key: '/', label: <Link to="/">Quizy</Link> },
+  { key: '/learn', label: <Link to="/learn">Nauka</Link> },
+  { key: '/verbs', label: <Link to="/verbs">Czasowniki</Link> },
+  { key: '/results', label: <Link to="/results">Wyniki</Link> },
   { key: '/about', label: <Link to="/about">About</Link> },
   { key: '/settings', label: <Link to="/settings">Settings</Link> },
 ]
