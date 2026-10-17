@@ -2,15 +2,19 @@ import express from 'express'
 import type { ErrorRequestHandler, RequestHandler } from 'express'
 import { randomUUID } from 'node:crypto'
 import { ZodError, z } from 'zod'
+import { reportToCsv } from '../src/shared/quiz/csv'
 import { gradeQuiz } from '../src/shared/quiz/engine'
 import {
   DIFFICULTIES,
   POPULARITIES,
+  assignmentInput,
   blockedInput,
+  classInput,
   feedbackInput,
   feedbackStatusInput,
   generateInput,
   gradeInput,
+  joinInput,
   profileInput,
   quizInput,
   retryWrongInput,
@@ -21,15 +25,18 @@ import {
 import * as admin from './adminRepo'
 import * as progress from './progressRepo'
 import * as reviews from './reviewsRepo'
+import * as classes from './classesRepo'
 import * as tokens from './apiTokens'
 import * as auth0 from './auth0Management'
 import { initSentry, reportServerError } from './sentry'
 import {
+  MANAGE_CLASSES,
   MANAGE_USERS,
   WRITE_QUIZZES,
   authenticate,
   currentUserId,
   hasPermission,
+  identityOf,
   requireAuthenticated,
   requireJwt,
   requirePermission,
@@ -220,6 +227,114 @@ export function createApp() {
     res.json({ ok: true })
   })
 
+  const idParam = (value: unknown) => {
+    const parsed = idSchema.safeParse(value)
+    if (!parsed.success) throw new HttpError(404, 'Not found')
+    return parsed.data
+  }
+
+  // ---- classes: student side (any signed-in user) -------------------------------------
+  router.post('/classes/join', async (req, res) => {
+    const { code } = joinInput.parse(req.body)
+    const identity = identityOf(req)
+    if (identity?.via === 'jwt') await progress.syncIdentity(identity.userId, identity)
+    const joined = await classes.joinClass(userOf(req), code)
+    if (!joined) throw new HttpError(404, 'Nie znaleziono klasy o takim kodzie')
+    res.status(201).json(joined)
+  })
+
+  router.get('/my/classes', async (req, res) => {
+    res.json(await classes.listMyClasses(userOf(req)))
+  })
+
+  router.delete('/my/classes/:id', async (req, res) => {
+    if (!(await classes.leaveClass(userOf(req), idParam(req.params.id)))) throw new HttpError(404, 'Class not found')
+    res.json({ ok: true })
+  })
+
+  router.get('/my/assignments', async (req, res) => {
+    res.json(await classes.myAssignments(userOf(req)))
+  })
+
+  // ---- classes: teacher side (permission manage:classes; a class is visible only to its owner) ----
+  const teacherOnly = requirePermission(MANAGE_CLASSES)
+  const ownedClass = async (req: Parameters<typeof userOf>[0] & { params: Record<string, unknown> }) => {
+    const found = await classes.getClass(idParam(req.params.id), userOf(req))
+    if (!found) throw new HttpError(404, 'Class not found')
+    return found
+  }
+
+  router.get('/classes', teacherOnly, async (req, res) => {
+    res.json(await classes.listClasses(userOf(req)))
+  })
+
+  router.post('/classes', teacherOnly, async (req, res) => {
+    const { name } = classInput.parse(req.body)
+    res.status(201).json(await classes.createClass(userOf(req), name))
+  })
+
+  router.get('/classes/:id', teacherOnly, async (req, res) => {
+    const cls = await ownedClass(req)
+    const [members, assignments] = await Promise.all([classes.listMembers(cls.id), classes.listAssignments(cls.id)])
+    res.json({ ...cls, members, assignments })
+  })
+
+  router.patch('/classes/:id', teacherOnly, async (req, res) => {
+    const cls = await ownedClass(req)
+    const { name } = classInput.parse(req.body)
+    await classes.renameClass(cls.id, userOf(req), name)
+    res.json({ ...cls, name })
+  })
+
+  router.delete('/classes/:id', teacherOnly, async (req, res) => {
+    const cls = await ownedClass(req)
+    await classes.archiveClass(cls.id, userOf(req))
+    res.json({ ok: true })
+  })
+
+  router.post('/classes/:id/code', teacherOnly, async (req, res) => {
+    const cls = await ownedClass(req)
+    const code = await classes.regenerateCode(cls.id, userOf(req))
+    if (!code) throw new HttpError(503, 'Nie udało się wygenerować kodu, spróbuj ponownie')
+    res.json({ joinCode: code })
+  })
+
+  router.delete('/classes/:id/members/:userId', teacherOnly, async (req, res) => {
+    const cls = await ownedClass(req)
+    if (!(await classes.removeMember(cls.id, String(req.params.userId)))) throw new HttpError(404, 'Member not found')
+    res.json({ ok: true })
+  })
+
+  router.post('/classes/:id/assignments', teacherOnly, async (req, res) => {
+    const cls = await ownedClass(req)
+    const input = assignmentInput.parse(req.body)
+    const created = await classes.createAssignment(cls.id, userOf(req), input)
+    if (!created) throw new HttpError(404, 'Nie znaleziono wskazanego kursu lub quizu')
+    res.status(201).json(created)
+  })
+
+  router.delete('/classes/:id/assignments/:assignmentId', teacherOnly, async (req, res) => {
+    const cls = await ownedClass(req)
+    if (!(await classes.deleteAssignment(cls.id, idParam(req.params.assignmentId)))) {
+      throw new HttpError(404, 'Assignment not found')
+    }
+    res.json({ ok: true })
+  })
+
+  router.get('/classes/:id/report', teacherOnly, async (req, res) => {
+    const cls = await ownedClass(req)
+    res.json(await classes.classReport(cls.id))
+  })
+
+  router.get('/classes/:id/report.csv', teacherOnly, async (req, res) => {
+    const cls = await ownedClass(req)
+    const csv = reportToCsv(await classes.classReport(cls.id))
+    res
+      .type('text/csv; charset=utf-8')
+      .set('Content-Disposition', 'attachment; filename="raport-klasy.csv"')
+      .send(`\ufeff${csv}`) // BOM so Excel reads Polish characters correctly
+  })
+
   // ---- feedback (any signed-in user) -------------------------------------------------
   router.post('/feedback', async (req, res) => {
     const input = feedbackInput.parse(req.body)
@@ -235,12 +350,6 @@ export function createApp() {
 
   // ---- admin panel: feedback, users, audit (permission manage:users, JWT sessions only) ----
   const adminOnly = requirePermission(MANAGE_USERS)
-  const idParam = (value: unknown) => {
-    const parsed = idSchema.safeParse(value)
-    if (!parsed.success) throw new HttpError(404, 'Not found')
-    return parsed.data
-  }
-
   router.get('/admin/feedback', adminOnly, async (req, res) => {
     const status = z.enum(['new', 'in_progress', 'done']).optional().parse(req.query.status)
     res.json(await admin.listFeedback(status))
@@ -351,6 +460,8 @@ export function createApp() {
   })
 
   router.get('/progress/summary', async (req, res) => {
+    const identity = identityOf(req)
+    if (identity?.via === 'jwt') await progress.syncIdentity(identity.userId, identity)
     res.json(await progress.getSummary(userOf(req)))
   })
 

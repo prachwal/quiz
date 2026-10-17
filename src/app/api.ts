@@ -5,6 +5,12 @@ import type { QuizInput } from '../shared/quiz/schema'
 import type { FeedbackInput, GenerateInput, TokenInput } from '../shared/quiz/schema'
 import type {
   AdminUser,
+  AssignmentItem,
+  ClassDetail,
+  ClassReport,
+  ClassSummary,
+  MyAssignment,
+  MyClass,
   ProgressSummary,
   ReviewSummary,
   WeakVerb,
@@ -38,7 +44,7 @@ export const api = createApi({
       return headers
     },
   }),
-  tagTypes: ['Quiz', 'Attempt', 'Course', 'Token', 'AdminUsers', 'Feedback', 'Audit', 'Progress', 'Review'],
+  tagTypes: ['Quiz', 'Attempt', 'Course', 'Token', 'AdminUsers', 'Feedback', 'Audit', 'Progress', 'Review', 'Class', 'MyClass'],
   endpoints: (build) => ({
     listQuizzes: build.query<QuizSummary[], { difficulty?: DifficultyCode; sort?: 'recent' | 'popular' } | void>({
       query: (params) => ({ url: 'quizzes', params: params ?? undefined }),
@@ -129,6 +135,67 @@ export const api = createApi({
       query: () => 'admin/audit',
       providesTags: ['Audit'],
     }),
+    listClasses: build.query<ClassSummary[], void>({
+      query: () => 'classes',
+      providesTags: ['Class'],
+    }),
+    createClass: build.mutation<ClassSummary, { name: string }>({
+      query: (body) => ({ url: 'classes', method: 'POST', body }),
+      invalidatesTags: ['Class'],
+    }),
+    getClass: build.query<ClassDetail, string>({
+      query: (id) => `classes/${id}`,
+      providesTags: ['Class'],
+    }),
+    archiveClass: build.mutation<void, string>({
+      query: (id) => ({ url: `classes/${id}`, method: 'DELETE' }),
+      invalidatesTags: ['Class'],
+    }),
+    regenerateClassCode: build.mutation<{ joinCode: string }, string>({
+      query: (id) => ({ url: `classes/${id}/code`, method: 'POST' }),
+      invalidatesTags: ['Class'],
+    }),
+    removeClassMember: build.mutation<void, { classId: string; userId: string }>({
+      query: ({ classId, userId }) => ({
+        url: `classes/${classId}/members/${encodeURIComponent(userId)}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Class'],
+    }),
+    createAssignment: build.mutation<
+      AssignmentItem,
+      { classId: string; kind: 'course' | 'quiz'; courseId?: string; quizId?: string; dueAt?: string | null }
+    >({
+      query: ({ classId, ...body }) => ({ url: `classes/${classId}/assignments`, method: 'POST', body }),
+      invalidatesTags: ['Class', 'MyClass'],
+    }),
+    deleteAssignment: build.mutation<void, { classId: string; assignmentId: string }>({
+      query: ({ classId, assignmentId }) => ({
+        url: `classes/${classId}/assignments/${assignmentId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Class', 'MyClass'],
+    }),
+    getClassReport: build.query<ClassReport, string>({
+      query: (id) => `classes/${id}/report`,
+      providesTags: ['Class'],
+    }),
+    joinClass: build.mutation<MyClass, { code: string }>({
+      query: (body) => ({ url: 'classes/join', method: 'POST', body }),
+      invalidatesTags: ['MyClass'],
+    }),
+    listMyClasses: build.query<MyClass[], void>({
+      query: () => 'my/classes',
+      providesTags: ['MyClass'],
+    }),
+    leaveClass: build.mutation<void, string>({
+      query: (id) => ({ url: `my/classes/${id}`, method: 'DELETE' }),
+      invalidatesTags: ['MyClass'],
+    }),
+    listMyAssignments: build.query<MyAssignment[], void>({
+      query: () => 'my/assignments',
+      providesTags: ['MyClass', 'Course', 'Attempt'],
+    }),
     getWeakVerbs: build.query<WeakVerb[], { limit?: number } | void>({
       query: (params) => ({ url: 'progress/weak-verbs', params: params ?? undefined }),
       providesTags: ['Review'],
@@ -172,7 +239,7 @@ export const api = createApi({
         url: `courses/${courseId}/lessons/${lessonId}/complete`,
         method: 'POST',
       }),
-      invalidatesTags: ['Course', 'Progress', 'Review'],
+      invalidatesTags: ['Course', 'Progress', 'Review', 'Class', 'MyClass'],
     }),
     startExam: build.mutation<QuizDetail, { courseId: string; count?: number }>({
       query: ({ courseId, count }) => ({ url: `courses/${courseId}/exam`, method: 'POST', body: { count } }),
@@ -204,6 +271,19 @@ export const {
   useSetUserRolesMutation,
   useSetUserBlockedMutation,
   useListAuditQuery,
+  useListClassesQuery,
+  useCreateClassMutation,
+  useGetClassQuery,
+  useArchiveClassMutation,
+  useRegenerateClassCodeMutation,
+  useRemoveClassMemberMutation,
+  useCreateAssignmentMutation,
+  useDeleteAssignmentMutation,
+  useGetClassReportQuery,
+  useJoinClassMutation,
+  useListMyClassesQuery,
+  useLeaveClassMutation,
+  useListMyAssignmentsQuery,
   useGetWeakVerbsQuery,
   useRetryWrongMutation,
   useGetReviewSummaryQuery,

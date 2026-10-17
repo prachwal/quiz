@@ -8,7 +8,7 @@ import { useAuth } from '../auth/useAuth'
 import { MANAGED_ROLES } from '../../shared/quiz/types'
 import type { AdminUser, ManagedRole } from '../../shared/quiz/types'
 
-const ROLE_LABELS: Record<ManagedRole, string> = { admin: 'Admin', student: 'Student' }
+const ROLE_LABELS: Record<ManagedRole, string> = { admin: 'Admin', teacher: 'Nauczyciel', student: 'Student' }
 
 const PROVIDERS: Record<string, string> = {
   'google-oauth2': 'Google',
@@ -134,7 +134,7 @@ export default function UsersAdmin() {
       <Alert
         type="info"
         showIcon
-        title="Zarządzasz rolami Admin i Student"
+        title="Zarządzasz rolami Admin, Nauczyciel i Student"
         description="Inne role z tenanta Auth0 pozostają bez zmian. Użytkownik zobaczy nową rolę po ponownym zalogowaniu."
       />
       <Input.Search

@@ -10,6 +10,9 @@ import { useResolvedTheme } from './app/useResolvedTheme'
 import { COARSE_QUERY, useMediaQuery } from './app/useMediaQuery'
 import AppLayout from './components/AppLayout'
 import About from './pages/About'
+import Assignments from './pages/Assignments'
+import ClassDetail from './pages/ClassDetail'
+import Classes from './pages/Classes'
 import CourseView from './pages/CourseView'
 import Home from './pages/Home'
 import Learn from './pages/Learn'
@@ -44,6 +47,9 @@ export default function App() {
               <Route path="learn" element={<Learn />} />
               <Route path="learn/:courseId" element={<CourseView />} />
               <Route path="learn/:courseId/lessons/:lessonId" element={<LessonView />} />
+              <Route path="assignments" element={<Assignments />} />
+              <Route path="classes" element={<RequireRole role="teacher"><Classes /></RequireRole>} />
+              <Route path="classes/:id" element={<RequireRole role="teacher"><ClassDetail /></RequireRole>} />
               <Route path="verbs" element={<Verbs />} />
               <Route path="results" element={<Results />} />
               <Route path="about" element={<About />} />

@@ -87,7 +87,7 @@ export type FeedbackInput = z.input<typeof feedbackInput>
 
 export const feedbackStatusInput = z.object({ status: z.enum(['new', 'in_progress', 'done']) })
 
-export const rolesInput = z.object({ roles: z.array(z.enum(['admin', 'student'])).max(2) })
+export const rolesInput = z.object({ roles: z.array(z.enum(['admin', 'teacher', 'student'])).max(3) })
 export const blockedInput = z.object({ blocked: z.boolean() })
 
 export const profileInput = z
@@ -100,3 +100,22 @@ export const profileInput = z
 export const reviewSessionInput = z.object({ count: z.number().int().min(1).max(30).default(10) })
 
 export const retryWrongInput = z.object({ questionIds: z.array(z.string().uuid()).min(1).max(60) })
+
+export const classInput = z.object({ name: z.string().trim().min(2, 'Nazwa klasy (min. 2 znaki)').max(80) })
+
+export const joinInput = z.object({
+  code: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z0-9]{6}$/, 'Kod klasy ma 6 znaków'),
+})
+
+export const assignmentInput = z
+  .object({
+    kind: z.enum(['course', 'quiz']),
+    courseId: z.string().uuid().optional(),
+    quizId: z.string().uuid().optional(),
+    dueAt: z.string().datetime().nullish(),
+  })
+  .refine((v) => (v.kind === 'course' ? Boolean(v.courseId) : Boolean(v.quizId)), 'Wybierz kurs lub quiz')

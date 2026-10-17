@@ -72,3 +72,17 @@ export async function getSummary(userId: string): Promise<ProgressSummary> {
     last7: week,
   }
 }
+
+/** Stores the name / e-mail from the verified token so teachers can recognise their students. */
+export async function syncIdentity(userId: string, identity: { name?: string; email?: string }) {
+  if (!identity.name && !identity.email) return
+  await pool().query(
+    `INSERT INTO user_profiles (user_id, display_name, email) VALUES ($1, $2, $3)
+     ON CONFLICT (user_id) DO UPDATE SET
+       display_name = COALESCE($2, user_profiles.display_name),
+       email = COALESCE($3, user_profiles.email)
+     WHERE user_profiles.display_name IS DISTINCT FROM COALESCE($2, user_profiles.display_name)
+        OR user_profiles.email IS DISTINCT FROM COALESCE($3, user_profiles.email)`,
+    [userId, identity.name ?? null, identity.email ?? null],
+  )
+}

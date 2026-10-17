@@ -152,7 +152,7 @@ export interface ApiTokenSummary {
 /** Returned once, right after creation - the plain token is never stored. */
 export type CreatedApiToken = ApiTokenSummary & { token: string }
 
-export const MANAGED_ROLES = ['admin', 'student'] as const
+export const MANAGED_ROLES = ['admin', 'teacher', 'student'] as const
 export type ManagedRole = (typeof MANAGED_ROLES)[number]
 
 export interface AdminUser {
@@ -240,4 +240,72 @@ export interface WeakVerb {
   /** Share of correct answers, 0..1. */
   accuracy: number
   lastWrongAt: string | null
+}
+
+export interface ClassSummary {
+  id: string
+  name: string
+  joinCode: string
+  memberCount: number
+  assignmentCount: number
+  archived: boolean
+  createdAt: string
+}
+
+export interface ClassMember {
+  userId: string
+  name: string | null
+  email: string | null
+  joinedAt: string
+}
+
+export interface AssignmentItem {
+  id: string
+  classId: string
+  kind: 'course' | 'quiz'
+  courseId: string | null
+  quizId: string | null
+  title: string
+  dueAt: string | null
+  createdAt: string
+}
+
+export type AssignmentStatus = 'todo' | 'in_progress' | 'done'
+
+/** An assignment as seen by a student, with their progress. */
+export interface MyAssignment extends AssignmentItem {
+  className: string
+  status: AssignmentStatus
+  overdue: boolean
+  /** e.g. completed lessons / total (course) or best percent (quiz) */
+  detail: string
+}
+
+export interface MyClass {
+  id: string
+  name: string
+  joinedAt: string
+}
+
+export interface ClassReportRow {
+  userId: string
+  name: string | null
+  email: string | null
+  lessonsCompleted: number
+  lastActiveDay: string | null
+  weakVerbs: number
+  /** assignment id -> status */
+  statuses: Record<string, AssignmentStatus>
+  /** assignment id -> best percent (null when never attempted / not applicable) */
+  bestPercent: Record<string, number | null>
+}
+
+export interface ClassReport {
+  assignments: AssignmentItem[]
+  rows: ClassReportRow[]
+}
+
+export interface ClassDetail extends ClassSummary {
+  members: ClassMember[]
+  assignments: AssignmentItem[]
 }

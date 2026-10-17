@@ -14,6 +14,7 @@ export function useAuth() {
     enabled: authEnabled,
     roles,
     isAdmin: roles.includes('admin'),
+    isTeacher: roles.includes('teacher'),
     isAuthenticated: authEnabled && auth0.isAuthenticated,
     user,
     logout: () => auth0.logout({ logoutParams: { returnTo: window.location.origin } }),

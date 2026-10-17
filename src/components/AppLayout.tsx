@@ -1,6 +1,8 @@
 import {
   CommentOutlined,
   DownOutlined,
+  ProfileOutlined,
+  TeamOutlined,
   InfoCircleOutlined,
   LogoutOutlined,
   MenuOutlined,
@@ -35,7 +37,7 @@ export default function AppLayout() {
   const vars = useThemeVars()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const pageRef = useRef<HTMLDivElement>(null)
-  const { isAuthenticated, user, roles, logout } = useAuth()
+  const { isAuthenticated, user, roles, isTeacher, logout } = useAuth()
   const selected = selectedNavKey(pathname)
   const displayName = user?.name ?? user?.email
   useDocumentTheme(useResolvedTheme() === 'dark')
@@ -121,6 +123,10 @@ export default function AppLayout() {
                       ),
                     },
                     { type: 'divider' },
+                    { key: 'assignments', icon: <ProfileOutlined />, label: 'Moje zadania', onClick: () => navigate('/assignments') },
+                    ...(isTeacher
+                      ? [{ key: 'classes', icon: <TeamOutlined />, label: 'Klasy', onClick: () => navigate('/classes') }]
+                      : []),
                     { key: 'settings', icon: <SettingOutlined />, label: 'Ustawienia', onClick: () => navigate('/settings') },
                     { key: 'about', icon: <InfoCircleOutlined />, label: 'O aplikacji', onClick: () => navigate('/about') },
                     {
@@ -211,6 +217,32 @@ export default function AppLayout() {
           }}
           style={{ borderInlineEnd: 0, fontSize: 16 }}
         />
+        {isAuthenticated && (
+          <Button
+            block
+            icon={<ProfileOutlined />}
+            onClick={() => {
+              setDrawerOpen(false)
+              navigate('/assignments')
+            }}
+            style={{ marginTop: 16 }}
+          >
+            Moje zadania
+          </Button>
+        )}
+        {isAuthenticated && isTeacher && (
+          <Button
+            block
+            icon={<TeamOutlined />}
+            onClick={() => {
+              setDrawerOpen(false)
+              navigate('/classes')
+            }}
+            style={{ marginTop: 12 }}
+          >
+            Klasy
+          </Button>
+        )}
         {isAuthenticated && (
           <Button
             block

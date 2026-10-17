@@ -11,6 +11,9 @@ export interface Identity {
   userId: string
   permissions: string[]
   via: 'jwt' | 'token'
+  /** From the verified token (custom claims added by the Auth0 Action); JWT sessions only. */
+  name?: string
+  email?: string
 }
 
 const identities = new WeakMap<Request, Identity>()
@@ -53,7 +56,13 @@ export const authenticate: RequestHandler = async (req, res, next) => {
     const payload = req.auth?.payload
     if (payload?.sub) {
       const permissions = Array.isArray(payload.permissions) ? (payload.permissions as string[]) : []
-      identities.set(req, { userId: payload.sub, permissions, via: 'jwt' })
+      identities.set(req, {
+        userId: payload.sub,
+        permissions,
+        via: 'jwt',
+        name: typeof payload['https://quiz.local/name'] === 'string' ? (payload['https://quiz.local/name'] as string) : undefined,
+        email: typeof payload['https://quiz.local/email'] === 'string' ? (payload['https://quiz.local/email'] as string) : undefined,
+      })
     }
     next()
   })
@@ -83,6 +92,8 @@ export const requireJwt: RequestHandler = (req, res, next) => {
 
 /** Role-based permissions: from the JWT's `permissions` claim, or the snapshot stored on the token. */
 export const WRITE_QUIZZES = 'write:quizzes'
+/** Classes, assignments and class reports (role `teacher`). */
+export const MANAGE_CLASSES = 'manage:classes'
 /** User management, feedback triage and the audit log (admin panel in Settings) - JWT sessions only. */
 export const MANAGE_USERS = 'manage:users'
 
