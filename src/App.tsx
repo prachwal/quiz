@@ -2,7 +2,7 @@ import { App as AntdApp, ConfigProvider, theme } from 'antd'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { useAppSelector } from './app/hooks'
 import AuthProvider from './features/auth/AuthProvider'
-import RequireAuth from './features/auth/RequireAuth'
+import RequireRole from './features/auth/RequireRole'
 import { useResolvedTheme } from './app/useResolvedTheme'
 import AppLayout from './components/AppLayout'
 import About from './pages/About'
@@ -33,14 +33,14 @@ export default function App() {
           <Routes>
             <Route element={<AppLayout />}>
               <Route index element={<Home />} />
-              <Route path="quizzes/new" element={<RequireAuth role="admin"><QuizNew /></RequireAuth>} />
-              <Route path="quizzes/:id/edit" element={<RequireAuth role="admin"><QuizEdit /></RequireAuth>} />
+              <Route path="quizzes/new" element={<RequireRole role="admin"><QuizNew /></RequireRole>} />
+              <Route path="quizzes/:id/edit" element={<RequireRole role="admin"><QuizEdit /></RequireRole>} />
               <Route path="quizzes/:id/play" element={<QuizPlay />} />
               <Route path="learn" element={<Learn />} />
               <Route path="learn/:courseId" element={<CourseView />} />
               <Route path="learn/:courseId/lessons/:lessonId" element={<LessonView />} />
               <Route path="verbs" element={<Verbs />} />
-              <Route path="results" element={<RequireAuth><Results /></RequireAuth>} />
+              <Route path="results" element={<Results />} />
               <Route path="about" element={<About />} />
               <Route path="settings" element={<Settings />} />
               <Route path="*" element={<NotFound />} />

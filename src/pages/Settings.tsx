@@ -1,5 +1,6 @@
 import { Button, Card, Form, Radio, Switch, Typography } from 'antd'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
+import ApiTokens from '../features/auth/ApiTokens'
 import {
   resetSettings,
   setCompact,
@@ -54,6 +55,7 @@ export default function Settings() {
           </Button>
         </Form>
       </Card>
+      <ApiTokens />
     </>
   )
 }

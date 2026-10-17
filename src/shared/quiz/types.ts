@@ -137,3 +137,17 @@ export interface LessonDetail {
   nextLessonId: string | null
   verbs: IrregularVerb[]
 }
+
+export interface ApiTokenSummary {
+  id: string
+  name: string
+  /** First characters of the token, to recognise it in the list. */
+  prefix: string
+  permissions: string[]
+  createdAt: string
+  expiresAt: string | null
+  lastUsedAt: string | null
+}
+
+/** Returned once, right after creation - the plain token is never stored. */
+export type CreatedApiToken = ApiTokenSummary & { token: string }

@@ -48,3 +48,13 @@ export const generateInput = z.object({
 })
 
 export type GenerateInput = z.input<typeof generateInput>
+
+export const tokenInput = z.object({
+  name: z.string().trim().min(1, 'Nazwa tokenu jest wymagana').max(80),
+  /** null = never expires */
+  expiresInDays: z.union([z.literal(30), z.literal(90), z.literal(365), z.null()]).default(90),
+  /** Token may write quizzes (only if its creator is allowed to). */
+  write: z.boolean().default(false),
+})
+
+export type TokenInput = z.input<typeof tokenInput>

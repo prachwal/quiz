@@ -1,7 +1,6 @@
 import { Alert, Button, Card, Flex, Skeleton, Tag, Typography, App as AntdApp } from 'antd'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { errorMessage, useCompleteLessonMutation, useGetLessonQuery } from '../app/api'
-import { useAuth } from '../features/auth/useAuth'
 import VerbTable from '../features/learn/VerbTable'
 
 export default function LessonView() {
@@ -10,16 +9,11 @@ export default function LessonView() {
   const [complete, { isLoading: saving }] = useCompleteLessonMutation()
   const navigate = useNavigate()
   const { message } = AntdApp.useApp()
-  const { enabled, isAuthenticated, login } = useAuth()
 
   if (error) return <Alert type="error" showIcon title={errorMessage(error)} />
   if (isLoading || !lesson) return <Skeleton active paragraph={{ rows: 8 }} />
 
   const finish = async () => {
-    if (enabled && !isAuthenticated) {
-      void message.info('Zaloguj się, aby zapisywać postęp w nauce')
-      return login()
-    }
     try {
       await complete({ courseId, lessonId }).unwrap()
       navigate(lesson.nextLessonId ? `/learn/${courseId}/lessons/${lesson.nextLessonId}` : `/learn/${courseId}`)

@@ -2,9 +2,11 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 import { getAccessToken } from '../features/auth/token'
 import type { Answer } from '../shared/quiz/engine'
 import type { QuizInput } from '../shared/quiz/schema'
-import type { GenerateInput } from '../shared/quiz/schema'
+import type { GenerateInput, TokenInput } from '../shared/quiz/schema'
 import type {
+  ApiTokenSummary,
   AttemptSummary,
+  CreatedApiToken,
   CourseDetail,
   CourseSummary,
   DifficultyCode,
@@ -27,7 +29,7 @@ export const api = createApi({
       return headers
     },
   }),
-  tagTypes: ['Quiz', 'Attempt', 'Course'],
+  tagTypes: ['Quiz', 'Attempt', 'Course', 'Token'],
   endpoints: (build) => ({
     listQuizzes: build.query<QuizSummary[], { difficulty?: DifficultyCode; sort?: 'recent' | 'popular' } | void>({
       query: (params) => ({ url: 'quizzes', params: params ?? undefined }),
@@ -70,6 +72,18 @@ export const api = createApi({
       IrregularVerb[],
       { difficulty?: DifficultyCode; popularity?: PopularityCode; pattern?: PatternCode } | void
     >({ query: (params) => ({ url: 'irregular-verbs', params: params ?? undefined }) }),
+    listTokens: build.query<ApiTokenSummary[], void>({
+      query: () => 'tokens',
+      providesTags: ['Token'],
+    }),
+    createToken: build.mutation<CreatedApiToken, TokenInput>({
+      query: (body) => ({ url: 'tokens', method: 'POST', body }),
+      invalidatesTags: ['Token'],
+    }),
+    revokeToken: build.mutation<void, string>({
+      query: (id) => ({ url: `tokens/${id}`, method: 'DELETE' }),
+      invalidatesTags: ['Token'],
+    }),
     listCourses: build.query<CourseSummary[], void>({
       query: () => 'courses',
       providesTags: ['Course'],
@@ -109,6 +123,9 @@ export const {
   useGenerateIrregularVerbsQuizMutation,
   useListIrregularVerbsQuery,
   useListAttemptsQuery,
+  useListTokensQuery,
+  useCreateTokenMutation,
+  useRevokeTokenMutation,
   useListCoursesQuery,
   useGetCourseQuery,
   useGetLessonQuery,

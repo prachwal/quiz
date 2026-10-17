@@ -2,8 +2,17 @@ import express from 'express'
 import type { ErrorRequestHandler, RequestHandler } from 'express'
 import { ZodError, z } from 'zod'
 import { gradeQuiz } from '../src/shared/quiz/engine'
-import { DIFFICULTIES, POPULARITIES, generateInput, gradeInput, quizInput } from '../src/shared/quiz/schema'
-import { WRITE_QUIZZES, authenticate, currentUserId, hasPermission, requirePermission, requireUser } from './auth'
+import { DIFFICULTIES, POPULARITIES, generateInput, gradeInput, quizInput, tokenInput } from '../src/shared/quiz/schema'
+import * as tokens from './apiTokens'
+import {
+  WRITE_QUIZZES,
+  authenticate,
+  currentUserId,
+  hasPermission,
+  requireAuthenticated,
+  requireJwt,
+  requirePermission,
+} from './auth'
 import * as courses from './coursesRepo'
 import {
   buildVerbQuiz,
@@ -29,7 +38,7 @@ const parseId = (value: unknown) => {
   return parsed.data
 }
 
-/** Id of the signed-in user; only call behind `requireUser`. */
+/** Id of the caller; every route except /health runs behind `requireAuthenticated`. */
 const userOf = (req: Parameters<typeof currentUserId>[0]) => currentUserId(req) as string
 
 const notFound = () => new HttpError(404, 'Quiz not found')
@@ -65,14 +74,14 @@ export function createApp() {
     next()
   }) satisfies RequestHandler)
 
-  // validates a Bearer token if present (anonymous otherwise); protected routes add requireUser
-  app.use(authenticate)
-
-  const router = express.Router()
-
-  router.get('/health', (_req, res) => {
+  app.get('/health', (_req, res) => {
     res.json({ ok: true })
   })
+
+  // everything below is private: Bearer JWT (Auth0) or personal API token
+  app.use(authenticate, requireAuthenticated)
+
+  const router = express.Router()
 
   router.get('/quizzes', async (req, res) => {
     const { difficulty, sort } = listQuery.parse(req.query)
@@ -99,6 +108,33 @@ export function createApp() {
     res.status(201).json(await repo.getQuiz(id, false))
   })
 
+  router.get('/tokens', requireJwt, async (req, res) => {
+    res.json(await tokens.listApiTokens(userOf(req)))
+  })
+
+  router.post('/tokens', requireJwt, async (req, res) => {
+    const input = tokenInput.parse(req.body ?? {})
+    if (input.write && !hasPermission(req, WRITE_QUIZZES)) {
+      throw new HttpError(403, 'Token z prawem zapisu może utworzyć tylko admin')
+    }
+    const created = await tokens.createApiToken({
+      userId: userOf(req),
+      name: input.name,
+      permissions: input.write ? [WRITE_QUIZZES] : [],
+      expiresInDays: input.expiresInDays,
+    })
+    if (created === 'limit') throw new HttpError(409, 'Osiągnięto limit aktywnych tokenów (20)')
+    res.status(201).json(created)
+  })
+
+  router.delete('/tokens/:id', requireJwt, async (req, res) => {
+    const id = idSchema.safeParse(req.params.id)
+    if (!id.success || !(await tokens.revokeApiToken(id.data, userOf(req)))) {
+      throw new HttpError(404, 'Token not found')
+    }
+    res.status(204).end()
+  })
+
   router.get('/irregular-verbs', async (req, res) => {
     const filter = verbQuery.parse(req.query)
     res.json(await listVerbs(filter))
@@ -123,7 +159,7 @@ export function createApp() {
     res.json(lesson)
   })
 
-  router.post('/courses/:id/lessons/:lessonId/complete', requireUser, async (req, res) => {
+  router.post('/courses/:id/lessons/:lessonId/complete', async (req, res) => {
     const lessonId = idSchema.safeParse(req.params.lessonId)
     const ok =
       lessonId.success &&
@@ -133,7 +169,7 @@ export function createApp() {
   })
 
   // Final exam: available once every lesson of the course is completed.
-  router.post('/courses/:id/exam', requireUser, async (req, res) => {
+  router.post('/courses/:id/exam', async (req, res) => {
     const courseId = parseCourseId(req.params.id)
     const course = await courses.getCourse(courseId, currentUserId(req))
     if (!course) throw courseNotFound()
@@ -164,7 +200,7 @@ export function createApp() {
     res.status(201).json(await repo.getQuiz(id, false))
   })
 
-  router.get('/attempts', requireUser, async (req, res) => {
+  router.get('/attempts', async (req, res) => {
     res.json(await repo.listAttempts(userOf(req)))
   })
 
