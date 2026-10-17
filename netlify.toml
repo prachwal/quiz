@@ -17,3 +17,9 @@
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
+
+# SPA fallback for client-side routes (must come after the /api rule)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
