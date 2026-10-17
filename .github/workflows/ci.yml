@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main, deploy]
+  pull_request:
+    branches: [main, deploy]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: |
+          mkdir -p reports
+          npx esbuild tests/*.test.ts --bundle --platform=node --format=esm --outdir=.test-build --out-extension:.js=.mjs --log-level=warning
+          node --test --test-reporter=junit --test-reporter-destination=reports/junit.xml .test-build/*.mjs
+      - uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Unit tests
+          path: reports/junit.xml
+          reporter: java-junit
+
+  ui-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: |
+          mkdir -p reports
+          npx vitest run --reporter=junit --outputFile=reports/vitest.xml
+      - uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: UI tests
+          path: reports/vitest.xml
+          reporter: java-junit
