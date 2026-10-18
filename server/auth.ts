@@ -2,6 +2,7 @@ import { auth } from 'express-oauth2-jwt-bearer'
 import type { Request, RequestHandler, Response } from 'express'
 import { TOKEN_PREFIX, findActiveToken, touchToken } from './apiTokens'
 import { devAuthEnabled, devIdentity } from './devAuth'
+import { metadataUrl, publicOrigin } from './protectedResource'
 
 const domain = process.env.AUTH0_DOMAIN
 const audience = process.env.AUTH0_AUDIENCE
@@ -85,9 +86,12 @@ export const authenticate: RequestHandler = async (req, res, next) => {
 }
 
 const unauthorized = (req: Request, res: Response) => {
+  // RFC 9728: point OAuth-capable clients (MCP connectors) at the protected resource metadata
+  const origin = domain ? publicOrigin(req.headers) : null
+  const metadata = origin ? `, resource_metadata="${metadataUrl(origin)}"` : ''
   const challenge = bearerOf(req)
-    ? 'Bearer realm="quiz-api", error="invalid_token", error_description="Token is invalid, expired or revoked"'
-    : 'Bearer realm="quiz-api"'
+    ? `Bearer realm="quiz-api", error="invalid_token", error_description="Token is invalid, expired or revoked"${metadata}`
+    : `Bearer realm="quiz-api"${metadata}`
   res
     .status(401)
     .set('WWW-Authenticate', challenge)

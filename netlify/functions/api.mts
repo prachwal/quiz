@@ -10,4 +10,7 @@ const handler = serverless(createApp())
 
 export default withLambda(handler as unknown as Parameters<typeof withLambda>[0])
 
-export const config: Config = { path: '/api/*' }
+// The OAuth metadata for MCP clients must live at the site root (RFC 9728), outside /api.
+export const config: Config = {
+  path: ['/api/*', '/.well-known/oauth-protected-resource', '/.well-known/oauth-protected-resource/*'],
+}

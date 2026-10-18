@@ -146,3 +146,5 @@ curl -s -X POST $API/mcp -H "Authorization: Bearer $TOKEN" -H "Content-Type: app
 ```
 
 `GET`/`DELETE /api/mcp` zwracają 405 (serwer jest bezsesyjny, tylko `POST`).
+
+**Claude (konektor w claude.ai, OAuth):** w „Dodaj konektor” podaj adres `https://fabulous-dieffenbachia.netlify.app/api/mcp`, a w ustawieniach zaawansowanych Client ID `bH1zf4YpkRYRo4x9gQJdFo4CRrNEPvyq` (aplikacja Auth0 „Quiz MCP (Claude)”, publiczna, PKCE, bez sekretu). Klient znajduje Auth0 przez `/.well-known/oauth-protected-resource` (RFC 9728, `server/protectedResource.ts`), a Auth0 nie ma dynamicznej rejestracji klientów, stąd stały Client ID. Gdyby Auth0 zgłosił „Callback URL mismatch”, dopisz adres z `auth0 logs list --filter "type:f"` do `--callbacks` tej aplikacji.

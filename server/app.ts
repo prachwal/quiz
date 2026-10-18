@@ -28,6 +28,7 @@ import {
   tokenInput,
 } from '../src/shared/quiz/schema'
 import { mcpHandler, mcpNotAllowed } from './mcp'
+import { MCP_PATH, METADATA_PATH, protectedResourceMetadata, publicOrigin } from './protectedResource'
 import { resolveGradedIds } from '../src/shared/quiz/sampling'
 import { maskEmail } from '../src/shared/quiz/maskEmail'
 import { analyzeClass } from '../src/shared/quiz/classAnalysis'
@@ -132,6 +133,17 @@ export function createApp() {
 
   app.get('/health', (_req, res) => {
     res.json({ ok: true })
+  })
+
+  // public: tells MCP clients which authorization server (Auth0) issues tokens for /api/mcp
+  app.get([METADATA_PATH, `${METADATA_PATH}${MCP_PATH}`], (req, res) => {
+    const origin = publicOrigin(req.headers)
+    const domain = process.env.AUTH0_DOMAIN
+    if (!origin || !domain) {
+      res.status(404).json({ error: 'OAuth nie jest skonfigurowany' })
+      return
+    }
+    res.set('Access-Control-Allow-Origin', '*').json(protectedResourceMetadata(origin, domain))
   })
 
   // everything below is private: Bearer JWT (Auth0) or personal API token
