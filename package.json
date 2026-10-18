@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
+    "test:mcp": "bash scripts/mcp-local-e2e.sh",
     "test": "esbuild tests/*.test.ts --bundle --platform=node --format=esm --outdir=.test-build --out-extension:.js=.mjs --log-level=warning && node --test .test-build/*.mjs",
     "test:ui": "vitest run",
     "test:ui:watch": "vitest",

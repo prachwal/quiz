@@ -115,6 +115,14 @@ claude mcp add --transport http quiz https://fabulous-dieffenbachia.netlify.app/
 
 **Grok (interfejs z formularzem OAuth):** szczegółowa instrukcja dodania konektora przez Auth0 jest w [mcp-grok.md](mcp-grok.md).
 
+## Pełny test lokalny
+
+```bash
+npm run test:mcp
+```
+
+Skrypt uruchamia `netlify dev` (lokalna baza), a gdy port 8888 jest już zajęty, używa działającego serwera i niczego nie zatrzymuje. Oficjalnym klientem MCP wywołuje **wszystkie 25 narzędzi** na prawdziwej aplikacji i bazie: poprawne scenariusze, walidację, odmowy dla innego nauczyciela, admina (tylko podgląd), tokenu bez uprawnień i bez potwierdzenia oraz wpisy w audycie. Dane testowe mają prefiks `mcp-e2e` i są usuwane przed i po teście; kod wyjścia ≠ 0 przy błędzie. Test produkcji (tylko quizy, tymczasowy quiz): `node --env-file=.env scripts/mcp-smoke.mjs`.
+
 ## Szybki test z linii poleceń
 
 ```bash
