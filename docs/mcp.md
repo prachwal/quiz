@@ -73,6 +73,8 @@ claude mcp add --transport http quiz https://fabulous-dieffenbachia.netlify.app/
 
 `require_approval` zostaw włączone dla narzędzi zapisujących, jeśli klient to wspiera. Przetestowane jest wywołanie oficjalnym klientem MCP SDK (lista narzędzi, tworzenie, odczyt, zamiana, usuwanie, odmowa bez prawa zapisu); konfiguracje powyżej dla Claude Desktop, OpenAI i Grok wynikają z ich dokumentacji i nie były uruchamiane na tych usługach.
 
+**Grok (interfejs z formularzem OAuth):** szczegółowa instrukcja dodania konektora przez Auth0 jest w [mcp-grok.md](mcp-grok.md).
+
 ## Szybki test z linii poleceń
 
 ```bash
