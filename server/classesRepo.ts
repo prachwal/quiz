@@ -166,6 +166,26 @@ export async function addMember(
   return (r.rowCount ?? 0) > 0 ? 'added' : 'already'
 }
 
+/**
+ * Accounts that could be added to a class, found by part of the name, e-mail or Auth0 id (not yet in the class,
+ * not the searching teacher). Only people who have used the app are known. Callers must require a few
+ * characters and mask the e-mail: this is a directory lookup.
+ */
+export async function searchCandidates(classId: string, searcherId: string, q: string, limit = 8) {
+  const pattern = `%${q.replace(/[\\%_]/g, (ch) => `\\${ch}`)}%`
+  const { rows } = await pool().query<{ user_id: string; display_name: string | null; email: string | null }>(
+    `SELECT p.user_id, p.display_name, p.email
+     FROM user_profiles p
+     WHERE (p.display_name ILIKE $1 OR p.email ILIKE $1 OR p.user_id ILIKE $1)
+       AND p.user_id <> $3
+       AND NOT EXISTS (SELECT 1 FROM class_members m WHERE m.class_id = $2 AND m.user_id = p.user_id)
+     ORDER BY p.display_name NULLS LAST, p.user_id
+     LIMIT $4`,
+    [pattern, classId, searcherId, limit],
+  )
+  return rows.map((r) => ({ userId: r.user_id, name: r.display_name, email: r.email }))
+}
+
 /** What the app knows about a user from their logins (null when they never used the app). */
 export async function profileOf(userId: string): Promise<{ name: string | null; email: string | null } | null> {
   const { rows } = await pool().query('SELECT display_name, email FROM user_profiles WHERE user_id = $1', [userId])

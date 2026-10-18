@@ -371,6 +371,13 @@ export interface StudentResults {
   attempts: StudentAttempt[]
 }
 
+/** A possible new student found by the type-ahead (e-mail masked). */
+export interface StudentCandidate {
+  userId: string
+  name: string | null
+  emailMasked: string | null
+}
+
 /** A student as the teacher knows them: identity plus the classes they share with the teacher. */
 export interface StudentListItem {
   userId: string

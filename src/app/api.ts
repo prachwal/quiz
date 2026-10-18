@@ -8,6 +8,7 @@ import type {
   AssignmentItem,
   ClassDetail,
   ClassReport,
+  StudentCandidate,
   StudentListItem,
   StudentResults,
   ClassSummary,
@@ -198,6 +199,9 @@ export const api = createApi({
       query: (params) => ({ url: 'students', params: params ?? undefined }),
       providesTags: ['Class'],
     }),
+    searchStudentCandidates: build.query<StudentCandidate[], { classId: string; q: string }>({
+      query: ({ classId, q }) => ({ url: `classes/${classId}/student-candidates`, params: { q } }),
+    }),
     getStudentResults: build.query<StudentResults, { classId: string; userId: string }>({
       query: ({ classId, userId }) => `classes/${classId}/students/${encodeURIComponent(userId)}`,
       providesTags: ['Class'],
@@ -311,6 +315,7 @@ export const {
   useUpdateAssignmentDueMutation,
   useGetStudentResultsQuery,
   useListStudentsQuery,
+  useSearchStudentCandidatesQuery,
   useJoinClassMutation,
   useListMyClassesQuery,
   useLeaveClassMutation,

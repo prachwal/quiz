@@ -1,15 +1,16 @@
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
-import { Button, Empty, Flex, Form, Input, Modal, Popconfirm, Typography, App as AntdApp } from 'antd'
-import { useState } from 'react'
+import { Button, Empty, Flex, Form, Input, Modal, Popconfirm, Select, Typography, App as AntdApp } from 'antd'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   errorMessage,
   useAddClassMemberMutation,
   useCreateClassMutation,
   useRemoveClassMemberMutation,
+  useSearchStudentCandidatesQuery,
   useUpdateClassMutation,
 } from '../../app/api'
-import type { ClassDetail as ClassDetailData, ClassSummary } from '../../shared/quiz/types'
+import type { ClassDetail as ClassDetailData, ClassSummary, StudentCandidate } from '../../shared/quiz/types'
 
 /** Pieces of class management shared by the class page and the class panel. */
 
@@ -60,35 +61,91 @@ export function RenameClass({ cls }: { cls: Pick<ClassSummary, 'id' | 'name'> })
   )
 }
 
+const AUTH0_ID = /^[\w-]+\|[\w.-]+$/
+const MIN_QUERY = 3
+
+/**
+ * "Add a student": a dropdown that filters as you type (part of the name, e-mail or Auth0 id, 3+ characters)
+ * and lists accounts that are not in the class yet. A complete Auth0 id can also be pasted and added directly.
+ */
 export function AddStudent({ cls }: { cls: Pick<ClassSummary, 'id' | 'joinCode'> }) {
-  const [add, { isLoading }] = useAddClassMemberMutation()
-  const [value, setValue] = useState('')
+  const [add, { isLoading: adding }] = useAddClassMemberMutation()
+  const [typed, setTyped] = useState('')
+  const [debounced, setDebounced] = useState('')
+  const [selected, setSelected] = useState<string>()
   const { message } = AntdApp.useApp()
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(typed.trim()), 250)
+    return () => clearTimeout(timer)
+  }, [typed])
+
+  const enough = debounced.length >= MIN_QUERY
+  const { data, isFetching } = useSearchStudentCandidatesQuery({ classId: cls.id, q: debounced }, { skip: !enough })
+
+  const options = [
+    ...(data ?? []).map((c) => ({
+      value: c.userId,
+      label: c.name ?? c.userId,
+      candidate: c,
+    })),
+    // a pasted, complete Auth0 id that the search did not find can still be added
+    ...(AUTH0_ID.test(typed.trim()) && !(data ?? []).some((c) => c.userId === typed.trim())
+      ? [{ value: typed.trim(), label: `Dodaj po identyfikatorze: ${typed.trim()}`, candidate: null }]
+      : []),
+  ]
+
   const submit = async () => {
-    const userId = value.trim()
-    if (!userId) return
+    if (!selected) return
     try {
-      const result = await add({ classId: cls.id, userId }).unwrap()
+      const result = await add({ classId: cls.id, userId: selected }).unwrap()
       void message.success(result.status === 'added' ? 'Uczeń dodany do klasy' : 'Uczeń już jest w tej klasie')
-      setValue('')
+      setSelected(undefined)
+      setTyped('')
+      setDebounced('')
     } catch (e) {
       void message.error(errorMessage(e))
     }
   }
+
   return (
     <Flex vertical gap={4} style={{ marginBottom: 16 }}>
-      <Input.Search
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onSearch={() => void submit()}
-        enterButton="Dodaj ucznia"
-        loading={isLoading}
-        placeholder="Identyfikator Auth0, np. google-oauth2|123456"
-        maxLength={200}
-        aria-label="Identyfikator Auth0 ucznia"
-      />
+      <Flex gap={8} wrap>
+        <Select<string>
+          showSearch
+          value={selected}
+          searchValue={typed}
+          onSearch={setTyped}
+          onChange={setSelected}
+          filterOption={false}
+          loading={isFetching}
+          options={options}
+          placeholder="Wpisz fragment imienia, e-maila lub identyfikatora"
+          notFoundContent={
+            enough ? (isFetching ? 'Szukam…' : 'Nikogo nie znaleziono') : `Wpisz co najmniej ${MIN_QUERY} znaki`
+          }
+          style={{ flex: '1 1 320px', minWidth: 0 }}
+          aria-label="Wybór ucznia do dodania"
+          optionRender={(option) => {
+            const c = (option.data as { candidate: StudentCandidate | null }).candidate
+            if (!c) return <span>{option.label}</span>
+            return (
+              <Flex vertical>
+                <span>{c.name ?? c.userId}</span>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  {c.userId}
+                  {c.emailMasked ? ` · ${c.emailMasked}` : ''}
+                </Typography.Text>
+              </Flex>
+            )
+          }}
+        />
+        <Button type="primary" disabled={!selected} loading={adding} onClick={() => void submit()}>
+          Dodaj ucznia
+        </Button>
+      </Flex>
       <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-        Identyfikator znajdziesz w Ustawienia → Użytkownicy (admin) lub uczeń może dołączyć kodem klasy: {cls.joinCode}.
+        Znajdziesz osoby, które już logowały się do aplikacji. Uczeń może też dołączyć sam kodem klasy: {cls.joinCode}.
       </Typography.Text>
     </Flex>
   )

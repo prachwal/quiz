@@ -27,6 +27,7 @@ import {
 } from '../src/shared/quiz/schema'
 import { mcpHandler, mcpNotAllowed } from './mcp'
 import { resolveGradedIds } from '../src/shared/quiz/sampling'
+import { maskEmail } from '../src/shared/quiz/maskEmail'
 import { analyzeClass } from '../src/shared/quiz/classAnalysis'
 import * as admin from './adminRepo'
 import { canReadClasses, readableClass, resolveStudent, viewerOf, visibleClasses, writableClass } from './classAccess'
@@ -334,6 +335,14 @@ export function createApp() {
     const code = await classes.regenerateCode(cls.id, userOf(req))
     if (!code) throw new HttpError(503, 'Nie udało się wygenerować kodu, spróbuj ponownie')
     res.json({ joinCode: code })
+  })
+
+  // type-ahead for "add a student": min. 3 characters, at most 8 hits, e-mail masked
+  router.get('/classes/:id/student-candidates', teacherOnly, async (req, res) => {
+    const cls = await ownedClass(req)
+    const q = z.string().trim().min(3).max(100).parse(req.query.q)
+    const found = await classes.searchCandidates(cls.id, userOf(req), q)
+    res.json(found.map((f) => ({ userId: f.userId, name: f.name, emailMasked: maskEmail(f.email) })))
   })
 
   // add a student by Auth0 id (the id must belong to a real account)

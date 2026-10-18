@@ -1,5 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import { maskEmail } from '../../src/shared/quiz/maskEmail'
 import { analyzeClass } from '../../src/shared/quiz/classAnalysis'
 import { addMemberInput, auth0UserId, classInput } from '../../src/shared/quiz/schema'
 import { analyzeStudent } from '../../src/shared/quiz/studentAnalysis'
@@ -145,6 +146,21 @@ export function registerClassTools(server: McpServer, ctx: Ctx) {
       }
       return text(await classes.listStudents((await visibleClasses(v, scope)).map((c) => c.id)))
     },
+  )
+
+  server.registerTool(
+    'student_search',
+    {
+      title: 'Wyszukaj ucznia do dodania',
+      description:
+        'Szuka kont (po fragmencie imienia, e-maila lub identyfikatora Auth0; min. 3 znaki, do 8 wyników, e-mail zamaskowany), które nie są jeszcze w klasie. Wynik daje identyfikator do student_add.',
+      inputSchema: { classId, query: z.string().trim().min(3).max(100) },
+      annotations: { readOnlyHint: true },
+    },
+    ({ classId: id, query }) =>
+      changing(id, async (cls) =>
+        (await classes.searchCandidates(cls.id, ctx.userId, query)).map((f) => ({ userId: f.userId, name: f.name, emailMasked: maskEmail(f.email) })),
+      ),
   )
 
   server.registerTool(

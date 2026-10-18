@@ -154,6 +154,7 @@ Nauczyciel widzi tylko własne klasy (cudze wyglądają jak 404).
 | GET/POST | `/classes` | lista (`?scope=all` – admin widzi klasy wszystkich nauczycieli, z właścicielem) / utworzenie klasy |
 | GET/PATCH/DELETE | `/classes/:id` | szczegóły / zmiana (`{ name?, joiningOpen? }`) / archiwizacja |
 | POST | `/classes/:id/code` | nowy kod dołączenia (6 znaków) |
+| GET | `/classes/:id/student-candidates?q=` | podpowiedzi „kogo dodać”: min. 3 znaki, do 8 kont spoza klasy po fragmencie imienia/e‑maila/id, e‑mail zamaskowany |
 | DELETE | `/classes/:id/members/:userId` | usunięcie ucznia |
 | POST | `/classes/:id/assignments` | zadanie: kurs **albo** quiz, opcjonalny termin |
 | PATCH | `/classes/:id/assignments/:assignmentId` | zmiana terminu `{ dueAt: ISO \| null }` |

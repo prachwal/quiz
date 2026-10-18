@@ -57,6 +57,7 @@ Nazwy mają postać `obiekt_czynność`. Operacje nieodwracalne wymagają `confi
 | Narzędzie | Opis |
 | --------- | ---- |
 | `student_list` | uczniowie klasy (`classId`) lub wszystkich klas z zakresu (`scope`), z ich klasami |
+| `student_search` | szuka kont do dodania po fragmencie imienia/e‑maila/id (min. 3 znaki, e‑mail zamaskowany) |
 | `student_add` | dodaje ucznia po **identyfikatorze Auth0** (np. `google-oauth2|123`); konto musi istnieć |
 | `student_remove` | usuwa ucznia z klasy; `confirm` |
 | `student_results` | surowe wyniki: zadania i podejścia z odpowiedziami na pytania |
