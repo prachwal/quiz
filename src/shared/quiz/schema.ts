@@ -126,6 +126,14 @@ export const classPatchInput = z
 /** Auth0 user ids, see ./auth0Id.ts (`google-oauth2|1234`, `oauth2|discord|99`...). */
 export const auth0UserId = z.string().trim().min(3).max(200).regex(AUTH0_ID_PATTERN, 'Niepoprawny identyfikator Auth0')
 
+const percent = z.number().int().min(1).max(100)
+
+export const appSettingsInput = z.object({
+  scoreThresholds: z
+    .object({ low: percent, high: percent })
+    .refine((t) => t.low < t.high, { message: 'Próg czerwony musi być niższy niż zielony', path: ['high'] }),
+})
+
 export const addMemberInput = z.object({ userId: auth0UserId })
 
 export const assignmentPatchInput = z.object({ dueAt: z.string().datetime().nullable() })

@@ -2,6 +2,7 @@ import { CommentOutlined } from '@ant-design/icons'
 import { Button, Card, Flex, Form, Radio, Switch, Tabs, Typography } from 'antd'
 import PageHeader from '../components/PageHeader'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
+import AppSettingsAdmin from '../features/admin/AppSettingsAdmin'
 import AuditAdmin from '../features/admin/AuditAdmin'
 import FeedbackAdmin from '../features/admin/FeedbackAdmin'
 import UsersAdmin from '../features/admin/UsersAdmin'
@@ -162,6 +163,7 @@ export default function Settings() {
           { key: 'users', label: 'Użytkownicy', children: <UsersAdmin /> },
           { key: 'feedback', label: 'Uwagi', children: <FeedbackAdmin /> },
           { key: 'audit', label: 'Audyt', children: <AuditAdmin /> },
+          { key: 'app', label: 'Aplikacja', children: <AppSettingsAdmin /> },
         ]
       : []),
   ]

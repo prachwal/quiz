@@ -53,11 +53,15 @@ describe('AdminStudentResultsView', () => {
     )
     expect(await screen.findByText('Ala Kot')).toBeTruthy()
     expect(screen.getByText('google-oauth2|1')).toBeTruthy()
-    expect(screen.getByText('3A (Ewa)')).toBeTruthy()
+    expect(screen.getByText('3A · Ewa')).toBeTruthy()
     expect(screen.getByText('Wszystkie podejścia (2)')).toBeTruthy()
-    expect(screen.getByText('losowy quiz')).toBeTruthy()
-    expect(screen.getByText('2 / 5 dni')).toBeTruthy()
-    fireEvent.click(screen.getByText('Pierwiastki'))
+    expect(screen.getAllByText('Losowy quiz').length).toBe(2) // title and kind tag
+    expect(screen.getByText('2 / 5')).toBeTruthy()
+    // newest first by default; the row with answers expands to the questions
+    const rows = document.querySelectorAll('.ant-table-tbody tr.ant-table-row')
+    expect(rows[rows.length - 2].textContent).toContain('Pierwiastki')
+    const expand = rows[rows.length - 2].querySelector('.ant-table-row-expand-icon') as HTMLElement
+    fireEvent.click(expand)
     expect(await screen.findByText('1. Symbol tlenu?')).toBeTruthy()
     expect(screen.getByText(/Ox/)).toBeTruthy()
   })

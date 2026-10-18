@@ -492,14 +492,19 @@ summary,
 
   .app-shell .app-content {
     padding-top: 20px;
-    padding-bottom: calc(var(--app-tabbar-h) + var(--app-safe-bottom) + 28px);
+    padding-bottom: 24px;
   }
 
   .focus-mode .app-shell .app-content {
     padding-bottom: calc(var(--app-actionbar-h) + var(--app-safe-bottom) + 28px);
   }
 
+  /* the footer (with "O aplikacji") stays reachable above the fixed tab bar */
   .app-shell .app-footer {
+    padding: 16px 0 calc(var(--app-tabbar-h) + var(--app-safe-bottom) + 16px);
+  }
+
+  .focus-mode .app-shell .app-footer {
     display: none;
   }
 
@@ -844,4 +849,13 @@ summary,
   color: #fff;
   font-size: 13px;
   text-align: center;
+}
+
+.app-shell a.app-footer-link {
+  color: var(--app-text-secondary, inherit);
+  font-size: 14px;
+}
+
+.app-shell a.app-footer-link:hover {
+  color: var(--app-primary, inherit);
 }

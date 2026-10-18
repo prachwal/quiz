@@ -21,6 +21,7 @@ import SpeakButton from '../audio/SpeakButton'
 import { recallGenerate, rememberGenerate } from './lastGenerate'
 import { EXAM_COUNT, GENERATE_COUNT, REVIEW_COUNT, clampCount } from './counts'
 import ProgressLine from '../progress/ProgressLine'
+import { useScoreColors } from '../results/useScoreColors'
 import type { Answer } from '../../shared/quiz/engine'
 import type { GradedAttempt, QuizDetail } from '../../shared/quiz/types'
 
@@ -290,13 +291,12 @@ export default function ResultView({
       .map((o) => o.text)
       .join(', ')
 
+  const { band } = useScoreColors()
   const tone: Tone = result.course
     ? result.course.passed
       ? 'success'
       : 'error'
-    : result.percent >= 50
-      ? 'success'
-      : 'warning'
+    : ({ low: 'error', mid: 'warning', high: 'success' } as const)[band(result.percent)]
   const toneColor = { success: token.colorSuccess, warning: token.colorWarning, error: token.colorError }[tone]
   const toneText = { success: token.colorSuccessText, warning: token.colorWarningText, error: token.colorErrorText }[tone]
   const toneBg = { success: token.colorSuccessBg, warning: token.colorWarningBg, error: token.colorErrorBg }[tone]

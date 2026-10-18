@@ -10,6 +10,7 @@ import {
   assignmentInput,
   blockedInput,
   addMemberInput,
+  appSettingsInput,
   auth0UserId,
   assignmentPatchInput,
   classInput,
@@ -31,6 +32,7 @@ import { resolveGradedIds } from '../src/shared/quiz/sampling'
 import { maskEmail } from '../src/shared/quiz/maskEmail'
 import { analyzeClass } from '../src/shared/quiz/classAnalysis'
 import * as admin from './adminRepo'
+import * as appSettings from './appSettingsRepo'
 import { canReadClasses, readableClass, resolveStudent, viewerOf, visibleClasses, writableClass } from './classAccess'
 import * as progress from './progressRepo'
 import * as reviews from './reviewsRepo'
@@ -143,7 +145,7 @@ export function createApp() {
 
   router.get('/quizzes', async (req, res) => {
     const { difficulty, sort } = listQuery.parse(req.query)
-    res.json(await repo.listQuizzes({ difficulty, sort }, hasPermission(req, WRITE_QUIZZES)))
+    res.json(await repo.listQuizzes({ difficulty, sort }, hasPermission(req, WRITE_QUIZZES), userOf(req)))
   })
 
   router.post('/quizzes', requirePermission(WRITE_QUIZZES), async (req, res) => {
@@ -534,6 +536,25 @@ export function createApp() {
       },
       attempts,
     })
+  })
+
+  // ---- global app settings: everybody reads (score colours), admins change ----------------
+  router.get('/settings/app', async (_req, res) => {
+    res.json(await appSettings.getAppSettings())
+  })
+
+  router.put('/admin/settings/app', adminOnly, async (req, res) => {
+    const input = appSettingsInput.parse(req.body)
+    const before = await appSettings.getAppSettings()
+    await appSettings.saveAppSettings(input, userOf(req))
+    await admin.writeAudit({
+      actorId: userOf(req),
+      actorLabel: await auth0.userLabel(userOf(req)),
+      action: 'settings.update',
+      targetLabel: 'scoreThresholds',
+      details: { from: before.scoreThresholds, to: input.scoreThresholds },
+    })
+    res.json(input)
   })
 
   router.get('/admin/audit', adminOnly, async (_req, res) => {

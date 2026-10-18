@@ -8,6 +8,7 @@ import {
   ThunderboltFilled,
   TrophyOutlined,
 } from '@ant-design/icons'
+import { ScoreTag } from '../features/results/Score'
 import { rememberGenerate } from '../features/quizzes/lastGenerate'
 import { Alert, Button, Card, Empty, Flex, Popconfirm, Segmented, Select, Skeleton, Switch, Tag, Typography, App as AntdApp, theme } from 'antd'
 import { useState } from 'react'
@@ -35,6 +36,10 @@ const VARIANT_LABELS: Record<(typeof QUIZ_VARIANTS)[number], string> = {
   choice: 'Wybór odpowiedzi',
   translation: 'Tłumaczenie PL → EN',
 }
+
+/** Polish plural: 1 Twoje podejście, 2-4 Twoje podejścia, 5+ Twoich podejść (12-14 too). */
+const myAttemptsLabel = (n: number) =>
+  n === 1 ? 'Twoje podejście' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'Twoje podejścia' : 'Twoich podejść'
 
 export default function Home() {
   const [filterDifficulty, setFilterDifficulty] = useState<DifficultyCode | 'all'>('all')
@@ -304,7 +309,16 @@ export default function Home() {
               <Flex vertical gap={10} style={{ height: '100%' }}>
                 <Flex wrap gap={6} align="center">
                   <DifficultyTag value={quiz.difficulty} />
-                  <Tag icon={<FireOutlined />}>{quiz.plays} podejść</Tag>
+                  {quiz.myAttempts > 0 ? (
+                    <>
+                      <Tag icon={<FireOutlined />}>
+                        {quiz.myAttempts} {myAttemptsLabel(quiz.myAttempts)}
+                      </Tag>
+                      {quiz.myBestPercent !== null && <ScoreTag percent={quiz.myBestPercent}>najlepszy {quiz.myBestPercent}%</ScoreTag>}
+                    </>
+                  ) : (
+                    <Tag>jeszcze nie grano</Tag>
+                  )}
                 </Flex>
                 <Link to={`/quizzes/${quiz.id}/play`} className="text-link">
                   <Typography.Title level={4} style={{ margin: 0, color: 'inherit' }}>

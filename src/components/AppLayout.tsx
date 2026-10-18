@@ -128,7 +128,6 @@ export default function AppLayout() {
                       ? [{ key: 'classes', icon: <TeamOutlined />, label: 'Zarządzanie klasami', onClick: () => navigate('/manage/classes') }]
                       : []),
                     { key: 'settings', icon: <SettingOutlined />, label: 'Ustawienia', onClick: () => navigate('/settings') },
-                    { key: 'about', icon: <InfoCircleOutlined />, label: 'O aplikacji', onClick: () => navigate('/about') },
                     {
                       key: 'feedback',
                       icon: <CommentOutlined />,
@@ -271,9 +270,14 @@ export default function AppLayout() {
       <Footer className="app-footer" style={{ borderTop: `1px solid ${token.colorBorderSecondary}` }}>
         <Flex className="app-container" justify="space-between" align="center" wrap gap={8}>
           <BrandMark size={22} />
-          <Typography.Text type="secondary" style={{ fontSize: 14 }}>
-            React 19 · Ant Design · Redux Toolkit
-          </Typography.Text>
+          <Flex align="center" gap={16} wrap>
+            <Link to="/about" className="app-footer-link">
+              <InfoCircleOutlined /> O aplikacji
+            </Link>
+            <Typography.Text type="secondary" style={{ fontSize: 14 }}>
+              React 19 · Ant Design · Redux Toolkit
+            </Typography.Text>
+          </Flex>
         </Flex>
       </Footer>
       <BottomNav selected={selected} />

@@ -10,6 +10,7 @@ import type {
   ClassReport,
   StudentCandidate,
   AdminStudentListItem,
+  AppSettings,
   AdminStudentResults,
   StudentListItem,
   StudentResults,
@@ -49,7 +50,7 @@ export const api = createApi({
       return headers
     },
   }),
-  tagTypes: ['Quiz', 'Attempt', 'Course', 'Token', 'AdminUsers', 'Feedback', 'Audit', 'Progress', 'Review', 'Class', 'MyClass'],
+  tagTypes: ['Quiz', 'Attempt', 'Course', 'Token', 'AdminUsers', 'Feedback', 'Audit', 'Progress', 'Review', 'Class', 'MyClass', 'AppSettings'],
   endpoints: (build) => ({
     listQuizzes: build.query<QuizSummary[], { difficulty?: DifficultyCode; sort?: 'recent' | 'popular' } | void>({
       query: (params) => ({ url: 'quizzes', params: params ?? undefined }),
@@ -143,6 +144,14 @@ export const api = createApi({
     getAdminStudentResults: build.query<AdminStudentResults, string>({
       query: (userId) => `admin/students/${encodeURIComponent(userId)}/results`,
       providesTags: ['AdminUsers', 'Attempt'],
+    }),
+    getAppSettings: build.query<AppSettings, void>({
+      query: () => 'settings/app',
+      providesTags: ['AppSettings'],
+    }),
+    updateAppSettings: build.mutation<AppSettings, AppSettings>({
+      query: (body) => ({ url: 'admin/settings/app', method: 'PUT', body }),
+      invalidatesTags: ['AppSettings', 'Audit'],
     }),
     listAudit: build.query<AuditEntry[], void>({
       query: () => 'admin/audit',
@@ -311,6 +320,8 @@ export const {
   useSetUserRolesMutation,
   useSetUserBlockedMutation,
   useListAuditQuery,
+  useGetAppSettingsQuery,
+  useUpdateAppSettingsMutation,
   useListAdminStudentsQuery,
   useGetAdminStudentResultsQuery,
   useListClassesQuery,

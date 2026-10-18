@@ -8,17 +8,19 @@ import type { TokenInput } from '../../shared/quiz/schema'
 import type { ApiTokenSummary, CreatedApiToken } from '../../shared/quiz/types'
 import { useAuth } from './useAuth'
 
-const EXPIRY_OPTIONS: { value: FormValues['expiresInDays']; label: string }[] = [
+/** antd Select options must not use `null` as a value, so "never expires" is 0 in the form and null in the API. */
+const NEVER = 0
+const EXPIRY_OPTIONS: { value: number; label: string }[] = [
   { value: 30, label: '30 dni' },
   { value: 90, label: '90 dni' },
   { value: 365, label: '1 rok' },
-  { value: null, label: 'Bez wygaśnięcia' },
+  { value: NEVER, label: 'Bez wygaśnięcia' },
 ]
 
 const formatDate = (value: string | null, fallback: string) =>
   value ? new Date(value).toLocaleString('pl-PL') : fallback
 
-type FormValues = Required<TokenInput>
+type FormValues = Omit<Required<TokenInput>, 'expiresInDays'> & { expiresInDays: number }
 
 export default function ApiTokens() {
   const { isAdmin, isTeacher } = useAuth()
@@ -32,7 +34,8 @@ export default function ApiTokens() {
 
   const onFinish = async (values: FormValues) => {
     try {
-      setCreated(await createToken(values).unwrap())
+      const expiresInDays = values.expiresInDays === NEVER ? null : (values.expiresInDays as 30 | 90 | 365)
+      setCreated(await createToken({ ...values, expiresInDays }).unwrap())
       form.resetFields()
     } catch (e) {
       void message.error(errorMessage(e))

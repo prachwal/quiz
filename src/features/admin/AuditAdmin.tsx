@@ -10,6 +10,7 @@ const ACTIONS: Record<AuditEntry['action'], string> = {
   'user.unblock': 'Odblokowanie konta',
   'feedback.status': 'Status uwagi',
   'mcp.call': 'Zmiana przez MCP',
+  'settings.update': 'Ustawienia aplikacji',
 }
 
 const formatDate = (value: string) =>
@@ -19,7 +20,7 @@ const describe = (entry: AuditEntry) => {
   const d = entry.details as { from?: string[]; to?: string[]; status?: string }
   if (entry.action === 'roles.update') return `${(d.from ?? []).join(', ') || '—'} → ${(d.to ?? []).join(', ') || '—'}`
   if (entry.action === 'feedback.status') return `status: ${d.status}`
-  if (entry.action === 'mcp.call') return JSON.stringify(entry.details)
+  if (entry.action === 'mcp.call' || entry.action === 'settings.update') return JSON.stringify(entry.details)
   return ''
 }
 

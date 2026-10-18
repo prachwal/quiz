@@ -26,6 +26,9 @@ export interface QuizSummary {
   /** Number of times the quiz has been played (saved attempts). */
   plays: number
   questionCount: number
+  /** The current user's own attempts at this quiz and their best score (null = never played). */
+  myAttempts: number
+  myBestPercent: number | null
   /** Questions drawn from the pool on each play; null = all of them. */
   sampleSize: number | null
   totalPoints: number
@@ -187,7 +190,7 @@ export interface AuditEntry {
   id: string
   actorId: string
   actorLabel: string | null
-  action: 'roles.update' | 'user.block' | 'user.unblock' | 'feedback.status' | 'mcp.call'
+  action: 'roles.update' | 'user.block' | 'user.unblock' | 'feedback.status' | 'mcp.call' | 'settings.update'
   targetId: string | null
   targetLabel: string | null
   details: Record<string, unknown>
@@ -424,4 +427,10 @@ export interface AdminStudentListItem {
   email: string | null
   lastActiveDay: string | null
   attempts: number
+}
+
+/** Global settings (admin). */
+export interface AppSettings {
+  /** Score colours: below `low` red, below `high` orange, otherwise green. */
+  scoreThresholds: { low: number; high: number }
 }

@@ -2,7 +2,6 @@ import {
   AppstoreOutlined,
   BarChartOutlined,
   BookOutlined,
-  InfoCircleOutlined,
   ReadOutlined,
   SettingOutlined,
 } from '@ant-design/icons'
@@ -21,7 +20,6 @@ export const navItems: NavItem[] = [
   { key: '/learn', label: 'Nauka', icon: <ReadOutlined />, tab: true },
   { key: '/verbs', label: 'Czasowniki', icon: <BookOutlined />, tab: true },
   { key: '/results', label: 'Wyniki', icon: <BarChartOutlined />, tab: true },
-  { key: '/about', label: 'O aplikacji', icon: <InfoCircleOutlined />, tab: false },
   { key: '/settings', label: 'Ustawienia', icon: <SettingOutlined />, tab: true },
 ]
 

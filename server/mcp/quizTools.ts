@@ -19,7 +19,7 @@ export function registerQuizTools(server: McpServer, ctx: Ctx) {
       inputSchema: { difficulty: z.enum(DIFFICULTIES).optional(), sort: z.enum(['recent', 'popular']).optional() },
       annotations: { readOnlyHint: true },
     },
-    async ({ difficulty, sort }) => text(await repo.listQuizzes({ difficulty, sort }, ctx.canWriteQuizzes)),
+    async ({ difficulty, sort }) => text(await repo.listQuizzes({ difficulty, sort }, ctx.canWriteQuizzes, ctx.userId)),
   )
 
   server.registerTool(

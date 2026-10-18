@@ -66,8 +66,8 @@ export interface ListFilter {
   sort?: 'recent' | 'popular'
 }
 
-export async function listQuizzes(filter: ListFilter = {}, canEdit = false): Promise<QuizSummary[]> {
-  const values: unknown[] = []
+export async function listQuizzes(filter: ListFilter = {}, canEdit = false, userId: string | null = null): Promise<QuizSummary[]> {
+  const values: unknown[] = [userId]
   let difficultyCondition = ''
   if (filter.difficulty) {
     values.push(filter.difficulty)
@@ -79,7 +79,9 @@ export async function listQuizzes(filter: ListFilter = {}, canEdit = false): Pro
     `SELECT q.id, q.title, q.description, q.created_at, q.updated_at, q.sample_size, d.code AS difficulty,
             (SELECT COUNT(*)::int FROM questions qu WHERE qu.quiz_id = q.id) AS question_count,
             (SELECT COALESCE(SUM(qu.points), 0)::int FROM questions qu WHERE qu.quiz_id = q.id) AS total_points,
-            (SELECT COUNT(*)::int FROM quiz_attempts a WHERE a.quiz_id = q.id) AS plays
+            (SELECT COUNT(*)::int FROM quiz_attempts a WHERE a.quiz_id = q.id) AS plays,
+            (SELECT COUNT(*)::int FROM quiz_attempts a WHERE a.quiz_id = q.id AND a.user_id = $1) AS my_attempts,
+            (SELECT MAX(a.percent)::int FROM quiz_attempts a WHERE a.quiz_id = q.id AND a.user_id = $1) AS my_best
      FROM quizzes q
      LEFT JOIN difficulty_levels d ON d.id = q.difficulty_id
      WHERE q.kind = 'manual' ${difficultyCondition}
@@ -93,6 +95,8 @@ export async function listQuizzes(filter: ListFilter = {}, canEdit = false): Pro
     difficulty: row.difficulty,
     canEdit,
     plays: row.plays,
+    myAttempts: row.my_attempts,
+    myBestPercent: row.my_best,
     questionCount: row.question_count,
     sampleSize: row.sample_size,
     totalPoints: row.total_points,

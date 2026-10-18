@@ -40,6 +40,7 @@ import { downloadCsv } from '../features/classes/downloadCsv'
 import { formatDue } from '../features/classes/formatDue'
 import { RenameClass, Students } from '../features/classes/ClassParts'
 import { StatusTag } from '../features/classes/statusTags'
+import { ScoreTag } from '../features/results/Score'
 import type { ClassDetail as ClassDetailData, ClassReportRow } from '../shared/quiz/types'
 
 function Assignments({ cls, readOnly }: { cls: ClassDetailData; readOnly: boolean }) {
@@ -185,7 +186,7 @@ function Report({ cls }: { cls: ClassDetailData }) {
           {a.title}:
         </Typography.Text>
         <StatusTag status={r.statuses[a.id]} />
-        {r.bestPercent[a.id] != null && <Tag>{r.bestPercent[a.id]}%</Tag>}
+        {r.bestPercent[a.id] != null && <ScoreTag percent={r.bestPercent[a.id] as number} />}
       </Flex>
     ))
 
@@ -205,7 +206,7 @@ function Report({ cls }: { cls: ClassDetailData }) {
       render: (_v: unknown, r: ClassReportRow) => (
         <Flex gap={6} align="center">
           <StatusTag status={r.statuses[a.id]} />
-          {r.bestPercent[a.id] != null && <Tag>{r.bestPercent[a.id]}%</Tag>}
+          {r.bestPercent[a.id] != null && <ScoreTag percent={r.bestPercent[a.id] as number} />}
         </Flex>
       ),
     })),
