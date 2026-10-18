@@ -25,6 +25,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   errorMessage,
+  useAddClassMemberMutation,
   useArchiveClassMutation,
   useCreateAssignmentMutation,
   useDeleteAssignmentMutation,
@@ -91,14 +92,54 @@ function RenameClass({ cls }: { cls: ClassDetailData }) {
   )
 }
 
+function AddStudent({ cls }: { cls: ClassDetailData }) {
+  const [add, { isLoading }] = useAddClassMemberMutation()
+  const [value, setValue] = useState('')
+  const { message } = AntdApp.useApp()
+  const submit = async () => {
+    const userId = value.trim()
+    if (!userId) return
+    try {
+      const result = await add({ classId: cls.id, userId }).unwrap()
+      void message.success(result.status === 'added' ? 'Uczeń dodany do klasy' : 'Uczeń już jest w tej klasie')
+      setValue('')
+    } catch (e) {
+      void message.error(errorMessage(e))
+    }
+  }
+  return (
+    <Flex vertical gap={4} style={{ marginBottom: 16 }}>
+      <Input.Search
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onSearch={() => void submit()}
+        enterButton="Dodaj ucznia"
+        loading={isLoading}
+        placeholder="Identyfikator Auth0, np. google-oauth2|123456"
+        maxLength={200}
+        aria-label="Identyfikator Auth0 ucznia"
+      />
+      <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+        Identyfikator znajdziesz w Ustawienia → Użytkownicy (admin) lub uczeń może dołączyć kodem klasy: {cls.joinCode}.
+      </Typography.Text>
+    </Flex>
+  )
+}
+
 function Students({ cls }: { cls: ClassDetailData }) {
   const [remove] = useRemoveClassMemberMutation()
   const { message } = AntdApp.useApp()
   if (cls.members.length === 0) {
-    return <Empty description={`Brak uczniów. Przekaż im kod klasy: ${cls.joinCode}`} />
+    return (
+      <>
+        <AddStudent cls={cls} />
+        <Empty description={`Brak uczniów. Przekaż im kod klasy: ${cls.joinCode}`} />
+      </>
+    )
   }
   return (
     <Flex vertical gap={8}>
+      <AddStudent cls={cls} />
       {cls.members.map((m) => (
         <Flex key={m.userId} justify="space-between" align="center" gap={12}>
           <Flex vertical style={{ minWidth: 0 }}>

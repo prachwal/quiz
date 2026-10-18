@@ -187,7 +187,7 @@ export interface AuditEntry {
   id: string
   actorId: string
   actorLabel: string | null
-  action: 'roles.update' | 'user.block' | 'user.unblock' | 'feedback.status'
+  action: 'roles.update' | 'user.block' | 'user.unblock' | 'feedback.status' | 'mcp.call'
   targetId: string | null
   targetLabel: string | null
   details: Record<string, unknown>
@@ -252,6 +252,8 @@ export interface WeakVerb {
 export interface ClassSummary {
   id: string
   name: string
+  /** Auth0 id of the teacher who owns the class. */
+  ownerId: string
   joinCode: string
   memberCount: number
   assignmentCount: number
@@ -365,4 +367,12 @@ export interface StudentResults {
   weakVerbs: number
   assignments: StudentAssignmentProgress[]
   attempts: StudentAttempt[]
+}
+
+/** A student as the teacher knows them: identity plus the classes they share with the teacher. */
+export interface StudentListItem {
+  userId: string
+  name: string | null
+  email: string | null
+  classes: { id: string; name: string }[]
 }

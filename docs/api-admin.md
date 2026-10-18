@@ -160,7 +160,12 @@ Nauczyciel widzi tylko własne klasy (cudze wyglądają jak 404).
 | DELETE | `/classes/:id/assignments/:assignmentId` | usunięcie zadania |
 | GET | `/classes/:id/students/:userId` | wyniki ucznia: postęp w zadaniach klasy i podejścia z odpowiedziami na pytania (tylko zadania przydzielone w tej klasie) |
 | GET | `/classes/:id/report`, `/classes/:id/report.csv` | raport (CSV odporny na wstrzyknięcie formuł) |
+| POST | `/classes/:id/members` | dodanie ucznia po identyfikatorze Auth0 `{ userId }` (konto musi istnieć; 201 `added` / 200 `already`) |
+| GET | `/students?classId=` | uczniowie własnych klas (z `classId` jednej klasy) wraz z klasami |
+| GET | `/classes/:id/analysis` | zbiorcza analiza klasy (wyniki zadań, uczniowie wymagający uwagi) |
 | POST | `/classes/join` | uczeń: `{ code }` (403, gdy nauczyciel zamknął zapisy) |
+
+Odczytowe trasy klas (`GET /classes?scope=all`, `/classes/:id`, `/report`, `/analysis`, `/students…`) są też dostępne dla admina (`manage:users`) – widzi wszystkie klasy, zmienia tylko nauczyciel‑właściciel.
 | GET | `/my/classes`, `/my/assignments`; DELETE `/my/classes/:id` | widok ucznia |
 
 ## 6. Panel admina (`manage:users`, tylko JWT admina)

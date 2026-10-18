@@ -23,8 +23,8 @@ Kroki:
 
 1. W Grok otwórz dodawanie własnego konektora/serwera MCP i wpisz powyższe wartości.
 2. Zapisz i zaloguj się na konto, którego używasz w quizie (Google = admin, Discord = uczeń; nauczyciel – konto z rolą `teacher`). Zaakceptuj ekran zgody.
-3. Po powrocie do Grok sprawdź, czy widać narzędzia: `list_quizzes`, `get_quiz`, `create_quiz`… (11 sztuk; bez uprawnień część z nich zwróci odmowę).
-4. Poproś np.: „Wypisz moje quizy” albo „Utwórz quiz 10 pytań 1 z 4 o pierwiastkach”.
+3. Po powrocie do Grok sprawdź, czy widać narzędzia: `quiz_list`, `quiz_create`, `class_list`… (24 sztuki; bez uprawnień część z nich zwróci odmowę).
+4. Poproś np.: „Wypisz moje klasy”, „Dodaj ucznia google-oauth2|123 do klasy 3A” albo „Utwórz quiz 10 pytań 1 z 4 o pierwiastkach”.
 
 **Nie używaj** w tym formularzu `AUTH0_MGMT_CLIENT_ID/SECRET` (aplikacja „Quiz Management”). To sekret administracyjny tylko dla serwera; Grok ma dostać wyłącznie identyfikator klienta „Quiz MCP (Grok)”.
 

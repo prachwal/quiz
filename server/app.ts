@@ -9,6 +9,7 @@ import {
   POPULARITIES,
   assignmentInput,
   blockedInput,
+  addMemberInput,
   assignmentPatchInput,
   classInput,
   classPatchInput,
@@ -26,7 +27,9 @@ import {
 } from '../src/shared/quiz/schema'
 import { mcpHandler, mcpNotAllowed } from './mcp'
 import { resolveGradedIds } from '../src/shared/quiz/sampling'
+import { analyzeClass } from '../src/shared/quiz/classAnalysis'
 import * as admin from './adminRepo'
+import { canReadClasses, readableClass, resolveStudent, viewerOf, visibleClasses, writableClass } from './classAccess'
 import * as progress from './progressRepo'
 import * as reviews from './reviewsRepo'
 import * as classes from './classesRepo'
@@ -270,14 +273,34 @@ export function createApp() {
 
   // ---- classes: teacher side (permission manage:classes; a class is visible only to its owner) ----
   const teacherOnly = requirePermission(MANAGE_CLASSES)
+  // reading is also open to admins (`manage:users`), who see every class; changing stays with the owner
+  const classReader: RequestHandler = (req, res, next) => {
+    if (canReadClasses(viewerOf(req))) next()
+    else res.status(403).json({ error: 'Ta operacja wymaga roli nauczyciela' })
+  }
   const ownedClass = async (req: Parameters<typeof userOf>[0] & { params: Record<string, unknown> }) => {
-    const found = await classes.getClass(idParam(req.params.id), userOf(req))
+    const found = await writableClass(viewerOf(req), idParam(req.params.id))
+    if (!found) throw new HttpError(404, 'Class not found')
+    return found
+  }
+  const viewableClass = async (req: Parameters<typeof userOf>[0] & { params: Record<string, unknown> }) => {
+    const found = await readableClass(viewerOf(req), idParam(req.params.id))
     if (!found) throw new HttpError(404, 'Class not found')
     return found
   }
 
-  router.get('/classes', teacherOnly, async (req, res) => {
-    res.json(await classes.listClasses(userOf(req)))
+  router.get('/classes', classReader, async (req, res) => {
+    const scope = z.enum(['own', 'all']).default('own').parse(req.query.scope)
+    res.json(await visibleClasses(viewerOf(req), scope))
+  })
+
+  // students of the viewer's classes (one class with ?classId=), each with the classes they share
+  router.get('/students', classReader, async (req, res) => {
+    const classId = z.string().uuid().optional().parse(req.query.classId)
+    const viewer = viewerOf(req)
+    const scope = classId ? [await readableClass(viewer, classId)].flatMap((c) => (c ? [c] : [])) : await visibleClasses(viewer, 'own')
+    if (classId && scope.length === 0) throw new HttpError(404, 'Class not found')
+    res.json(await classes.listStudents(scope.map((c) => c.id)))
   })
 
   router.post('/classes', teacherOnly, async (req, res) => {
@@ -285,8 +308,8 @@ export function createApp() {
     res.status(201).json(await classes.createClass(userOf(req), name))
   })
 
-  router.get('/classes/:id', teacherOnly, async (req, res) => {
-    const cls = await ownedClass(req)
+  router.get('/classes/:id', classReader, async (req, res) => {
+    const cls = await viewableClass(req)
     const [members, assignments] = await Promise.all([classes.listMembers(cls.id), classes.listAssignments(cls.id)])
     res.json({ ...cls, members, assignments })
   })
@@ -312,6 +335,16 @@ export function createApp() {
     res.json({ joinCode: code })
   })
 
+  // add a student by Auth0 id (the id must belong to a real account)
+  router.post('/classes/:id/members', teacherOnly, async (req, res) => {
+    const cls = await ownedClass(req)
+    const { userId } = addMemberInput.parse(req.body)
+    const student = await resolveStudent(userId)
+    if (!student) throw new HttpError(404, 'Nie znaleziono użytkownika o takim identyfikatorze Auth0')
+    const status = await classes.addMember(cls.id, userId, student)
+    res.status(status === 'added' ? 201 : 200).json({ userId, status })
+  })
+
   router.delete('/classes/:id/members/:userId', teacherOnly, async (req, res) => {
     const cls = await ownedClass(req)
     if (!(await classes.removeMember(cls.id, String(req.params.userId)))) throw new HttpError(404, 'Member not found')
@@ -335,8 +368,8 @@ export function createApp() {
     res.json({ ok: true })
   })
 
-  router.get('/classes/:id/students/:userId', teacherOnly, async (req, res) => {
-    const cls = await ownedClass(req)
+  router.get('/classes/:id/students/:userId', classReader, async (req, res) => {
+    const cls = await viewableClass(req)
     const results = await classes.studentResults(cls.id, String(req.params.userId))
     if (!results) throw new HttpError(404, 'Student not found')
     res.json(results)
@@ -350,13 +383,18 @@ export function createApp() {
     res.json({ ok: true })
   })
 
-  router.get('/classes/:id/report', teacherOnly, async (req, res) => {
-    const cls = await ownedClass(req)
+  router.get('/classes/:id/report', classReader, async (req, res) => {
+    const cls = await viewableClass(req)
     res.json(await classes.classReport(cls.id))
   })
 
-  router.get('/classes/:id/report.csv', teacherOnly, async (req, res) => {
-    const cls = await ownedClass(req)
+  router.get('/classes/:id/analysis', classReader, async (req, res) => {
+    const cls = await viewableClass(req)
+    res.json({ class: { id: cls.id, name: cls.name }, ...analyzeClass(await classes.classReport(cls.id)) })
+  })
+
+  router.get('/classes/:id/report.csv', classReader, async (req, res) => {
+    const cls = await viewableClass(req)
     const csv = reportToCsv(await classes.classReport(cls.id))
     res
       .type('text/csv; charset=utf-8')

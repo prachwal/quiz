@@ -14,9 +14,10 @@ Tak samo jak REST API: nagłówek `Authorization: Bearer qz_…` z **osobistym t
 
 | Token | Co może |
 | ----- | ------- |
-| zwykły | `list_quizzes`, `get_quiz` (widok gracza), `get_quiz_schema`, `list_irregular_verbs` |
-| z prawem zapisu (tworzy admin) | dodatkowo `get_quiz` z `withAnswers`, `create_quiz`, `update_quiz`, `delete_quiz` |
-| z dostępem do klas (tworzy nauczyciel) | `list_classes`, `get_class_report`, `get_student_results`, `analyze_student` – tylko dla własnych klas nauczyciela |
+| zwykły | `quiz_list`, `quiz_get` (widok gracza), `quiz_schema`, `verbs_list` |
+| z prawem zapisu (tworzy admin) | dodatkowo `quiz_get` z `withAnswers`, `quiz_create`, `quiz_update`, `quiz_delete` |
+| z dostępem do klas (tworzy nauczyciel) | `class_*`, `student_*`, `assignment_*`, `course_list` – na własnych klasach nauczyciela |
+| logowanie OAuth admina | podgląd wszystkich klas (`class_list` z `scope: "all"`, raporty, analizy) |
 
 Token z dostępem do klas tworzysz w Ustawieniach → Tokeny API przełącznikiem „Klasy i wyniki uczniów” (widoczny dla nauczyciela; `POST /api/tokens` z `classes: true`). Pokazuje imiona, e‑maile i wyniki uczniów, więc traktuj go jak dane osobowe: podawaj go tylko usłudze, której możesz je powierzyć. Admin nie ma tego dostępu automatycznie – potrzebuje roli nauczyciela.
 
@@ -24,23 +25,61 @@ Zarządzanie użytkownikami/uwagami i tokenami nie jest dostępne przez MCP (wym
 
 ## Narzędzia
 
+Nazwy mają postać `obiekt_czynność`. Operacje nieodwracalne wymagają `confirm: true`, a **każda zmiana wykonana przez MCP trafia do dziennika audytu** (Ustawienia → Audyt, akcja „Zmiana przez MCP”).
+
+**Quizy** – odczyt dla każdego tokenu, zmiany z `write:quizzes`
+
 | Narzędzie | Opis |
 | --------- | ---- |
-| `list_quizzes` | lista quizów (`difficulty`, `sort`) |
-| `get_quiz` | quiz po `id`; `withAnswers: true` zwraca poprawne odpowiedzi i ustawienia (zapis) |
-| `get_quiz_schema` | JSON Schema obiektu quizu (jak `data/quiz.schema.json`) |
-| `list_irregular_verbs` | katalog czasowników nieregularnych jako materiał na quizy (do 100) |
-| `create_quiz` | tworzy quiz (`quiz` zgodny ze schematem) |
-| `update_quiz` | zastępuje cały quiz i jego ustawienia (id pytań się zmieniają) |
-| `delete_quiz` | usuwa quiz; wymaga `confirm: true` |
-| `list_classes` | klasy nauczyciela |
-| `get_class_report` | uczniowie klasy z postępem w zadaniach, lekcjami, aktywnością, słabymi czasownikami |
-| `get_student_results` | surowe wyniki ucznia: zadania i podejścia z odpowiedziami na pytania |
-| `analyze_student` | gotowa analiza ucznia: średnia, trend, zadania po terminie, dni bez aktywności, najtrudniejsze pytania, najsłabsze czasowniki i ostrzeżenia |
+| `quiz_list` | lista quizów (`difficulty`, `sort`) |
+| `quiz_get` | quiz po `id`; `withAnswers: true` zwraca poprawne odpowiedzi i ustawienia (zapis) |
+| `quiz_schema` | JSON Schema obiektu quizu (jak `data/quiz.schema.json`) |
+| `verbs_list` | katalog czasowników nieregularnych jako materiał na quizy (do 100) |
+| `quiz_create` | tworzy quiz (`quiz` zgodny ze schematem) |
+| `quiz_update` | zastępuje cały quiz i jego ustawienia (id pytań się zmieniają) |
+| `quiz_delete` | usuwa quiz; wymaga `confirm: true` |
 
-Analiza ucznia: `list_classes` → `get_class_report` (wybierz ucznia, weź jego `userId`) → `analyze_student` (a po szczegóły `get_student_results`). Wnioski i rekomendacje pisze asystent na podstawie zwróconych danych; narzędzie liczy tylko statystyki.
+**Klasy** – nauczyciel (`manage:classes`) pracuje na swoich klasach; admin (`manage:users`, logowanie OAuth) ma **podgląd wszystkich klas**, ale nie zmienia cudzych
 
-Dobry przepływ dla asystenta przy quizach: `get_quiz_schema` → (opcjonalnie `list_irregular_verbs`) → `create_quiz` → `get_quiz` do sprawdzenia. Przy zmianie: `get_quiz` z `withAnswers`, modyfikacja, `update_quiz`.
+| Narzędzie | Opis |
+| --------- | ---- |
+| `class_list` | klasy; `scope: "all"` (admin) pokazuje klasy wszystkich nauczycieli |
+| `class_get` | klasa z uczniami (id Auth0, imię, e‑mail) i zadaniami |
+| `class_create` | tworzy klasę (zwraca kod dołączenia) |
+| `class_update` | zmienia nazwę i/lub otwiera/zamyka zapisy (`joiningOpen`) |
+| `class_regenerate_code` | nowy kod dołączenia; `confirm` |
+| `class_archive` | archiwizuje klasę; `confirm` |
+| `class_report` | uczniowie klasy z postępem w zadaniach, lekcjami, aktywnością |
+| `class_analyze` | analiza całej klasy: wyniki zadań, uczniowie wymagający uwagi z powodami |
+
+**Uczniowie**
+
+| Narzędzie | Opis |
+| --------- | ---- |
+| `student_list` | uczniowie klasy (`classId`) lub wszystkich klas z zakresu (`scope`), z ich klasami |
+| `student_add` | dodaje ucznia po **identyfikatorze Auth0** (np. `google-oauth2|123`); konto musi istnieć |
+| `student_remove` | usuwa ucznia z klasy; `confirm` |
+| `student_results` | surowe wyniki: zadania i podejścia z odpowiedziami na pytania |
+| `student_analyze` | analiza ucznia: średnia, trend, zadania po terminie, dni bez aktywności, najtrudniejsze pytania i czasowniki, ostrzeżenia |
+
+**Zadania**
+
+| Narzędzie | Opis |
+| --------- | ---- |
+| `course_list` | kursy do przydzielenia |
+| `assignment_create` | przydziela klasie kurs lub quiz (`kind`, `targetId`, opcjonalny `dueAt`) |
+| `assignment_update_due` | zmienia lub usuwa termin |
+| `assignment_delete` | usuwa zadanie; `confirm` |
+
+Identyfikator Auth0 ucznia widać w `student_list` i `class_get` oraz w Ustawieniach → Użytkownicy (kolumna użytkownika, pod nazwą).
+
+Przepływy:
+
+- **Nowa klasa:** `class_create` → `student_add` (po id Auth0) → `quiz_list`/`course_list` → `assignment_create`.
+- **Analiza:** `class_list` → `class_analyze` (kogo sprawdzić) → `student_analyze` (szczegóły) → opcjonalnie `student_results` (odpowiedzi na pytania).
+- **Quizy:** `quiz_schema` → (opcjonalnie `verbs_list`) → `quiz_create` → `quiz_get` do sprawdzenia; zmiana: `quiz_get` z `withAnswers`, modyfikacja, `quiz_update`.
+
+Dodanie ucznia po id nie wymaga jego zgody – uczeń widzi klasę w „Zadania” i może ją opuścić. Nauczyciel widzi jego imię, e‑mail i wyniki z zadań klasy (patrz informacja przy dołączaniu).
 
 ## Podłączenie klientów
 

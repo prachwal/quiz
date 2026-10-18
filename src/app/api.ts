@@ -156,6 +156,10 @@ export const api = createApi({
       query: (id) => ({ url: `classes/${id}/code`, method: 'POST' }),
       invalidatesTags: ['Class'],
     }),
+    addClassMember: build.mutation<{ userId: string; status: 'added' | 'already' }, { classId: string; userId: string }>({
+      query: ({ classId, userId }) => ({ url: `classes/${classId}/members`, method: 'POST', body: { userId } }),
+      invalidatesTags: ['Class'],
+    }),
     removeClassMember: build.mutation<void, { classId: string; userId: string }>({
       query: ({ classId, userId }) => ({
         url: `classes/${classId}/members/${encodeURIComponent(userId)}`,
@@ -293,6 +297,7 @@ export const {
   useGetClassQuery,
   useArchiveClassMutation,
   useRegenerateClassCodeMutation,
+  useAddClassMemberMutation,
   useRemoveClassMemberMutation,
   useCreateAssignmentMutation,
   useDeleteAssignmentMutation,

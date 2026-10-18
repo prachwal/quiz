@@ -95,6 +95,15 @@ export default function UsersAdmin() {
           {user.name ?? user.email}
           {user.id === me?.sub && <Tag style={{ marginInlineStart: 8 }}>to Ty</Tag>}
         </Typography.Text>
+        <Typography.Text
+          type="secondary"
+          ellipsis
+          copyable={{ text: user.id }}
+          style={{ fontSize: 12 }}
+          aria-label="Identyfikator Auth0"
+        >
+          {user.id}
+        </Typography.Text>
         {user.email && user.email !== user.name && (
           <Typography.Text type="secondary" ellipsis style={{ fontSize: 13 }}>
             {user.email}

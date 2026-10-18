@@ -9,6 +9,7 @@ import type {
   MyAssignment,
   MyClass,
   StudentAttempt,
+  StudentListItem,
   StudentResults,
 } from '../src/shared/quiz/types'
 import { pool } from './quizRepo'
@@ -20,6 +21,7 @@ const newCode = () => Array.from({ length: 6 }, () => CODE_ALPHABET[randomInt(CO
 interface ClassRow {
   id: string
   name: string
+  owner_id: string
   join_code: string
   member_count: number
   assignment_count: number
@@ -31,6 +33,7 @@ interface ClassRow {
 const toClass = (r: ClassRow): ClassSummary => ({
   id: r.id,
   name: r.name,
+  ownerId: r.owner_id,
   joinCode: r.join_code,
   memberCount: r.member_count,
   assignmentCount: r.assignment_count,
@@ -40,7 +43,7 @@ const toClass = (r: ClassRow): ClassSummary => ({
 })
 
 const CLASS_SELECT = `
-  SELECT c.id, c.name, c.join_code, c.joining_open, c.archived_at, c.created_at,
+  SELECT c.id, c.name, c.owner_id, c.join_code, c.joining_open, c.archived_at, c.created_at,
          (SELECT COUNT(*)::int FROM class_members m WHERE m.class_id = c.id) AS member_count,
          (SELECT COUNT(*)::int FROM assignments a WHERE a.class_id = c.id) AS assignment_count
   FROM classes c`
@@ -67,6 +70,18 @@ export async function listClasses(ownerId: string): Promise<ClassSummary[]> {
     [ownerId],
   )
   return rows.map(toClass)
+}
+
+/** Every active class of every teacher (read-only admin overview). */
+export async function listAllClasses(): Promise<ClassSummary[]> {
+  const { rows } = await pool().query<ClassRow>(`${CLASS_SELECT} WHERE c.archived_at IS NULL ORDER BY c.created_at DESC`)
+  return rows.map(toClass)
+}
+
+/** A class regardless of its owner - callers must have checked that the viewer is allowed to see everything. */
+export async function getClassAny(id: string): Promise<ClassSummary | null> {
+  const { rows } = await pool().query<ClassRow>(`${CLASS_SELECT} WHERE c.id = $1`, [id])
+  return rows[0] ? toClass(rows[0]) : null
 }
 
 /** Only the owner can see a class (anything else looks like "not found"). */
@@ -121,6 +136,58 @@ export async function listMembers(classId: string): Promise<ClassMember[]> {
     email: r.email,
     joinedAt: r.joined_at.toISOString(),
   }))
+}
+
+/**
+ * Adds a student by Auth0 id. The id must be a known account (someone who already used the app, or an
+ * Auth0 user checked by the caller); `identity` fills the name / e-mail shown to the teacher when we have none.
+ */
+export async function addMember(
+  classId: string,
+  userId: string,
+  identity?: { name?: string | null; email?: string | null },
+): Promise<'added' | 'already'> {
+  if (identity && (identity.name || identity.email)) {
+    await pool().query(
+      `INSERT INTO user_profiles (user_id, display_name, email) VALUES ($1, $2, $3)
+       ON CONFLICT (user_id) DO UPDATE SET
+         display_name = COALESCE(user_profiles.display_name, $2),
+         email = COALESCE(user_profiles.email, $3)`,
+      [userId, identity.name ?? null, identity.email ?? null],
+    )
+  }
+  const r = await pool().query(
+    'INSERT INTO class_members (class_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+    [classId, userId],
+  )
+  return (r.rowCount ?? 0) > 0 ? 'added' : 'already'
+}
+
+/** What the app knows about a user from their logins (null when they never used the app). */
+export async function profileOf(userId: string): Promise<{ name: string | null; email: string | null } | null> {
+  const { rows } = await pool().query('SELECT display_name, email FROM user_profiles WHERE user_id = $1', [userId])
+  return rows[0] ? { name: rows[0].display_name, email: rows[0].email } : null
+}
+
+/** Students of the given classes (optionally one class), each with the classes they are in. */
+export async function listStudents(classIds: string[]): Promise<StudentListItem[]> {
+  if (classIds.length === 0) return []
+  const { rows } = await pool().query(
+    `SELECT m.user_id, p.display_name, p.email, c.id AS class_id, c.name AS class_name
+     FROM class_members m
+     JOIN classes c ON c.id = m.class_id
+     LEFT JOIN user_profiles p ON p.user_id = m.user_id
+     WHERE m.class_id = ANY($1::uuid[])
+     ORDER BY COALESCE(p.display_name, p.email, m.user_id), c.name`,
+    [classIds],
+  )
+  const students = new Map<string, StudentListItem>()
+  for (const r of rows) {
+    const item: StudentListItem = students.get(r.user_id) ?? { userId: r.user_id, name: r.display_name, email: r.email, classes: [] }
+    item.classes.push({ id: r.class_id, name: r.class_name })
+    students.set(r.user_id, item)
+  }
+  return [...students.values()]
 }
 
 export async function removeMember(classId: string, userId: string) {
