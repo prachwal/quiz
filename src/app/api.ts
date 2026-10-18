@@ -9,6 +9,8 @@ import type {
   ClassDetail,
   ClassReport,
   StudentCandidate,
+  AdminStudentListItem,
+  AdminStudentResults,
   StudentListItem,
   StudentResults,
   ClassSummary,
@@ -133,6 +135,14 @@ export const api = createApi({
         body: { blocked },
       }),
       invalidatesTags: ['AdminUsers', 'Audit'],
+    }),
+    listAdminStudents: build.query<AdminStudentListItem[], { q?: string } | void>({
+      query: (params) => ({ url: 'admin/students', params: params ?? undefined }),
+      providesTags: ['AdminUsers'],
+    }),
+    getAdminStudentResults: build.query<AdminStudentResults, string>({
+      query: (userId) => `admin/students/${encodeURIComponent(userId)}/results`,
+      providesTags: ['AdminUsers', 'Attempt'],
     }),
     listAudit: build.query<AuditEntry[], void>({
       query: () => 'admin/audit',
@@ -301,6 +311,8 @@ export const {
   useSetUserRolesMutation,
   useSetUserBlockedMutation,
   useListAuditQuery,
+  useListAdminStudentsQuery,
+  useGetAdminStudentResultsQuery,
   useListClassesQuery,
   useCreateClassMutation,
   useGetClassQuery,

@@ -385,3 +385,41 @@ export interface StudentListItem {
   email: string | null
   classes: { id: string; name: string }[]
 }
+
+/** One attempt in the admin's full view of a student (any quiz, assigned or not). */
+export interface AdminStudentAttempt {
+  id: string
+  title: string
+  quizId: string | null
+  courseId: string | null
+  /** manual quiz, random verbs quiz, review, error training, course exam... (null = quiz deleted) */
+  source: 'manual' | 'irregular-verbs' | 'review' | 'weak' | 'course-exam' | string | null
+  score: number
+  maxScore: number
+  percent: number
+  passed: boolean | null
+  createdAt: string
+  questions: StudentAttemptQuestion[]
+}
+
+/** Everything about one student's learning, for admins (`manage:users`). */
+export interface AdminStudentResults {
+  userId: string
+  name: string | null
+  email: string | null
+  classes: { id: string; name: string; ownerName: string | null }[]
+  progress: ProgressSummary
+  lessonsCompleted: number
+  weakVerbs: WeakVerb[]
+  totals: { attempts: number; averagePercent: number | null; passedExams: number }
+  attempts: AdminStudentAttempt[]
+}
+
+/** A user in the admin's student search (everyone who has used the app). */
+export interface AdminStudentListItem {
+  userId: string
+  name: string | null
+  email: string | null
+  lastActiveDay: string | null
+  attempts: number
+}

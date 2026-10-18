@@ -180,6 +180,8 @@ Osobisty token dostanie tu **403**. JWT bierzesz z sesji przeglądarki (DevTools
 | PATCH | `/admin/users/:id/blocked` | `{ "blocked": true\|false }` |
 | GET | `/admin/feedback?status=new\|in_progress\|done` | zgłoszenia (maks. 200, najnowsze pierwsze) |
 | PATCH | `/admin/feedback/:id` | `{ "status": "new\|in_progress\|done" }` |
+| GET | `/admin/students?q=` | wszyscy użytkownicy aplikacji (najnowsza aktywność najpierw; `q` ≥ 2 znaki filtruje po imieniu, e‑mailu, id) |
+| GET | `/admin/students/:userId/results` | **wszystkie** wyniki użytkownika: każde podejście z odpowiedziami, seria i cel dzienny, lekcje, słabe czasowniki, klasy |
 | GET | `/admin/audit` | 100 ostatnich zmian administracyjnych |
 
 Zabezpieczenia (zwracają **409**): nie odbierzesz sobie roli admin, nie odbierzesz jej ostatniemu adminowi, nie zablokujesz siebie ani ostatniego admina.

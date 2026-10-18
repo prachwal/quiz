@@ -10,6 +10,7 @@ import {
   assignmentInput,
   blockedInput,
   addMemberInput,
+  auth0UserId,
   assignmentPatchInput,
   classInput,
   classPatchInput,
@@ -493,6 +494,46 @@ export function createApp() {
       targetLabel: target.email ?? target.name,
     })
     res.json({ ...target, blocked })
+  })
+
+  // ---- admin: any student's complete results (all quizzes, not only class assignments) ----
+  router.get('/admin/students', adminOnly, async (req, res) => {
+    const q = z.string().trim().max(100).default('').parse(req.query.q ?? '')
+    res.json(await classes.searchUsers(q.length >= 2 ? q : ''))
+  })
+
+  router.get('/admin/students/:userId/results', adminOnly, async (req, res) => {
+    const userId = auth0UserId.parse(String(req.params.userId))
+    const profile = await classes.profileOf(userId)
+    const attempts = await classes.allAttempts(userId)
+    if (!profile && attempts.length === 0) throw new HttpError(404, 'Nie znaleziono ucznia')
+    const [memberOf, summary, lessonsCompleted, weakStats] = await Promise.all([
+      classes.classesOfMember(userId),
+      progress.getSummary(userId),
+      classes.totalLessonsCompleted(userId),
+      reviews.weakVerbs(userId, 10),
+    ])
+    const verbs = weakStats.length ? await listVerbs({ ids: weakStats.map((s) => s.verbId) }) : []
+    const byId = new Map(verbs.map((v) => [v.id, v]))
+    const percents = attempts.map((x) => x.percent)
+    res.json({
+      userId,
+      name: profile?.name ?? null,
+      email: profile?.email ?? null,
+      classes: memberOf,
+      progress: summary,
+      lessonsCompleted,
+      weakVerbs: weakStats.flatMap((s) => {
+        const verb = byId.get(s.verbId)
+        return verb ? [{ verb, attempts: s.attempts, correct: s.correct, accuracy: s.accuracy, lastWrongAt: s.lastWrongAt }] : []
+      }),
+      totals: {
+        attempts: attempts.length,
+        averagePercent: percents.length ? Math.round(percents.reduce((x, y) => x + y, 0) / percents.length) : null,
+        passedExams: attempts.filter((x) => x.courseId && x.passed).length,
+      },
+      attempts,
+    })
   })
 
   router.get('/admin/audit', adminOnly, async (_req, res) => {

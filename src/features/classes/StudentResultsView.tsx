@@ -10,7 +10,7 @@ import { StatusTag } from './statusTags'
 const formatDateTime = (value: string) =>
   new Date(value).toLocaleString('pl-PL', { dateStyle: 'medium', timeStyle: 'short' })
 
-function AttemptDetails({ attempt }: { attempt: StudentAttempt }) {
+export function AttemptDetails({ attempt }: { attempt: Pick<StudentAttempt, 'questions'> }) {
   return (
     <Flex vertical gap={10}>
       {attempt.questions.map((q, i) => (
