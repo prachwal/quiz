@@ -8,6 +8,7 @@ import {
   ThunderboltFilled,
   TrophyOutlined,
 } from '@ant-design/icons'
+import { rememberGenerate } from '../features/quizzes/lastGenerate'
 import { Alert, Button, Card, Empty, Flex, Popconfirm, Segmented, Select, Skeleton, Switch, Tag, Typography, App as AntdApp, theme } from 'antd'
 import { useState } from 'react'
 import { useAuth } from '../features/auth/useAuth'
@@ -58,6 +59,7 @@ export default function Home() {
   const draw = async () => {
     try {
       const quiz = await generate({ count, difficulty, popularity, variant, onlyWeak }).unwrap()
+      rememberGenerate(quiz.id, { count, difficulty, popularity, variant })
       navigate(`/quizzes/${quiz.id}/play`)
     } catch (e) {
       void message.error(errorMessage(e))

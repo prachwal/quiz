@@ -18,6 +18,7 @@ import {
   useStartReviewMutation,
 } from '../../app/api'
 import SpeakButton from '../audio/SpeakButton'
+import { recallGenerate, rememberGenerate } from './lastGenerate'
 import { EXAM_COUNT, GENERATE_COUNT, REVIEW_COUNT, clampCount } from './counts'
 import ProgressLine from '../progress/ProgressLine'
 import type { Answer } from '../../shared/quiz/engine'
@@ -249,10 +250,12 @@ export default function ResultView({
   }
   const drawAnother = async () => {
     try {
-      const next = await generate({
-        count: clampCount(quiz.questions.length, GENERATE_COUNT),
+      const choices = recallGenerate(quiz.id) ?? {
+        count: quiz.questions.length,
         difficulty: quiz.difficulty ?? undefined,
-      }).unwrap()
+      }
+      const next = await generate({ ...choices, count: clampCount(choices.count, GENERATE_COUNT) }).unwrap()
+      rememberGenerate(next.id, choices)
       navigate(`/quizzes/${next.id}/play`)
     } catch (e) {
       void message.error(errorMessage(e))

@@ -20,7 +20,7 @@ export const defaultSettings: SettingsState = {
   themeMode: 'system',
   compact: false,
   showExplanations: true,
-  shuffleQuestions: false,
+  shuffleQuestions: true,
   speechAccent: 'en-US',
   speechRate: 1,
   autoSpeak: false,
