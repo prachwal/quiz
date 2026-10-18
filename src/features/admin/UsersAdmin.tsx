@@ -19,7 +19,7 @@ const PROVIDERS: Record<string, string> = {
 }
 
 const formatDate = (value: string | null) =>
-  value ? new Date(value).toLocaleString('pl-PL', { dateStyle: 'medium', timeStyle: 'short' }) : 'nigdy'
+  value ? new Date(value).toLocaleString('pl-PL', { dateStyle: 'short', timeStyle: 'short' }) : 'nigdy'
 
 export default function UsersAdmin() {
   const [query, setQuery] = useState('')
@@ -54,6 +54,7 @@ export default function UsersAdmin() {
       value={user.roles}
       disabled={savingRoles}
       onChange={(values) => void changeRoles(user, values as ManagedRole[])}
+      style={{ rowGap: 4 }}
       options={MANAGED_ROLES.map((role) => ({
         value: role,
         label: ROLE_LABELS[role],
@@ -74,9 +75,10 @@ export default function UsersAdmin() {
       onConfirm={() => changeBlocked(user, !user.blocked)}
     >
       <Switch
+        size="small"
         checked={user.blocked}
         disabled={savingBlock || user.id === me?.sub}
-        checkedChildren="Zablokowany"
+        checkedChildren="Zablok."
         unCheckedChildren="Aktywny"
         aria-label="Zablokowany"
       />
@@ -104,10 +106,10 @@ export default function UsersAdmin() {
 
   const columns: TableColumnsType<AdminUser> = [
     { title: 'Użytkownik', key: 'user', render: (_v, user) => identity(user) },
-    { title: 'Logowanie', dataIndex: 'provider', render: (p: string) => <Tag>{PROVIDERS[p] ?? p}</Tag> },
-    { title: 'Ostatnio', dataIndex: 'lastLogin', render: (v: string | null) => formatDate(v) },
-    { title: 'Role', key: 'roles', render: (_v, user) => rolesControl(user) },
-    { title: 'Konto', key: 'blocked', render: (_v, user) => blockControl(user) },
+    { title: 'Logowanie', dataIndex: 'provider', width: 110, render: (p: string) => <Tag style={{ marginInlineEnd: 0 }}>{PROVIDERS[p] ?? p}</Tag> },
+    { title: 'Ostatnio', dataIndex: 'lastLogin', width: 120, render: (v: string | null) => formatDate(v) },
+    { title: 'Role', key: 'roles', width: 200, render: (_v, user) => rolesControl(user) },
+    { title: 'Konto', key: 'blocked', width: 84, render: (_v, user) => blockControl(user) },
   ]
 
   const phoneColumns: TableColumnsType<AdminUser> = [
@@ -154,7 +156,8 @@ export default function UsersAdmin() {
         columns={phone ? phoneColumns : columns}
         showHeader={!phone}
         dataSource={data?.users}
-        scroll={phone ? undefined : { x: 'max-content' }}
+        tableLayout="fixed"
+        className="users-table"
         pagination={{
           current: (data?.page ?? page) + 1,
           pageSize: data?.perPage ?? 20,

@@ -8,6 +8,8 @@ import type {
   ClassSummary,
   MyAssignment,
   MyClass,
+  StudentAttempt,
+  StudentResults,
 } from '../src/shared/quiz/types'
 import { pool } from './quizRepo'
 
@@ -21,6 +23,7 @@ interface ClassRow {
   join_code: string
   member_count: number
   assignment_count: number
+  joining_open: boolean
   archived_at: Date | null
   created_at: Date
 }
@@ -31,12 +34,13 @@ const toClass = (r: ClassRow): ClassSummary => ({
   joinCode: r.join_code,
   memberCount: r.member_count,
   assignmentCount: r.assignment_count,
+  joiningOpen: r.joining_open,
   archived: r.archived_at !== null,
   createdAt: r.created_at.toISOString(),
 })
 
 const CLASS_SELECT = `
-  SELECT c.id, c.name, c.join_code, c.archived_at, c.created_at,
+  SELECT c.id, c.name, c.join_code, c.joining_open, c.archived_at, c.created_at,
          (SELECT COUNT(*)::int FROM class_members m WHERE m.class_id = c.id) AS member_count,
          (SELECT COUNT(*)::int FROM assignments a WHERE a.class_id = c.id) AS assignment_count
   FROM classes c`
@@ -73,6 +77,11 @@ export async function getClass(id: string, ownerId: string): Promise<ClassSummar
 
 export async function renameClass(id: string, ownerId: string, name: string) {
   const r = await pool().query('UPDATE classes SET name = $3 WHERE id = $1 AND owner_id = $2', [id, ownerId, name])
+  return (r.rowCount ?? 0) > 0
+}
+
+export async function setJoiningOpen(id: string, ownerId: string, open: boolean) {
+  const r = await pool().query('UPDATE classes SET joining_open = $3 WHERE id = $1 AND owner_id = $2', [id, ownerId, open])
   return (r.rowCount ?? 0) > 0
 }
 
@@ -121,13 +130,18 @@ export async function removeMember(classId: string, userId: string) {
 
 // ---- student side ----------------------------------------------------------------------
 
-export async function joinClass(userId: string, code: string): Promise<MyClass | null> {
-  const { rows } = await pool().query<{ id: string; name: string }>(
-    'SELECT id, name FROM classes WHERE join_code = $1 AND archived_at IS NULL',
+export async function joinClass(userId: string, code: string): Promise<MyClass | 'closed' | null> {
+  const { rows } = await pool().query<{ id: string; name: string; joining_open: boolean }>(
+    'SELECT id, name, joining_open FROM classes WHERE join_code = $1 AND archived_at IS NULL',
     [code],
   )
   const found = rows[0]
   if (!found) return null
+  if (!found.joining_open) {
+    // students already in the class can still "join" again (idempotent), newcomers cannot
+    const member = await pool().query('SELECT 1 FROM class_members WHERE class_id = $1 AND user_id = $2', [found.id, userId])
+    if (member.rows.length === 0) return 'closed'
+  }
   const inserted = await pool().query<{ joined_at: Date }>(
     `INSERT INTO class_members (class_id, user_id) VALUES ($1, $2)
      ON CONFLICT (class_id, user_id) DO UPDATE SET class_id = EXCLUDED.class_id RETURNING joined_at`,
@@ -206,6 +220,11 @@ export async function createAssignment(
   )
   const list = await pool().query<AssignmentRow>(`${ASSIGNMENT_SELECT} WHERE a.id = $1`, [rows[0].id])
   return toAssignment(list.rows[0])
+}
+
+export async function setAssignmentDue(classId: string, assignmentId: string, dueAt: string | null) {
+  const r = await pool().query('UPDATE assignments SET due_at = $3 WHERE id = $1 AND class_id = $2', [assignmentId, classId, dueAt])
+  return (r.rowCount ?? 0) > 0
 }
 
 export async function deleteAssignment(classId: string, assignmentId: string) {
@@ -349,6 +368,124 @@ export async function classReport(classId: string): Promise<ClassReport> {
         statuses,
         bestPercent,
       }
+    }),
+  }
+}
+
+// ---- one student's results (teacher view) ---------------------------------------------
+
+interface AttemptRow {
+  id: string
+  quiz_id: string | null
+  course_id: string | null
+  score: number
+  max_score: number
+  percent: number
+  passed: boolean | null
+  created_at: Date
+  answers: Record<string, { optionIds?: string[]; text?: string }> | null
+  results: { questionId: string; correct: boolean; earned: number; points: number; correctAnswers: string[] }[] | null
+}
+
+/**
+ * Results of a class member, limited to what the class assigned: attempts of the assigned quizzes and
+ * course exams plus course progress. Returns null when the user is not a member of the class.
+ */
+export async function studentResults(classId: string, userId: string): Promise<StudentResults | null> {
+  const members = await listMembers(classId)
+  const member = members.find((m) => m.userId === userId)
+  if (!member) return null
+  const assignments = await listAssignments(classId)
+  const facts = (await loadFacts([userId])).get(userId)!
+
+  const activity = await pool().query<{ last_day: string | null }>(
+    `SELECT to_char(MAX(day), 'YYYY-MM-DD') AS last_day FROM daily_activity WHERE user_id = $1`,
+    [userId],
+  )
+  const reviews = await pool().query<{ attempts: number; correct: number; box: number }>(
+    'SELECT attempts, correct, box FROM verb_reviews WHERE user_id = $1 AND attempts >= 1',
+    [userId],
+  )
+  const weakVerbs = reviews.rows.filter((r) => isWeak({ ...r, lastWrongAt: null })).length
+
+  const quizIds = assignments.flatMap((a) => (a.quizId ? [a.quizId] : []))
+  const courseIds = assignments.flatMap((a) => (a.courseId ? [a.courseId] : []))
+  const attemptRows = await pool().query<AttemptRow>(
+    `SELECT id, quiz_id, course_id, score::float AS score, max_score::float AS max_score, percent, passed,
+            created_at, answers, results
+     FROM quiz_attempts
+     WHERE user_id = $1 AND (quiz_id = ANY($2::uuid[]) OR course_id = ANY($3::uuid[]))
+     ORDER BY created_at DESC LIMIT 50`,
+    [userId, quizIds, courseIds],
+  )
+
+  // question prompts / option texts (best effort: the quiz may have been edited since)
+  const questionIds = [...new Set(attemptRows.rows.flatMap((a) => (a.results ?? []).map((r) => r.questionId)))]
+  const prompts = new Map<string, string>()
+  const optionTexts = new Map<string, string>()
+  if (questionIds.length > 0) {
+    const q = await pool().query<{ id: string; prompt: string }>('SELECT id, prompt FROM questions WHERE id = ANY($1::uuid[])', [questionIds])
+    for (const r of q.rows) prompts.set(r.id, r.prompt)
+    const o = await pool().query<{ id: string; text: string }>(
+      'SELECT id, text FROM options WHERE question_id = ANY($1::uuid[])',
+      [questionIds],
+    )
+    for (const r of o.rows) optionTexts.set(r.id, r.text)
+  }
+
+  const assignmentOf = (a: AttemptRow) =>
+    assignments.find((x) => (x.quizId && x.quizId === a.quiz_id) || (x.courseId && x.courseId === a.course_id))
+
+  return {
+    userId,
+    name: member.name,
+    email: member.email,
+    joinedAt: member.joinedAt,
+    lessonsCompleted: [...facts.lessonsByCourse.values()].reduce((a, b) => a + b, 0),
+    lastActiveDay: activity.rows[0]?.last_day ?? null,
+    weakVerbs,
+    assignments: assignments.map((a) => {
+      const j = judge(a, facts)
+      return {
+        assignmentId: a.id,
+        title: a.title,
+        kind: a.kind,
+        dueAt: a.dueAt,
+        status: j.status,
+        detail: j.detail,
+        bestPercent: j.best,
+      }
+    }),
+    attempts: attemptRows.rows.flatMap((a): StudentAttempt[] => {
+      const assignment = assignmentOf(a)
+      if (!assignment) return []
+      return [
+        {
+          id: a.id,
+          assignmentId: assignment.id,
+          title: assignment.title,
+          score: a.score,
+          maxScore: a.max_score,
+          percent: a.percent,
+          passed: a.passed,
+          createdAt: a.created_at.toISOString(),
+          questions: (a.results ?? []).map((r) => {
+            const given = a.answers?.[r.questionId]
+            const answer = given?.optionIds?.length
+              ? given.optionIds.map((id) => optionTexts.get(id) ?? '?').join(', ')
+              : (given?.text ?? '')
+            return {
+              questionId: r.questionId,
+              prompt: prompts.get(r.questionId) ?? null,
+              correct: r.correct,
+              earned: r.earned,
+              points: r.points,
+              answer,
+              correctAnswers: r.correctAnswers,
+            }
+          }),
+        },
+      ]
     }),
   }
 }

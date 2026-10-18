@@ -26,6 +26,8 @@ export interface QuizSummary {
   /** Number of times the quiz has been played (saved attempts). */
   plays: number
   questionCount: number
+  /** Questions drawn from the pool on each play; null = all of them. */
+  sampleSize: number | null
   totalPoints: number
   createdAt: string
   updatedAt: string
@@ -57,6 +59,11 @@ export interface QuizDetail {
   difficulty: DifficultyCode | null
   courseId: string | null
   canEdit: boolean
+  /** null = follow the player's setting, true/false = override it. */
+  shuffleQuestions: boolean | null
+  shuffleOptions: boolean
+  /** Questions drawn from the pool on each play; null = all of them. */
+  sampleSize: number | null
   /** Set for generated quizzes, e.g. `irregular-verbs`. */
   source: string | null
   createdAt: string
@@ -248,6 +255,8 @@ export interface ClassSummary {
   joinCode: string
   memberCount: number
   assignmentCount: number
+  /** false = the code is valid but new students cannot join. */
+  joiningOpen: boolean
   archived: boolean
   createdAt: string
 }
@@ -308,4 +317,52 @@ export interface ClassReport {
 export interface ClassDetail extends ClassSummary {
   members: ClassMember[]
   assignments: AssignmentItem[]
+}
+
+/** One question of a student's attempt, as seen by the teacher. */
+export interface StudentAttemptQuestion {
+  questionId: string
+  /** null when the quiz was edited afterwards and the question no longer exists */
+  prompt: string | null
+  correct: boolean
+  earned: number
+  points: number
+  /** What the student answered (option texts or typed text), empty when skipped. */
+  answer: string
+  correctAnswers: string[]
+}
+
+export interface StudentAttempt {
+  id: string
+  assignmentId: string
+  title: string
+  score: number
+  maxScore: number
+  percent: number
+  passed: boolean | null
+  createdAt: string
+  questions: StudentAttemptQuestion[]
+}
+
+export interface StudentAssignmentProgress {
+  assignmentId: string
+  title: string
+  kind: 'course' | 'quiz'
+  dueAt: string | null
+  status: AssignmentStatus
+  detail: string
+  bestPercent: number | null
+}
+
+/** A class member's results on the class assignments (only those - nothing else about the student). */
+export interface StudentResults {
+  userId: string
+  name: string | null
+  email: string | null
+  joinedAt: string
+  lessonsCompleted: number
+  lastActiveDay: string | null
+  weakVerbs: number
+  assignments: StudentAssignmentProgress[]
+  attempts: StudentAttempt[]
 }

@@ -9,7 +9,9 @@ import {
   POPULARITIES,
   assignmentInput,
   blockedInput,
+  assignmentPatchInput,
   classInput,
+  classPatchInput,
   feedbackInput,
   feedbackStatusInput,
   generateInput,
@@ -22,6 +24,7 @@ import {
   rolesInput,
   tokenInput,
 } from '../src/shared/quiz/schema'
+import { resolveGradedIds } from '../src/shared/quiz/sampling'
 import * as admin from './adminRepo'
 import * as progress from './progressRepo'
 import * as reviews from './reviewsRepo'
@@ -240,6 +243,7 @@ export function createApp() {
     if (identity?.via === 'jwt') await progress.syncIdentity(identity.userId, identity)
     const joined = await classes.joinClass(userOf(req), code)
     if (!joined) throw new HttpError(404, 'Nie znaleziono klasy o takim kodzie')
+    if (joined === 'closed') throw new HttpError(403, 'Ta klasa nie przyjmuje nowych uczniów')
     res.status(201).json(joined)
   })
 
@@ -281,9 +285,10 @@ export function createApp() {
 
   router.patch('/classes/:id', teacherOnly, async (req, res) => {
     const cls = await ownedClass(req)
-    const { name } = classInput.parse(req.body)
-    await classes.renameClass(cls.id, userOf(req), name)
-    res.json({ ...cls, name })
+    const patch = classPatchInput.parse(req.body)
+    if (patch.name !== undefined) await classes.renameClass(cls.id, userOf(req), patch.name)
+    if (patch.joiningOpen !== undefined) await classes.setJoiningOpen(cls.id, userOf(req), patch.joiningOpen)
+    res.json({ ...cls, ...(patch.name !== undefined ? { name: patch.name } : {}), ...(patch.joiningOpen !== undefined ? { joiningOpen: patch.joiningOpen } : {}) })
   })
 
   router.delete('/classes/:id', teacherOnly, async (req, res) => {
@@ -311,6 +316,22 @@ export function createApp() {
     const created = await classes.createAssignment(cls.id, userOf(req), input)
     if (!created) throw new HttpError(404, 'Nie znaleziono wskazanego kursu lub quizu')
     res.status(201).json(created)
+  })
+
+  router.patch('/classes/:id/assignments/:assignmentId', teacherOnly, async (req, res) => {
+    const cls = await ownedClass(req)
+    const { dueAt } = assignmentPatchInput.parse(req.body)
+    if (!(await classes.setAssignmentDue(cls.id, idParam(req.params.assignmentId), dueAt))) {
+      throw new HttpError(404, 'Assignment not found')
+    }
+    res.json({ ok: true })
+  })
+
+  router.get('/classes/:id/students/:userId', teacherOnly, async (req, res) => {
+    const cls = await ownedClass(req)
+    const results = await classes.studentResults(cls.id, String(req.params.userId))
+    if (!results) throw new HttpError(404, 'Student not found')
+    res.json(results)
   })
 
   router.delete('/classes/:id/assignments/:assignmentId', teacherOnly, async (req, res) => {
@@ -569,7 +590,7 @@ export function createApp() {
 
   router.post('/quizzes/:id/grade', async (req, res) => {
     const id = parseId(req.params.id)
-    const { answers } = gradeInput.parse(req.body)
+    const { answers: submitted, questionIds } = gradeInput.parse(req.body)
     const userId = currentUserId(req)
     const quiz = await repo.getQuiz(id, true)
     if (!quiz) throw notFound()
@@ -577,7 +598,19 @@ export function createApp() {
     if (quiz.courseId && (!userId || userId !== (await repo.getOwnerId(id)))) {
       throw new HttpError(userId ? 403 : 401, 'Egzamin wymaga zalogowania')
     }
-    const result = gradeQuiz(repo.toGradable(quiz), answers)
+    // sampled quizzes are graded on the questions the player was actually shown
+    const gradedIds = resolveGradedIds(
+      quiz.questions.map((q) => q.id),
+      questionIds,
+      quiz.sampleSize,
+    )
+    if (!gradedIds) throw new HttpError(400, 'Niepoprawny zestaw pytań dla tego quizu')
+    const graded = new Set(gradedIds)
+    const answers = Object.fromEntries(Object.entries(submitted).filter(([questionId]) => graded.has(questionId)))
+    const result = gradeQuiz(
+      repo.toGradable(quiz).filter((q) => graded.has(q.id)),
+      answers,
+    )
     const course = quiz.courseId ? await courses.coursePassInfo(quiz.courseId) : null
     const passed = course ? result.percent >= course.passPercent : null
     const attemptId = await repo.saveAttempt({

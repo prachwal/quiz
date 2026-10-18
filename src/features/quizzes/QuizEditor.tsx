@@ -1,5 +1,5 @@
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
-import { Button, Card, Form, Input, InputNumber, Select, Space, App as AntdApp } from 'antd'
+import { Button, Card, Form, Input, InputNumber, Segmented, Select, Space, Switch, App as AntdApp } from 'antd'
 import type { FormInstance } from 'antd'
 import { QUESTION_TYPES, questionTypes } from '../../shared/quiz/engine'
 import type { QuestionType } from '../../shared/quiz/engine'
@@ -121,6 +121,43 @@ export default function QuizEditor({ initialValues, submitting, submitLabel, onS
         </Form.Item>
         <Form.Item label="Poziom trudności" name="difficulty" style={{ marginBottom: 0 }}>
           <Select allowClear placeholder="Nie określono" options={difficultyOptions} style={{ width: 220, maxWidth: '100%' }} />
+        </Form.Item>
+      </Card>
+
+      <Card title="Ustawienia quizu" size="small" style={{ marginTop: 16 }}>
+        <Form.Item
+          label="Losowa kolejność pytań"
+          name="shuffleQuestions"
+          extra="„Ustawienie gracza” zostawia decyzję graczowi (Ustawienia → Losowa kolejność pytań). Pozostałe opcje nadpisują je dla tego quizu."
+          getValueProps={(v: boolean | null | undefined) => ({ value: v == null ? 'user' : v ? 'on' : 'off' })}
+          normalize={(v: 'user' | 'on' | 'off') => (v === 'user' ? null : v === 'on')}
+        >
+          <Segmented
+            options={[
+              { value: 'user', label: 'Ustawienie gracza' },
+              { value: 'on', label: 'Zawsze losowo' },
+              { value: 'off', label: 'Zawsze po kolei' },
+            ]}
+          />
+        </Form.Item>
+        <Form.Item
+          label="Pytania losowane z całej puli"
+          name="sampleSize"
+          extra="Przy każdym podejściu gracz dostaje tyle pytań, wylosowanych z wszystkich pytań quizu. Jeśli pula jest mniejsza, gra się wszystkie."
+          getValueProps={(v: number | null | undefined) => ({ value: v == null ? 'all' : String(v) })}
+          normalize={(v: string) => (v === 'all' ? null : Number(v))}
+        >
+          <Segmented
+            options={[
+              { value: '10', label: '10' },
+              { value: '20', label: '20' },
+              { value: '30', label: '30' },
+              { value: 'all', label: 'Wszystkie' },
+            ]}
+          />
+        </Form.Item>
+        <Form.Item label="Losowa kolejność odpowiedzi (pytania z wyborem)" name="shuffleOptions" valuePropName="checked" style={{ marginBottom: 0 }}>
+          <Switch />
         </Form.Item>
       </Card>
 

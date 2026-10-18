@@ -19,6 +19,9 @@ export default function QuizEdit() {
     title: data.title,
     description: data.description,
     difficulty: data.difficulty,
+    shuffleQuestions: data.shuffleQuestions,
+    shuffleOptions: data.shuffleOptions,
+    sampleSize: data.sampleSize as QuizInput['sampleSize'],
     questions: data.questions.map((q) => ({
       type: q.type,
       prompt: q.prompt,
