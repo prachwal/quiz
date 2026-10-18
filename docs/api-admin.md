@@ -108,19 +108,20 @@ qz "$API/quizzes/$ID?include=answers" | jq '.questions[].options'
 qz -X DELETE $API/quizzes/$ID
 ```
 
-### Seedowanie quizu z pliku – `scripts/seed-list-quiz.mjs`
+### Quizy jako JSON – `scripts/quiz-tool.mjs`
 
-Tworzy (lub aktualizuje – dopasowanie po tytule, więc jest idempotentny) quiz „Czasowniki nieregularne – lista z docs/lista.md”:
-jedno pytanie `text` na wiersz `docs/lista.md` (`Polskie — base, past, participle.`), z akceptowanymi wariantami zapisu.
-Literówka „de-al/de-alt” w liście jest poprawiana na `deal/dealt`.
+Jedno narzędzie do przepływu `md → json → quiz`. Format pliku quizu jest taki sam jak ciało `POST`/`PUT /quizzes`, więc `download` i `upload` są wzajemnie odwracalne.
 
 ```bash
-node scripts/seed-list-quiz.mjs --dry-run              # tylko parsowanie
-node --env-file=.env scripts/seed-list-quiz.mjs        # produkcja (PROD_API)
-API_URL=http://localhost:8888 node --env-file=.env scripts/seed-list-quiz.mjs   # lokalnie – wymaga tokenu z lokalnej bazy
+node scripts/quiz-tool.mjs list-to-json                 # docs/lista.md -> data/lista-verbs.json  ({pl, forms:[base, past, participle]})
+node scripts/quiz-tool.mjs build-choice                 # data/lista-verbs.json -> data/quiz-lista-choice.json (pytania 1 z 4)
+node --env-file=.env scripts/quiz-tool.mjs upload data/quiz-lista-choice.json [--dry-run]
+node --env-file=.env scripts/quiz-tool.mjs download <id|tytuł> [plik.json]   # eksport quizu (z poprawnymi odpowiedziami)
 ```
 
-Po zmianie `docs/lista.md` wystarczy uruchomić ponownie – quiz zostanie zastąpiony (id pytań się zmienią).
+- `upload` tworzy quiz albo – gdy istnieje quiz o tym samym tytule – zastępuje go (id pytań się zmieniają, ustawienia gry biorą się z pliku).
+- Token to `PROD_API` z `.env`; `API_URL=http://localhost:8888` kieruje skrypt na `netlify dev`.
+- Literówka „de-al/de-alt” z listy jest poprawiana na `deal/dealt`. Złe odpowiedzi w `build-choice` to: forma regularna („blowed”), zamienione formy i formy innych czasowników z listy. Plik quizu jest losowany raz przy budowaniu, więc po edycji można go poprawić ręcznie przed `upload`.
 
 ## 4. Quizy generowane i nauka (wszyscy zalogowani)
 
