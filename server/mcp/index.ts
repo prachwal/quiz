@@ -16,7 +16,12 @@ import { registerQuizTools } from './quizTools'
  */
 function buildServer(req: Request) {
   const ctx = contextOf(req)
-  const server = new McpServer({ name: 'quiz', version: '2.0.0' })
+  const server = new McpServer({
+    name: 'quiz',
+    title: 'Quiz',
+    version: '2.0.0',
+    icons: [{ src: 'https://fabulous-dieffenbachia.netlify.app/mcp-icon.png', mimeType: 'image/png', sizes: ['1254x1254'] }],
+  })
   registerQuizTools(server, ctx)
   registerClassTools(server, ctx)
   return server
