@@ -5,6 +5,7 @@ import type { quizInput } from '../src/shared/quiz/schema'
 import type {
   AttemptSummary,
   DifficultyCode,
+  SubjectCode,
   QuizDetail,
   QuizQuestion,
   QuizSummary,
@@ -37,6 +38,7 @@ interface QuizRow {
   kind: QuizDetail['kind']
   source: string | null
   difficulty: DifficultyCode | null
+  subject: SubjectCode | null
   course_id: string | null
   owner_id: string | null
   shuffle_questions: boolean | null
@@ -63,6 +65,7 @@ interface OptionRow {
 
 export interface ListFilter {
   difficulty?: DifficultyCode
+  subject?: SubjectCode | 'none'
   sort?: 'recent' | 'popular'
 }
 
@@ -73,10 +76,16 @@ export async function listQuizzes(filter: ListFilter = {}, canEdit = false, user
     values.push(filter.difficulty)
     difficultyCondition = `AND d.code = $${values.length}`
   }
+  let subjectCondition = ''
+  if (filter.subject === 'none') subjectCondition = 'AND q.subject_id IS NULL'
+  else if (filter.subject) {
+    values.push(filter.subject)
+    subjectCondition = `AND s.code = $${values.length}`
+  }
   const order = filter.sort === 'popular' ? 'plays DESC, q.updated_at DESC' : 'q.updated_at DESC'
 
   const { rows } = await pool().query(
-    `SELECT q.id, q.title, q.description, q.created_at, q.updated_at, q.sample_size, d.code AS difficulty,
+    `SELECT q.id, q.title, q.description, q.created_at, q.updated_at, q.sample_size, d.code AS difficulty, s.code AS subject,
             (SELECT COUNT(*)::int FROM questions qu WHERE qu.quiz_id = q.id) AS question_count,
             (SELECT COALESCE(SUM(qu.points), 0)::int FROM questions qu WHERE qu.quiz_id = q.id) AS total_points,
             (SELECT COUNT(*)::int FROM quiz_attempts a WHERE a.quiz_id = q.id) AS plays,
@@ -84,7 +93,8 @@ export async function listQuizzes(filter: ListFilter = {}, canEdit = false, user
             (SELECT MAX(a.percent)::int FROM quiz_attempts a WHERE a.quiz_id = q.id AND a.user_id = $1) AS my_best
      FROM quizzes q
      LEFT JOIN difficulty_levels d ON d.id = q.difficulty_id
-     WHERE q.kind = 'manual' ${difficultyCondition}
+     LEFT JOIN subjects s ON s.id = q.subject_id
+     WHERE q.kind = 'manual' ${difficultyCondition} ${subjectCondition}
      ORDER BY ${order}`,
     values,
   )
@@ -93,6 +103,7 @@ export async function listQuizzes(filter: ListFilter = {}, canEdit = false, user
     title: row.title,
     description: row.description,
     difficulty: row.difficulty,
+    subject: row.subject,
     canEdit,
     plays: row.plays,
     myAttempts: row.my_attempts,
@@ -117,8 +128,10 @@ export async function getQuiz(
 ): Promise<QuizDetail | null> {
   const db = pool()
   const quizzes = await db.query<QuizRow>(
-    `SELECT q.*, d.code AS difficulty
-     FROM quizzes q LEFT JOIN difficulty_levels d ON d.id = q.difficulty_id
+    `SELECT q.*, d.code AS difficulty, s.code AS subject
+     FROM quizzes q
+     LEFT JOIN difficulty_levels d ON d.id = q.difficulty_id
+     LEFT JOIN subjects s ON s.id = q.subject_id
      WHERE q.id = $1`,
     [id],
   )
@@ -143,6 +156,7 @@ export async function getQuiz(
     kind: quiz.kind,
     source: quiz.source,
     difficulty: quiz.difficulty,
+    subject: quiz.subject,
     courseId: quiz.course_id,
     canEdit,
     shuffleQuestions: quiz.shuffle_questions,
@@ -229,8 +243,9 @@ export async function createQuiz(
   return inTransaction(async (client) => {
     const created = await client.query<{ id: string }>(
       `INSERT INTO quizzes (title, description, kind, source, course_id, owner_id, difficulty_id,
-                            shuffle_questions, shuffle_options, sample_size)
-       VALUES ($1, $2, $3, $4, $5, $6, (SELECT id FROM difficulty_levels WHERE code = $7), $8, $9, $10)
+                            shuffle_questions, shuffle_options, sample_size, subject_id)
+       VALUES ($1, $2, $3, $4, $5, $6, (SELECT id FROM difficulty_levels WHERE code = $7), $8, $9, $10,
+               (SELECT id FROM subjects WHERE code = $11))
        RETURNING id`,
       [
         input.title,
@@ -243,6 +258,7 @@ export async function createQuiz(
         input.shuffleQuestions ?? null,
         input.shuffleOptions ?? false,
         input.sampleSize ?? null,
+        input.subject ?? null,
       ],
     )
     const id = created.rows[0].id
@@ -258,7 +274,8 @@ export async function replaceQuiz(id: string, input: ParsedQuiz): Promise<boolea
       `UPDATE quizzes
        SET title = $2, description = $3, updated_at = now(),
            difficulty_id = (SELECT id FROM difficulty_levels WHERE code = $4),
-           shuffle_questions = $5, shuffle_options = $6, sample_size = $7
+           shuffle_questions = $5, shuffle_options = $6, sample_size = $7,
+           subject_id = (SELECT id FROM subjects WHERE code = $8)
        WHERE id = $1 RETURNING id`,
       [
         id,
@@ -268,6 +285,7 @@ export async function replaceQuiz(id: string, input: ParsedQuiz): Promise<boolea
         input.shuffleQuestions ?? null,
         input.shuffleOptions ?? false,
         input.sampleSize ?? null,
+        input.subject ?? null,
       ],
     )
     if (updated.rowCount === 0) return false

@@ -31,7 +31,7 @@ Nazwy mają postać `obiekt_czynność`. Operacje nieodwracalne wymagają `confi
 
 | Narzędzie | Opis |
 | --------- | ---- |
-| `quiz_list` | lista quizów (`difficulty`, `sort`) |
+| `quiz_list` | lista quizów (`difficulty`, `subject` albo `none`, `sort`) |
 | `quiz_get` | quiz po `id`; `withAnswers: true` zwraca poprawne odpowiedzi i ustawienia (zapis) |
 | `quiz_schema` | JSON Schema obiektu quizu (jak `data/quiz.schema.json`) |
 | `verbs_list` | katalog czasowników nieregularnych jako materiał na quizy (do 100) |

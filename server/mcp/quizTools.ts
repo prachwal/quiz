@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import quizFileSchema from '../../data/quiz.schema.json' with { type: 'json' }
 import { DIFFICULTIES, POPULARITIES, quizInput } from '../../src/shared/quiz/schema'
+import { SUBJECTS } from '../../src/shared/quiz/types'
 import { listVerbs } from '../irregularVerbs'
 import * as repo from '../quizRepo'
 import { audit, failure, needQuizWrite, text } from './context'
@@ -15,11 +16,15 @@ export function registerQuizTools(server: McpServer, ctx: Ctx) {
     'quiz_list',
     {
       title: 'Lista quizów',
-      description: 'Zwraca ręcznie utworzone quizy (id, tytuł, liczba pytań, ile pytań losuje się z puli, liczba podejść).',
-      inputSchema: { difficulty: z.enum(DIFFICULTIES).optional(), sort: z.enum(['recent', 'popular']).optional() },
+      description: 'Zwraca ręcznie utworzone quizy (id, tytuł, przedmiot, liczba pytań, ile pytań losuje się z puli, liczba podejść).',
+      inputSchema: {
+        difficulty: z.enum(DIFFICULTIES).optional(),
+        subject: z.enum([...SUBJECTS, 'none']).optional().describe('Przedmiot (math, physics, chemistry, biology, geography, history, polish, english, it, other) albo none = bez przedmiotu'),
+        sort: z.enum(['recent', 'popular']).optional(),
+      },
       annotations: { readOnlyHint: true },
     },
-    async ({ difficulty, sort }) => text(await repo.listQuizzes({ difficulty, sort }, ctx.canWriteQuizzes, ctx.userId)),
+    async ({ difficulty, subject, sort }) => text(await repo.listQuizzes({ difficulty, subject, sort }, ctx.canWriteQuizzes, ctx.userId)),
   )
 
   server.registerTool(
@@ -70,7 +75,7 @@ export function registerQuizTools(server: McpServer, ctx: Ctx) {
     {
       title: 'Utwórz quiz',
       description:
-        'Tworzy quiz. Typy pytań: single (jedna poprawna), multiple, truefalse, text (opcje to akceptowane odpowiedzi). Ustawienia: shuffleQuestions (null=ustawienie gracza), shuffleOptions, sampleSize (10/20/30 pytań losowanych z puli lub null). Schemat: quiz_schema.',
+        'Tworzy quiz. Typy pytań: single (jedna poprawna), multiple, truefalse, text (opcje to akceptowane odpowiedzi). Pole subject grupuje quiz według przedmiotu (math, physics, chemistry, biology, geography, history, polish, english, it, other). Ustawienia: shuffleQuestions (null=ustawienie gracza), shuffleOptions, sampleSize (10/20/30 pytań losowanych z puli lub null). Schemat: quiz_schema.',
       inputSchema: { quiz: quizInput },
     },
     async ({ quiz }) => {

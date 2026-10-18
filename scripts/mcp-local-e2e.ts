@@ -105,6 +105,7 @@ try {
     title: 'MCP E2E quiz',
     description: 'test',
     difficulty: 'easy',
+    subject: 'math',
     shuffleQuestions: true,
     shuffleOptions: true,
     sampleSize: 10,
@@ -116,12 +117,14 @@ try {
     ],
   }
   const created = await call(tAdminWrite, 'quiz_create', { quiz })
-  ok('quiz_create (all 4 types + settings)', created, (d) => d.questions.length === 4 && d.sampleSize === 10 && d.shuffleOptions === true && d.shuffleQuestions === true)
+  ok('quiz_create (all 4 types + settings)', created, (d) => d.questions.length === 4 && d.sampleSize === 10 && d.subject === 'math' && d.shuffleOptions === true && d.shuffleQuestions === true)
   const quizId: string = created.data.id
   denied('quiz_create without write', await call(tPlain, 'quiz_create', { quiz }), 'write:quizzes')
   denied('quiz_create invalid (no questions)', await call(tAdminWrite, 'quiz_create', { quiz: { title: 'MCP E2E bad', questions: [] } }))
   denied('quiz_create invalid (single with 2 correct)', await call(tAdminWrite, 'quiz_create', { quiz: { title: 'MCP E2E bad', questions: [{ type: 'single', prompt: 'p', options: [{ text: 'a', isCorrect: true }, { text: 'b', isCorrect: true }] }] } }))
   ok('quiz_list', await call(tPlain, 'quiz_list', {}), (d) => d.some((q: any) => q.id === quizId && q.sampleSize === 10 && q.questionCount === 4))
+  ok('quiz_list (subject filter)', await call(tPlain, 'quiz_list', { subject: 'math' }), (d) => d.some((q: any) => q.id === quizId && q.subject === 'math'))
+  ok('quiz_list (other subject excludes it)', await call(tPlain, 'quiz_list', { subject: 'chemistry' }), (d) => !d.some((q: any) => q.id === quizId))
   ok('quiz_list (difficulty filter)', await call(tPlain, 'quiz_list', { difficulty: 'easy' }), (d) => d.some((q: any) => q.id === quizId))
   ok('quiz_get (player view hides answers)', await call(tPlain, 'quiz_get', { id: quizId }), (d) => d.questions.every((q: any) => q.options.every((o: any) => o.isCorrect === undefined)) && d.questions.find((q: any) => q.type === 'text').options.length === 0)
   denied('quiz_get withAnswers without write', await call(tPlain, 'quiz_get', { id: quizId, withAnswers: true }), 'write:quizzes')

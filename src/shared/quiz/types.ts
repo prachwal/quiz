@@ -16,11 +16,29 @@ export const POPULARITY_LABELS: Record<PopularityCode, string> = {
   rare: 'Rzadszy',
 }
 
+export const SUBJECTS = ['math', 'physics', 'chemistry', 'biology', 'geography', 'history', 'polish', 'english', 'it', 'other'] as const
+export type SubjectCode = (typeof SUBJECTS)[number]
+
+export const SUBJECT_LABELS: Record<SubjectCode, string> = {
+  math: 'Matematyka',
+  physics: 'Fizyka',
+  chemistry: 'Chemia',
+  biology: 'Biologia',
+  geography: 'Geografia',
+  history: 'Historia',
+  polish: 'Język polski',
+  english: 'Język angielski',
+  it: 'Informatyka',
+  other: 'Inne',
+}
+
 export interface QuizSummary {
   id: string
   title: string
   description: string
   difficulty: DifficultyCode | null
+  /** School subject the quiz is grouped under; null = unassigned. */
+  subject: SubjectCode | null
   /** The current user may edit/delete this quiz (owner, or legacy quiz without an owner). */
   canEdit: boolean
   /** Number of times the quiz has been played (saved attempts). */
@@ -60,6 +78,7 @@ export interface QuizDetail {
   description: string
   kind: 'manual' | 'generated'
   difficulty: DifficultyCode | null
+  subject: SubjectCode | null
   courseId: string | null
   canEdit: boolean
   /** null = follow the player's setting, true/false = override it. */

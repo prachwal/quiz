@@ -3,6 +3,7 @@ import type { ErrorRequestHandler, RequestHandler } from 'express'
 import { randomUUID } from 'node:crypto'
 import { ZodError, z } from 'zod'
 import { reportToCsv } from '../src/shared/quiz/csv'
+import { SUBJECTS } from '../src/shared/quiz/types'
 import { gradeQuiz } from '../src/shared/quiz/engine'
 import {
   DIFFICULTIES,
@@ -94,6 +95,7 @@ const examInput = z.object({ count: z.number().int().min(5).max(40).default(15) 
 
 const listQuery = z.object({
   difficulty: z.enum(DIFFICULTIES).optional(),
+  subject: z.enum([...SUBJECTS, 'none']).optional(),
   sort: z.enum(['recent', 'popular']).optional(),
 })
 
@@ -156,8 +158,8 @@ export function createApp() {
   const router = express.Router()
 
   router.get('/quizzes', async (req, res) => {
-    const { difficulty, sort } = listQuery.parse(req.query)
-    res.json(await repo.listQuizzes({ difficulty, sort }, hasPermission(req, WRITE_QUIZZES), userOf(req)))
+    const { difficulty, subject, sort } = listQuery.parse(req.query)
+    res.json(await repo.listQuizzes({ difficulty, subject, sort }, hasPermission(req, WRITE_QUIZZES), userOf(req)))
   })
 
   router.post('/quizzes', requirePermission(WRITE_QUIZZES), async (req, res) => {

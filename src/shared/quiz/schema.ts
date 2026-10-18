@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { AUTH0_ID_PATTERN } from './auth0Id'
 import { QUESTION_TYPES, questionTypes } from './engine'
+import { SUBJECTS } from './types'
 
 export const optionInput = z.object({
   text: z.string().trim().min(1, 'Treść opcji jest wymagana').max(500),
@@ -31,6 +32,8 @@ export const SAMPLE_SIZES = [10, 20, 30] as const
 
 export const quizInput = z.object({
   difficulty: z.enum(DIFFICULTIES).nullish(),
+  /** School subject used to group quizzes; null = unassigned. */
+  subject: z.enum(SUBJECTS).nullish(),
   /** null = follow the player's setting, true/false = override it */
   shuffleQuestions: z.boolean().nullish(),
   shuffleOptions: z.boolean().default(false),

@@ -31,6 +31,7 @@ import type {
   CourseDetail,
   CourseSummary,
   DifficultyCode,
+  SubjectCode,
   GradedAttempt,
   IrregularVerb,
   LessonDetail,
@@ -52,7 +53,7 @@ export const api = createApi({
   }),
   tagTypes: ['Quiz', 'Attempt', 'Course', 'Token', 'AdminUsers', 'Feedback', 'Audit', 'Progress', 'Review', 'Class', 'MyClass', 'AppSettings'],
   endpoints: (build) => ({
-    listQuizzes: build.query<QuizSummary[], { difficulty?: DifficultyCode; sort?: 'recent' | 'popular' } | void>({
+    listQuizzes: build.query<QuizSummary[], { difficulty?: DifficultyCode; subject?: SubjectCode | 'none'; sort?: 'recent' | 'popular' } | void>({
       query: (params) => ({ url: 'quizzes', params: params ?? undefined }),
       providesTags: (result) => [
         { type: 'Quiz', id: 'LIST' },

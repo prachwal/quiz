@@ -14,6 +14,7 @@ export const emptyQuiz = (): QuizInput => ({
   title: '',
   description: '',
   difficulty: null,
+  subject: null,
   shuffleQuestions: null,
   shuffleOptions: false,
   sampleSize: null,

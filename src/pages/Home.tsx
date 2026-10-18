@@ -21,14 +21,15 @@ import {
   useGetWeakVerbsQuery,
   useListQuizzesQuery,
 } from '../app/api'
-import { DifficultyTag } from '../components/GroupTags'
-import { difficultyOptions, popularityOptions } from '../components/groupOptions'
+import { DifficultyTag, SubjectTag } from '../components/GroupTags'
+import { groupBySubject } from '../shared/quiz/subjectGroups'
+import { difficultyOptions, popularityOptions, subjectOptions } from '../components/groupOptions'
 import PageHeader from '../components/PageHeader'
 import DailyGoalCard from '../features/progress/DailyGoalCard'
 import AssignmentsHint from '../features/classes/AssignmentsHint'
 import ReviewCard from '../features/progress/ReviewCard'
 import { QUIZ_VARIANTS } from '../shared/quiz/schema'
-import type { DifficultyCode, PopularityCode } from '../shared/quiz/types'
+import type { DifficultyCode, PopularityCode, SubjectCode } from '../shared/quiz/types'
 
 const VARIANT_LABELS: Record<(typeof QUIZ_VARIANTS)[number], string> = {
   mixed: 'Mieszany',
@@ -43,9 +44,11 @@ const myAttemptsLabel = (n: number) =>
 
 export default function Home() {
   const [filterDifficulty, setFilterDifficulty] = useState<DifficultyCode | 'all'>('all')
+  const [filterSubject, setFilterSubject] = useState<SubjectCode | 'none' | 'all'>('all')
   const [sort, setSort] = useState<'recent' | 'popular'>('recent')
   const { data, error, isLoading, refetch } = useListQuizzesQuery({
     difficulty: filterDifficulty === 'all' ? undefined : filterDifficulty,
+    subject: filterSubject === 'all' ? undefined : filterSubject,
     sort,
   })
   const [deleteQuiz, { isLoading: deleting }] = useDeleteQuizMutation()
@@ -234,6 +237,17 @@ export default function Home() {
             />
           </div>
           <Select
+            value={filterSubject}
+            onChange={setFilterSubject}
+            aria-label="Przedmiot"
+            options={[
+              { value: 'all', label: 'Wszystkie przedmioty' },
+              ...subjectOptions,
+              { value: 'none', label: 'Bez przedmiotu' },
+            ]}
+            className="sort-select"
+          />
+          <Select
             value={sort}
             onChange={setSort}
             aria-label="Sortowanie"
@@ -273,8 +287,16 @@ export default function Home() {
           </Empty>
         </Card>
       ) : (
-        <div className="quiz-grid">
-          {data.map((quiz) => (
+        groupBySubject(data).map((group) => (
+          <section key={group.key} aria-label={group.title} style={{ marginBottom: 28 }}>
+            {/* one subject (filtered) or the whole list without subjects needs no headings */}
+            {(filterSubject === 'all' && (data.some((quiz) => quiz.subject) || group.key !== 'none')) && (
+              <Typography.Title level={4} style={{ marginTop: 0 }}>
+                {group.title} <Tag>{group.items.length}</Tag>
+              </Typography.Title>
+            )}
+            <div className="quiz-grid">
+          {group.items.map((quiz) => (
             <Card
               key={quiz.id}
               className="lift-card"
@@ -308,6 +330,7 @@ export default function Home() {
             >
               <Flex vertical gap={10} style={{ height: '100%' }}>
                 <Flex wrap gap={6} align="center">
+                  <SubjectTag value={quiz.subject} />
                   <DifficultyTag value={quiz.difficulty} />
                   {quiz.myAttempts > 0 ? (
                     <>
@@ -338,7 +361,9 @@ export default function Home() {
               </Flex>
             </Card>
           ))}
-        </div>
+            </div>
+          </section>
+        ))
       )}
     </>
   )

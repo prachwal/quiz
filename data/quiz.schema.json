@@ -14,6 +14,10 @@
       "enum": ["easy", "medium", "hard", null],
       "description": "Poziom trudności; null = nie określono."
     },
+    "subject": {
+      "enum": ["math", "physics", "chemistry", "biology", "geography", "history", "polish", "english", "it", "other", null],
+      "description": "Przedmiot, według którego quiz jest grupowany na liście; null = bez przedmiotu."
+    },
     "shuffleQuestions": {
       "type": ["boolean", "null"],
       "default": null,

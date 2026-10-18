@@ -1,5 +1,7 @@
-import { DIFFICULTY_LABELS, POPULARITY_LABELS } from '../shared/quiz/types'
+import { DIFFICULTY_LABELS, POPULARITY_LABELS, SUBJECTS, SUBJECT_LABELS } from '../shared/quiz/types'
 import type { DifficultyCode, PopularityCode } from '../shared/quiz/types'
+
+export const subjectOptions = SUBJECTS.map((value) => ({ value, label: SUBJECT_LABELS[value] }))
 
 export const difficultyOptions = (Object.keys(DIFFICULTY_LABELS) as DifficultyCode[]).map((value) => ({
   value,

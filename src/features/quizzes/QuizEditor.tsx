@@ -5,7 +5,7 @@ import { QUESTION_TYPES, questionTypes } from '../../shared/quiz/engine'
 import type { QuestionType } from '../../shared/quiz/engine'
 import { quizInput } from '../../shared/quiz/schema'
 import type { QuizInput } from '../../shared/quiz/schema'
-import { difficultyOptions } from '../../components/groupOptions'
+import { difficultyOptions, subjectOptions } from '../../components/groupOptions'
 import { emptyQuestion } from './quizDefaults'
 import OptionsEditor from './OptionsEditor'
 
@@ -119,9 +119,14 @@ export default function QuizEditor({ initialValues, submitting, submitLabel, onS
         <Form.Item label="Opis" name="description">
           <Input.TextArea autoSize={{ minRows: 2 }} maxLength={2000} />
         </Form.Item>
-        <Form.Item label="Poziom trudności" name="difficulty" style={{ marginBottom: 0 }}>
-          <Select allowClear placeholder="Nie określono" options={difficultyOptions} style={{ width: 220, maxWidth: '100%' }} />
-        </Form.Item>
+        <Space align="start" wrap>
+          <Form.Item label="Przedmiot" name="subject" style={{ marginBottom: 0 }}>
+            <Select allowClear placeholder="Bez przedmiotu" options={subjectOptions} style={{ width: 220, maxWidth: '100%' }} />
+          </Form.Item>
+          <Form.Item label="Poziom trudności" name="difficulty" style={{ marginBottom: 0 }}>
+            <Select allowClear placeholder="Nie określono" options={difficultyOptions} style={{ width: 220, maxWidth: '100%' }} />
+          </Form.Item>
+        </Space>
       </Card>
 
       <Card title="Ustawienia quizu" size="small" style={{ marginTop: 16 }}>

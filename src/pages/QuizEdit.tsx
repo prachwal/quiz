@@ -19,6 +19,7 @@ export default function QuizEdit() {
     title: data.title,
     description: data.description,
     difficulty: data.difficulty,
+    subject: data.subject,
     shuffleQuestions: data.shuffleQuestions,
     shuffleOptions: data.shuffleOptions,
     sampleSize: data.sampleSize as QuizInput['sampleSize'],
