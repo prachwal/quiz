@@ -1,5 +1,5 @@
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
-import { Button, Empty, Flex, Form, Input, Modal, Popconfirm, Select, Typography, App as AntdApp } from 'antd'
+import { Button, Empty, Flex, Form, Input, Modal, Popconfirm, Select, Tag, Typography, App as AntdApp } from 'antd'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
@@ -10,6 +10,7 @@ import {
   useSearchStudentCandidatesQuery,
   useUpdateClassMutation,
 } from '../../app/api'
+import { isAuth0Id } from '../../shared/quiz/auth0Id'
 import type { ClassDetail as ClassDetailData, ClassSummary, StudentCandidate } from '../../shared/quiz/types'
 
 /** Pieces of class management shared by the class page and the class panel. */
@@ -61,7 +62,6 @@ export function RenameClass({ cls }: { cls: Pick<ClassSummary, 'id' | 'name'> })
   )
 }
 
-const AUTH0_ID = /^[\w-]+\|[\w.-]+$/
 const MIN_QUERY = 3
 
 /**
@@ -88,10 +88,11 @@ export function AddStudent({ cls }: { cls: Pick<ClassSummary, 'id' | 'joinCode'>
       value: c.userId,
       label: c.name ?? c.userId,
       candidate: c,
+      disabled: c.inClass,
     })),
     // a pasted, complete Auth0 id that the search did not find can still be added
-    ...(AUTH0_ID.test(typed.trim()) && !(data ?? []).some((c) => c.userId === typed.trim())
-      ? [{ value: typed.trim(), label: `Dodaj po identyfikatorze: ${typed.trim()}`, candidate: null }]
+    ...(isAuth0Id(typed.trim()) && !(data ?? []).some((c) => c.userId === typed.trim())
+      ? [{ value: typed.trim(), label: `Dodaj po identyfikatorze: ${typed.trim()}`, candidate: null, disabled: false }]
       : []),
   ]
 
@@ -122,7 +123,11 @@ export function AddStudent({ cls }: { cls: Pick<ClassSummary, 'id' | 'joinCode'>
           options={options}
           placeholder="Wpisz fragment imienia, e-maila lub identyfikatora"
           notFoundContent={
-            enough ? (isFetching ? 'Szukam…' : 'Nikogo nie znaleziono') : `Wpisz co najmniej ${MIN_QUERY} znaki`
+            enough
+              ? isFetching
+                ? 'Szukam…'
+                : 'Nikogo nie znaleziono. Szukam tylko wśród osób, które już logowały się do aplikacji (bez Ciebie); możesz też wkleić pełny identyfikator Auth0.'
+              : `Wpisz co najmniej ${MIN_QUERY} znaki`
           }
           style={{ flex: '1 1 320px', minWidth: 0 }}
           aria-label="Wybór ucznia do dodania"
@@ -131,7 +136,10 @@ export function AddStudent({ cls }: { cls: Pick<ClassSummary, 'id' | 'joinCode'>
             if (!c) return <span>{option.label}</span>
             return (
               <Flex vertical>
-                <span>{c.name ?? c.userId}</span>
+                <span>
+                  {c.name ?? c.userId}
+                  {c.inClass && <Tag style={{ marginInlineStart: 8 }}>już w klasie</Tag>}
+                </span>
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                   {c.userId}
                   {c.emailMasked ? ` · ${c.emailMasked}` : ''}

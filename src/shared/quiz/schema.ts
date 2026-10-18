@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { AUTH0_ID_PATTERN } from './auth0Id'
 import { QUESTION_TYPES, questionTypes } from './engine'
 
 export const optionInput = z.object({
@@ -122,8 +123,8 @@ export const classPatchInput = z
   .object({ name: classInput.shape.name.optional(), joiningOpen: z.boolean().optional() })
   .refine((v) => v.name !== undefined || v.joiningOpen !== undefined, 'Podaj nazwę lub stan zapisów')
 
-/** Auth0 user ids look like `google-oauth2|1234`, `auth0|abc`, `discord|99`. */
-export const auth0UserId = z.string().trim().min(3).max(200).regex(/^[\w-]+\|[\w.-]+$/, 'Niepoprawny identyfikator Auth0')
+/** Auth0 user ids, see ./auth0Id.ts (`google-oauth2|1234`, `oauth2|discord|99`...). */
+export const auth0UserId = z.string().trim().min(3).max(200).regex(AUTH0_ID_PATTERN, 'Niepoprawny identyfikator Auth0')
 
 export const addMemberInput = z.object({ userId: auth0UserId })
 

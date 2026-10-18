@@ -153,13 +153,13 @@ export function registerClassTools(server: McpServer, ctx: Ctx) {
     {
       title: 'Wyszukaj ucznia do dodania',
       description:
-        'Szuka kont (po fragmencie imienia, e-maila lub identyfikatora Auth0; min. 3 znaki, do 8 wyników, e-mail zamaskowany), które nie są jeszcze w klasie. Wynik daje identyfikator do student_add.',
+        'Szuka kont (po fragmencie imienia, e-maila lub identyfikatora Auth0; min. 3 znaki, do 8 wyników, e-mail zamaskowany); inClass=true oznacza, że ta osoba już jest w klasie. Znajduje tylko osoby, które logowały się do aplikacji. Wynik daje identyfikator do student_add.',
       inputSchema: { classId, query: z.string().trim().min(3).max(100) },
       annotations: { readOnlyHint: true },
     },
     ({ classId: id, query }) =>
       changing(id, async (cls) =>
-        (await classes.searchCandidates(cls.id, ctx.userId, query)).map((f) => ({ userId: f.userId, name: f.name, emailMasked: maskEmail(f.email) })),
+        (await classes.searchCandidates(cls.id, ctx.userId, query)).map((f) => ({ userId: f.userId, name: f.name, emailMasked: maskEmail(f.email), inClass: f.inClass })),
       ),
   )
 

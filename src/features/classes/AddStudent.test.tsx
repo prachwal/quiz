@@ -68,4 +68,26 @@ describe('AddStudent', () => {
     fireEvent.change(box, { target: { value: 'google-oauth2|12345' } })
     expect(await screen.findByText('Dodaj po identyfikatorze: google-oauth2|12345')).toBeTruthy()
   })
+
+  it('shows class members as "already in class" and does not let you pick them', async () => {
+    server.use(
+      http.get('/api/classes/c1/student-candidates', () =>
+        HttpResponse.json([{ userId: 'google-oauth2|101', name: 'zrachwal00', emailMasked: 'zr***@gmail.com', inClass: true }]),
+      ),
+    )
+    const box = renderAdd()
+    fireEvent.mouseDown(box)
+    fireEvent.change(box, { target: { value: 'rach' } })
+    expect(await screen.findByText('już w klasie')).toBeTruthy()
+    const option = screen.getByText('zrachwal00').closest('.ant-select-item-option') as HTMLElement
+    expect(option.className).toContain('ant-select-item-option-disabled')
+  })
+
+  it('accepts pasted oauth2|provider|id identifiers', async () => {
+    server.use(http.get('/api/classes/c1/student-candidates', () => HttpResponse.json([])))
+    const box = renderAdd()
+    fireEvent.mouseDown(box)
+    fireEvent.change(box, { target: { value: 'oauth2|discord|606581858758557699' } })
+    expect(await screen.findByText('Dodaj po identyfikatorze: oauth2|discord|606581858758557699')).toBeTruthy()
+  })
 })

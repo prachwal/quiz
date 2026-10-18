@@ -343,7 +343,7 @@ export function createApp() {
     const cls = await ownedClass(req)
     const q = z.string().trim().min(3).max(100).parse(req.query.q)
     const found = await classes.searchCandidates(cls.id, userOf(req), q)
-    res.json(found.map((f) => ({ userId: f.userId, name: f.name, emailMasked: maskEmail(f.email) })))
+    res.json(found.map((f) => ({ userId: f.userId, name: f.name, emailMasked: maskEmail(f.email), inClass: f.inClass })))
   })
 
   // add a student by Auth0 id (the id must belong to a real account)

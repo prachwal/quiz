@@ -376,6 +376,8 @@ export interface StudentCandidate {
   userId: string
   name: string | null
   emailMasked: string | null
+  /** Already a member of the class (shown, but cannot be added again). */
+  inClass: boolean
 }
 
 /** A student as the teacher knows them: identity plus the classes they share with the teacher. */
