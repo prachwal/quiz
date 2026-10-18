@@ -7,6 +7,7 @@ import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Sentry, sentryEnabled } from '../../app/sentry'
 import { auth0Config, authEnabled } from './config'
+import { devAuth } from './devAuth'
 import BrandMark from '../../components/BrandMark'
 import PublicShell from './PublicShell'
 import { setTokenGetter } from './token'
@@ -74,6 +75,19 @@ function SignInPage() {
 
 export default function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
+  if (devAuth) {
+    // local development only: no Auth0, every API call carries the dev token (set during render, like AuthGate)
+    const devToken = devAuth.token
+    setTokenGetter(async () => devToken)
+    return (
+      <>
+        <div className="dev-auth-banner" role="status">
+          Tryb deweloperski: logowanie pominięte ({devAuth.userId}, role: {devAuth.roles.join(', ') || 'brak'})
+        </div>
+        {children}
+      </>
+    )
+  }
   if (!authEnabled) {
     return (
       <PublicShell>

@@ -37,7 +37,7 @@ export default function AppLayout() {
   const vars = useThemeVars()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const pageRef = useRef<HTMLDivElement>(null)
-  const { isAuthenticated, user, roles, isTeacher, logout } = useAuth()
+  const { isAuthenticated, user, roles, isTeacher, isAdmin, logout } = useAuth()
   const selected = selectedNavKey(pathname)
   const displayName = user?.name ?? user?.email
   useDocumentTheme(useResolvedTheme() === 'dark')
@@ -124,8 +124,8 @@ export default function AppLayout() {
                     },
                     { type: 'divider' },
                     { key: 'assignments', icon: <ProfileOutlined />, label: 'Moje zadania', onClick: () => navigate('/assignments') },
-                    ...(isTeacher
-                      ? [{ key: 'classes', icon: <TeamOutlined />, label: 'Klasy', onClick: () => navigate('/classes') }]
+                    ...(isTeacher || isAdmin
+                      ? [{ key: 'classes', icon: <TeamOutlined />, label: 'Zarządzanie klasami', onClick: () => navigate('/manage/classes') }]
                       : []),
                     { key: 'settings', icon: <SettingOutlined />, label: 'Ustawienia', onClick: () => navigate('/settings') },
                     { key: 'about', icon: <InfoCircleOutlined />, label: 'O aplikacji', onClick: () => navigate('/about') },
@@ -230,17 +230,17 @@ export default function AppLayout() {
             Moje zadania
           </Button>
         )}
-        {isAuthenticated && isTeacher && (
+        {isAuthenticated && (isTeacher || isAdmin) && (
           <Button
             block
             icon={<TeamOutlined />}
             onClick={() => {
               setDrawerOpen(false)
-              navigate('/classes')
+              navigate('/manage/classes')
             }}
             style={{ marginTop: 12 }}
           >
-            Klasy
+            Zarządzanie klasami
           </Button>
         )}
         {isAuthenticated && (

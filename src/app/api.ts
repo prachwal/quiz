@@ -8,6 +8,10 @@ import type {
   AssignmentItem,
   ClassDetail,
   ClassReport,
+  StudentCandidate,
+  AdminStudentListItem,
+  AdminStudentResults,
+  StudentListItem,
   StudentResults,
   ClassSummary,
   MyAssignment,
@@ -132,12 +136,20 @@ export const api = createApi({
       }),
       invalidatesTags: ['AdminUsers', 'Audit'],
     }),
+    listAdminStudents: build.query<AdminStudentListItem[], { q?: string } | void>({
+      query: (params) => ({ url: 'admin/students', params: params ?? undefined }),
+      providesTags: ['AdminUsers'],
+    }),
+    getAdminStudentResults: build.query<AdminStudentResults, string>({
+      query: (userId) => `admin/students/${encodeURIComponent(userId)}/results`,
+      providesTags: ['AdminUsers', 'Attempt'],
+    }),
     listAudit: build.query<AuditEntry[], void>({
       query: () => 'admin/audit',
       providesTags: ['Audit'],
     }),
-    listClasses: build.query<ClassSummary[], void>({
-      query: () => 'classes',
+    listClasses: build.query<ClassSummary[], { scope?: 'own' | 'all' } | void>({
+      query: (params) => ({ url: 'classes', params: params ?? undefined }),
       providesTags: ['Class'],
     }),
     createClass: build.mutation<ClassSummary, { name: string }>({
@@ -154,6 +166,10 @@ export const api = createApi({
     }),
     regenerateClassCode: build.mutation<{ joinCode: string }, string>({
       query: (id) => ({ url: `classes/${id}/code`, method: 'POST' }),
+      invalidatesTags: ['Class'],
+    }),
+    addClassMember: build.mutation<{ userId: string; status: 'added' | 'already' }, { classId: string; userId: string }>({
+      query: ({ classId, userId }) => ({ url: `classes/${classId}/members`, method: 'POST', body: { userId } }),
       invalidatesTags: ['Class'],
     }),
     removeClassMember: build.mutation<void, { classId: string; userId: string }>({
@@ -188,6 +204,13 @@ export const api = createApi({
         body: { dueAt },
       }),
       invalidatesTags: ['Class', 'MyClass'],
+    }),
+    listStudents: build.query<StudentListItem[], { scope?: 'own' | 'all'; classId?: string } | void>({
+      query: (params) => ({ url: 'students', params: params ?? undefined }),
+      providesTags: ['Class'],
+    }),
+    searchStudentCandidates: build.query<StudentCandidate[], { classId: string; q: string }>({
+      query: ({ classId, q }) => ({ url: `classes/${classId}/student-candidates`, params: { q } }),
     }),
     getStudentResults: build.query<StudentResults, { classId: string; userId: string }>({
       query: ({ classId, userId }) => `classes/${classId}/students/${encodeURIComponent(userId)}`,
@@ -288,11 +311,14 @@ export const {
   useSetUserRolesMutation,
   useSetUserBlockedMutation,
   useListAuditQuery,
+  useListAdminStudentsQuery,
+  useGetAdminStudentResultsQuery,
   useListClassesQuery,
   useCreateClassMutation,
   useGetClassQuery,
   useArchiveClassMutation,
   useRegenerateClassCodeMutation,
+  useAddClassMemberMutation,
   useRemoveClassMemberMutation,
   useCreateAssignmentMutation,
   useDeleteAssignmentMutation,
@@ -300,6 +326,8 @@ export const {
   useUpdateClassMutation,
   useUpdateAssignmentDueMutation,
   useGetStudentResultsQuery,
+  useListStudentsQuery,
+  useSearchStudentCandidatesQuery,
   useJoinClassMutation,
   useListMyClassesQuery,
   useLeaveClassMutation,

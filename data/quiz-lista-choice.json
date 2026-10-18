@@ -1,0 +1,1211 @@
+{
+  "$schema": "./quiz.schema.json",
+  "title": "Czasowniki nieregularne – wybór 1 z 4 (lista)",
+  "description": "Wszystkie 50 czasowników z listy: po polsku → wybierz poprawne trzy formy (bezokolicznik, past simple, past participle) spośród czterech.",
+  "difficulty": "medium",
+  "shuffleQuestions": true,
+  "shuffleOptions": true,
+  "sampleSize": null,
+  "questions": [
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Wiać",
+      "explanation": "blow – blew – blown",
+      "points": 1,
+      "options": [
+        {
+          "text": "blow – blew – blown",
+          "isCorrect": true
+        },
+        {
+          "text": "blow – blowed – blowed",
+          "isCorrect": false
+        },
+        {
+          "text": "blow – blown – blew",
+          "isCorrect": false
+        },
+        {
+          "text": "blow – blew – set",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Uciekać",
+      "explanation": "flee – fled – fled",
+      "points": 1,
+      "options": [
+        {
+          "text": "flee – fled – fled",
+          "isCorrect": true
+        },
+        {
+          "text": "flee – fleed – fleed",
+          "isCorrect": false
+        },
+        {
+          "text": "flee – fled – lost",
+          "isCorrect": false
+        },
+        {
+          "text": "flee – leant – sewn",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Hodować",
+      "explanation": "breed – bred – bred",
+      "points": 1,
+      "options": [
+        {
+          "text": "breed – bred – bred",
+          "isCorrect": true
+        },
+        {
+          "text": "breed – breeded – breeded",
+          "isCorrect": false
+        },
+        {
+          "text": "breed – bred – stuck",
+          "isCorrect": false
+        },
+        {
+          "text": "breed – lent – shone",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Radzić sobie",
+      "explanation": "deal – dealt – dealt",
+      "points": 1,
+      "options": [
+        {
+          "text": "deal – dealt – dealt",
+          "isCorrect": true
+        },
+        {
+          "text": "deal – dealed – dealed",
+          "isCorrect": false
+        },
+        {
+          "text": "deal – dealt – risen",
+          "isCorrect": false
+        },
+        {
+          "text": "deal – rid – told",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Skakać",
+      "explanation": "leap – leapt – leapt",
+      "points": 1,
+      "options": [
+        {
+          "text": "leap – leapt – leapt",
+          "isCorrect": true
+        },
+        {
+          "text": "leap – leaped – leaped",
+          "isCorrect": false
+        },
+        {
+          "text": "leap – leapt – sped",
+          "isCorrect": false
+        },
+        {
+          "text": "leap – struck – meant",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Leżeć",
+      "explanation": "lie – lay – lain",
+      "points": 1,
+      "options": [
+        {
+          "text": "lie – lay – lain",
+          "isCorrect": true
+        },
+        {
+          "text": "lie – lied – lied",
+          "isCorrect": false
+        },
+        {
+          "text": "lie – lain – lay",
+          "isCorrect": false
+        },
+        {
+          "text": "lie – lay – swum",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Szukać",
+      "explanation": "seek – sought – sought",
+      "points": 1,
+      "options": [
+        {
+          "text": "seek – sought – sought",
+          "isCorrect": true
+        },
+        {
+          "text": "seek – seeked – seeked",
+          "isCorrect": false
+        },
+        {
+          "text": "seek – sought – told",
+          "isCorrect": false
+        },
+        {
+          "text": "seek – wound – ridden",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Zrzucać",
+      "explanation": "shed – shed – shed",
+      "points": 1,
+      "options": [
+        {
+          "text": "shed – shed – shed",
+          "isCorrect": true
+        },
+        {
+          "text": "shed – sheded – sheded",
+          "isCorrect": false
+        },
+        {
+          "text": "shed – shed – dealt",
+          "isCorrect": false
+        },
+        {
+          "text": "shed – withdrew – lost",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Drzeć",
+      "explanation": "tear – tore – torn",
+      "points": 1,
+      "options": [
+        {
+          "text": "tear – tore – torn",
+          "isCorrect": true
+        },
+        {
+          "text": "tear – teared – teared",
+          "isCorrect": false
+        },
+        {
+          "text": "tear – torn – tore",
+          "isCorrect": false
+        },
+        {
+          "text": "tear – tore – run",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Przysięgać",
+      "explanation": "swear – swore – sworn",
+      "points": 1,
+      "options": [
+        {
+          "text": "swear – swore – sworn",
+          "isCorrect": true
+        },
+        {
+          "text": "swear – sweared – sweared",
+          "isCorrect": false
+        },
+        {
+          "text": "swear – sworn – swore",
+          "isCorrect": false
+        },
+        {
+          "text": "swear – swore – worn",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Puchnąć",
+      "explanation": "swell – swelled – swollen",
+      "points": 1,
+      "options": [
+        {
+          "text": "swell – swelled – swollen",
+          "isCorrect": true
+        },
+        {
+          "text": "swell – swelled – swelled",
+          "isCorrect": false
+        },
+        {
+          "text": "swell – swollen – swelled",
+          "isCorrect": false
+        },
+        {
+          "text": "swell – swelled – knelt",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Wycofywać",
+      "explanation": "withdraw – withdrew – withdrawn",
+      "points": 1,
+      "options": [
+        {
+          "text": "withdraw – withdrew – withdrawn",
+          "isCorrect": true
+        },
+        {
+          "text": "withdraw – withdrawed – withdrawed",
+          "isCorrect": false
+        },
+        {
+          "text": "withdraw – withdrawn – withdrew",
+          "isCorrect": false
+        },
+        {
+          "text": "withdraw – withdrew – wound",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Nawijać",
+      "explanation": "wind – wound – wound",
+      "points": 1,
+      "options": [
+        {
+          "text": "wind – wound – wound",
+          "isCorrect": true
+        },
+        {
+          "text": "wind – winded – winded",
+          "isCorrect": false
+        },
+        {
+          "text": "wind – wound – learnt",
+          "isCorrect": false
+        },
+        {
+          "text": "wind – threw – fled",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Zamiatać",
+      "explanation": "sweep – swept – swept",
+      "points": 1,
+      "options": [
+        {
+          "text": "sweep – swept – swept",
+          "isCorrect": true
+        },
+        {
+          "text": "sweep – sweeped – sweeped",
+          "isCorrect": false
+        },
+        {
+          "text": "sweep – swept – rung",
+          "isCorrect": false
+        },
+        {
+          "text": "sweep – saw – swollen",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Wyżymać",
+      "explanation": "wring – wrung – wrung",
+      "points": 1,
+      "options": [
+        {
+          "text": "wring – wrung – wrung",
+          "isCorrect": true
+        },
+        {
+          "text": "wring – wringed – wringed",
+          "isCorrect": false
+        },
+        {
+          "text": "wring – wrung – shown",
+          "isCorrect": false
+        },
+        {
+          "text": "wring – shone – seen",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Nosić",
+      "explanation": "wear – wore – worn",
+      "points": 1,
+      "options": [
+        {
+          "text": "wear – wore – worn",
+          "isCorrect": true
+        },
+        {
+          "text": "wear – weared – weared",
+          "isCorrect": false
+        },
+        {
+          "text": "wear – worn – wore",
+          "isCorrect": false
+        },
+        {
+          "text": "wear – wore – spent",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Przechodzić",
+      "explanation": "undergo – underwent – undergone",
+      "points": 1,
+      "options": [
+        {
+          "text": "undergo – underwent – undergone",
+          "isCorrect": true
+        },
+        {
+          "text": "undergo – undergoed – undergoed",
+          "isCorrect": false
+        },
+        {
+          "text": "undergo – undergone – underwent",
+          "isCorrect": false
+        },
+        {
+          "text": "undergo – underwent – struck",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Pchać",
+      "explanation": "thrust – thrust – thrust",
+      "points": 1,
+      "options": [
+        {
+          "text": "thrust – thrust – thrust",
+          "isCorrect": true
+        },
+        {
+          "text": "thrust – thrusted – thrusted",
+          "isCorrect": false
+        },
+        {
+          "text": "thrust – thrust – bred",
+          "isCorrect": false
+        },
+        {
+          "text": "thrust – threw – taught",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Opowiadać",
+      "explanation": "tell – told – told",
+      "points": 1,
+      "options": [
+        {
+          "text": "tell – told – told",
+          "isCorrect": true
+        },
+        {
+          "text": "tell – telled – telled",
+          "isCorrect": false
+        },
+        {
+          "text": "tell – told – withdrawn",
+          "isCorrect": false
+        },
+        {
+          "text": "tell – dealt – sought",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Rzucać",
+      "explanation": "throw – threw – thrown",
+      "points": 1,
+      "options": [
+        {
+          "text": "throw – threw – thrown",
+          "isCorrect": true
+        },
+        {
+          "text": "throw – throwed – throwed",
+          "isCorrect": false
+        },
+        {
+          "text": "throw – thrown – threw",
+          "isCorrect": false
+        },
+        {
+          "text": "throw – threw – leant",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Kłaść",
+      "explanation": "lay – laid – laid",
+      "points": 1,
+      "options": [
+        {
+          "text": "lay – laid – laid",
+          "isCorrect": true
+        },
+        {
+          "text": "lay – layed – layed",
+          "isCorrect": false
+        },
+        {
+          "text": "lay – laid – slid",
+          "isCorrect": false
+        },
+        {
+          "text": "lay – lent – swollen",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Pochylać się",
+      "explanation": "lean – leant – leant",
+      "points": 1,
+      "options": [
+        {
+          "text": "lean – leant – leant",
+          "isCorrect": true
+        },
+        {
+          "text": "lean – leaned – leaned",
+          "isCorrect": false
+        },
+        {
+          "text": "lean – leant – quit",
+          "isCorrect": false
+        },
+        {
+          "text": "lean – lent – torn",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Uczyć się",
+      "explanation": "learn – learnt – learnt",
+      "points": 1,
+      "options": [
+        {
+          "text": "learn – learnt – learnt",
+          "isCorrect": true
+        },
+        {
+          "text": "learn – learned – learned",
+          "isCorrect": false
+        },
+        {
+          "text": "learn – learnt – ridden",
+          "isCorrect": false
+        },
+        {
+          "text": "learn – underwent – worn",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Zostawiać",
+      "explanation": "leave – left – left",
+      "points": 1,
+      "options": [
+        {
+          "text": "leave – left – left",
+          "isCorrect": true
+        },
+        {
+          "text": "leave – leaved – leaved",
+          "isCorrect": false
+        },
+        {
+          "text": "leave – left – blown",
+          "isCorrect": false
+        },
+        {
+          "text": "leave – shone – taught",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Pożyczać komuś",
+      "explanation": "lend – lent – lent",
+      "points": 1,
+      "options": [
+        {
+          "text": "lend – lent – lent",
+          "isCorrect": true
+        },
+        {
+          "text": "lend – lended – lended",
+          "isCorrect": false
+        },
+        {
+          "text": "lend – lent – thrust",
+          "isCorrect": false
+        },
+        {
+          "text": "lend – lost – slid",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Klękać",
+      "explanation": "kneel – knelt – knelt",
+      "points": 1,
+      "options": [
+        {
+          "text": "kneel – knelt – knelt",
+          "isCorrect": true
+        },
+        {
+          "text": "kneel – kneeled – kneeled",
+          "isCorrect": false
+        },
+        {
+          "text": "kneel – knelt – seen",
+          "isCorrect": false
+        },
+        {
+          "text": "kneel – laid – left",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Zapalać",
+      "explanation": "light – lit – lit",
+      "points": 1,
+      "options": [
+        {
+          "text": "light – lit – lit",
+          "isCorrect": true
+        },
+        {
+          "text": "light – lighted – lighted",
+          "isCorrect": false
+        },
+        {
+          "text": "light – lit – torn",
+          "isCorrect": false
+        },
+        {
+          "text": "light – ran – knelt",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Gubić",
+      "explanation": "lose – lost – lost",
+      "points": 1,
+      "options": [
+        {
+          "text": "lose – lost – lost",
+          "isCorrect": true
+        },
+        {
+          "text": "lose – losed – losed",
+          "isCorrect": false
+        },
+        {
+          "text": "lose – lost – dealt",
+          "isCorrect": false
+        },
+        {
+          "text": "lose – knelt – sat",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Znaczyć",
+      "explanation": "mean – meant – meant",
+      "points": 1,
+      "options": [
+        {
+          "text": "mean – meant – meant",
+          "isCorrect": true
+        },
+        {
+          "text": "mean – meaned – meaned",
+          "isCorrect": false
+        },
+        {
+          "text": "mean – meant – dealt",
+          "isCorrect": false
+        },
+        {
+          "text": "mean – sped – slid",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Kosić",
+      "explanation": "mow – mowed – mown",
+      "points": 1,
+      "options": [
+        {
+          "text": "mow – mowed – mown",
+          "isCorrect": true
+        },
+        {
+          "text": "mow – mowed – mowed",
+          "isCorrect": false
+        },
+        {
+          "text": "mow – mown – mowed",
+          "isCorrect": false
+        },
+        {
+          "text": "mow – mowed – blown",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Rezygnować",
+      "explanation": "quit – quit – quit",
+      "points": 1,
+      "options": [
+        {
+          "text": "quit – quit – quit",
+          "isCorrect": true
+        },
+        {
+          "text": "quit – quited – quited",
+          "isCorrect": false
+        },
+        {
+          "text": "quit – quit – left",
+          "isCorrect": false
+        },
+        {
+          "text": "quit – rode – withdrawn",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Pozbywać się",
+      "explanation": "rid – rid – rid",
+      "points": 1,
+      "options": [
+        {
+          "text": "rid – rid – rid",
+          "isCorrect": true
+        },
+        {
+          "text": "rid – rided – rided",
+          "isCorrect": false
+        },
+        {
+          "text": "rid – rid – mown",
+          "isCorrect": false
+        },
+        {
+          "text": "rid – swam – risen",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Jeździć",
+      "explanation": "ride – rode – ridden",
+      "points": 1,
+      "options": [
+        {
+          "text": "ride – rode – ridden",
+          "isCorrect": true
+        },
+        {
+          "text": "ride – rided – rided",
+          "isCorrect": false
+        },
+        {
+          "text": "ride – ridden – rode",
+          "isCorrect": false
+        },
+        {
+          "text": "ride – rode – laid",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Dzwonić",
+      "explanation": "ring – rang – rung",
+      "points": 1,
+      "options": [
+        {
+          "text": "ring – rang – rung",
+          "isCorrect": true
+        },
+        {
+          "text": "ring – ringed – ringed",
+          "isCorrect": false
+        },
+        {
+          "text": "ring – rung – rang",
+          "isCorrect": false
+        },
+        {
+          "text": "ring – rang – shown",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Wstawać",
+      "explanation": "rise – rose – risen",
+      "points": 1,
+      "options": [
+        {
+          "text": "rise – rose – risen",
+          "isCorrect": true
+        },
+        {
+          "text": "rise – rised – rised",
+          "isCorrect": false
+        },
+        {
+          "text": "rise – risen – rose",
+          "isCorrect": false
+        },
+        {
+          "text": "rise – rose – taught",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Biegać",
+      "explanation": "run – ran – run",
+      "points": 1,
+      "options": [
+        {
+          "text": "run – ran – run",
+          "isCorrect": true
+        },
+        {
+          "text": "run – runed – runed",
+          "isCorrect": false
+        },
+        {
+          "text": "run – run – ran",
+          "isCorrect": false
+        },
+        {
+          "text": "run – ran – blown",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Widzieć",
+      "explanation": "see – saw – seen",
+      "points": 1,
+      "options": [
+        {
+          "text": "see – saw – seen",
+          "isCorrect": true
+        },
+        {
+          "text": "see – seed – seed",
+          "isCorrect": false
+        },
+        {
+          "text": "see – seen – saw",
+          "isCorrect": false
+        },
+        {
+          "text": "see – saw – sewn",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Uczyć kogoś",
+      "explanation": "teach – taught – taught",
+      "points": 1,
+      "options": [
+        {
+          "text": "teach – taught – taught",
+          "isCorrect": true
+        },
+        {
+          "text": "teach – teached – teached",
+          "isCorrect": false
+        },
+        {
+          "text": "teach – taught – fled",
+          "isCorrect": false
+        },
+        {
+          "text": "teach – wound – worn",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Huśtać się",
+      "explanation": "swing – swung – swung",
+      "points": 1,
+      "options": [
+        {
+          "text": "swing – swung – swung",
+          "isCorrect": true
+        },
+        {
+          "text": "swing – swinged – swinged",
+          "isCorrect": false
+        },
+        {
+          "text": "swing – swung – told",
+          "isCorrect": false
+        },
+        {
+          "text": "swing – meant – withdrawn",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Pływać",
+      "explanation": "swim – swam – swum",
+      "points": 1,
+      "options": [
+        {
+          "text": "swim – swam – swum",
+          "isCorrect": true
+        },
+        {
+          "text": "swim – swimed – swimed",
+          "isCorrect": false
+        },
+        {
+          "text": "swim – swum – swam",
+          "isCorrect": false
+        },
+        {
+          "text": "swim – swam – fled",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Uderzać",
+      "explanation": "strike – struck – struck",
+      "points": 1,
+      "options": [
+        {
+          "text": "strike – struck – struck",
+          "isCorrect": true
+        },
+        {
+          "text": "strike – striked – striked",
+          "isCorrect": false
+        },
+        {
+          "text": "strike – struck – lain",
+          "isCorrect": false
+        },
+        {
+          "text": "strike – swore – laid",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Przyklejać",
+      "explanation": "stick – stuck – stuck",
+      "points": 1,
+      "options": [
+        {
+          "text": "stick – stuck – stuck",
+          "isCorrect": true
+        },
+        {
+          "text": "stick – sticked – sticked",
+          "isCorrect": false
+        },
+        {
+          "text": "stick – stuck – rung",
+          "isCorrect": false
+        },
+        {
+          "text": "stick – rode – swept",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Spędzać",
+      "explanation": "spend – spent – spent",
+      "points": 1,
+      "options": [
+        {
+          "text": "spend – spent – spent",
+          "isCorrect": true
+        },
+        {
+          "text": "spend – spended – spended",
+          "isCorrect": false
+        },
+        {
+          "text": "spend – spent – lit",
+          "isCorrect": false
+        },
+        {
+          "text": "spend – tore – left",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Przyspieszać",
+      "explanation": "speed – sped – sped",
+      "points": 1,
+      "options": [
+        {
+          "text": "speed – sped – sped",
+          "isCorrect": true
+        },
+        {
+          "text": "speed – speeded – speeded",
+          "isCorrect": false
+        },
+        {
+          "text": "speed – sped – dealt",
+          "isCorrect": false
+        },
+        {
+          "text": "speed – struck – fled",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Ślizgać się",
+      "explanation": "slide – slid – slid",
+      "points": 1,
+      "options": [
+        {
+          "text": "slide – slid – slid",
+          "isCorrect": true
+        },
+        {
+          "text": "slide – slided – slided",
+          "isCorrect": false
+        },
+        {
+          "text": "slide – slid – sworn",
+          "isCorrect": false
+        },
+        {
+          "text": "slide – learnt – meant",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Siedzieć",
+      "explanation": "sit – sat – sat",
+      "points": 1,
+      "options": [
+        {
+          "text": "sit – sat – sat",
+          "isCorrect": true
+        },
+        {
+          "text": "sit – sited – sited",
+          "isCorrect": false
+        },
+        {
+          "text": "sit – sat – swum",
+          "isCorrect": false
+        },
+        {
+          "text": "sit – showed – sewn",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Pokazywać",
+      "explanation": "show – showed – shown",
+      "points": 1,
+      "options": [
+        {
+          "text": "show – showed – shown",
+          "isCorrect": true
+        },
+        {
+          "text": "show – showed – showed",
+          "isCorrect": false
+        },
+        {
+          "text": "show – shown – showed",
+          "isCorrect": false
+        },
+        {
+          "text": "show – showed – undergone",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Szyć",
+      "explanation": "sew – sewed – sewn",
+      "points": 1,
+      "options": [
+        {
+          "text": "sew – sewed – sewn",
+          "isCorrect": true
+        },
+        {
+          "text": "sew – sewed – sewed",
+          "isCorrect": false
+        },
+        {
+          "text": "sew – sewn – sewed",
+          "isCorrect": false
+        },
+        {
+          "text": "sew – sewed – rid",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Ustawiać",
+      "explanation": "set – set – set",
+      "points": 1,
+      "options": [
+        {
+          "text": "set – set – set",
+          "isCorrect": true
+        },
+        {
+          "text": "set – seted – seted",
+          "isCorrect": false
+        },
+        {
+          "text": "set – set – stuck",
+          "isCorrect": false
+        },
+        {
+          "text": "set – rid – swept",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Wybierz poprawne trzy formy czasownika: Świecić",
+      "explanation": "shine – shone – shone",
+      "points": 1,
+      "options": [
+        {
+          "text": "shine – shone – shone",
+          "isCorrect": true
+        },
+        {
+          "text": "shine – shined – shined",
+          "isCorrect": false
+        },
+        {
+          "text": "shine – shone – rid",
+          "isCorrect": false
+        },
+        {
+          "text": "shine – quit – meant",
+          "isCorrect": false
+        }
+      ]
+    }
+  ]
+}

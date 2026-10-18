@@ -12,6 +12,7 @@ import AppLayout from './components/AppLayout'
 import About from './pages/About'
 import Assignments from './pages/Assignments'
 import ClassDetail from './pages/ClassDetail'
+import ClassPanel from './pages/ClassPanel'
 import StudentResults from './pages/StudentResults'
 import Classes from './pages/Classes'
 import CourseView from './pages/CourseView'
@@ -50,8 +51,9 @@ export default function App() {
               <Route path="learn/:courseId/lessons/:lessonId" element={<LessonView />} />
               <Route path="assignments" element={<Assignments />} />
               <Route path="classes" element={<RequireRole role="teacher"><Classes /></RequireRole>} />
-              <Route path="classes/:id" element={<RequireRole role="teacher"><ClassDetail /></RequireRole>} />
-              <Route path="classes/:id/students/:userId" element={<RequireRole role="teacher"><StudentResults /></RequireRole>} />
+              <Route path="manage/classes" element={<RequireRole role={['teacher', 'admin']}><ClassPanel /></RequireRole>} />
+              <Route path="classes/:id" element={<RequireRole role={['teacher', 'admin']}><ClassDetail /></RequireRole>} />
+              <Route path="classes/:id/students/:userId" element={<RequireRole role={['teacher', 'admin']}><StudentResults /></RequireRole>} />
               <Route path="verbs" element={<Verbs />} />
               <Route path="results" element={<Results />} />
               <Route path="about" element={<About />} />

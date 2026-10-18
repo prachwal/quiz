@@ -72,6 +72,8 @@ export const tokenInput = z.object({
   expiresInDays: z.union([z.literal(30), z.literal(90), z.literal(365), z.null()]).default(90),
   /** Token may write quizzes (only if its creator is allowed to). */
   write: z.boolean().default(false),
+  /** Token may use the teacher's classes and student results (only if its creator is a teacher). */
+  classes: z.boolean().default(false),
 })
 
 export type TokenInput = z.input<typeof tokenInput>
@@ -119,6 +121,11 @@ export const classInput = z.object({ name: z.string().trim().min(2, 'Nazwa klasy
 export const classPatchInput = z
   .object({ name: classInput.shape.name.optional(), joiningOpen: z.boolean().optional() })
   .refine((v) => v.name !== undefined || v.joiningOpen !== undefined, 'Podaj nazwę lub stan zapisów')
+
+/** Auth0 user ids look like `google-oauth2|1234`, `auth0|abc`, `discord|99`. */
+export const auth0UserId = z.string().trim().min(3).max(200).regex(/^[\w-]+\|[\w.-]+$/, 'Niepoprawny identyfikator Auth0')
+
+export const addMemberInput = z.object({ userId: auth0UserId })
 
 export const assignmentPatchInput = z.object({ dueAt: z.string().datetime().nullable() })
 

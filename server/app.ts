@@ -9,6 +9,8 @@ import {
   POPULARITIES,
   assignmentInput,
   blockedInput,
+  addMemberInput,
+  auth0UserId,
   assignmentPatchInput,
   classInput,
   classPatchInput,
@@ -24,8 +26,12 @@ import {
   rolesInput,
   tokenInput,
 } from '../src/shared/quiz/schema'
+import { mcpHandler, mcpNotAllowed } from './mcp'
 import { resolveGradedIds } from '../src/shared/quiz/sampling'
+import { maskEmail } from '../src/shared/quiz/maskEmail'
+import { analyzeClass } from '../src/shared/quiz/classAnalysis'
 import * as admin from './adminRepo'
+import { canReadClasses, readableClass, resolveStudent, viewerOf, visibleClasses, writableClass } from './classAccess'
 import * as progress from './progressRepo'
 import * as reviews from './reviewsRepo'
 import * as classes from './classesRepo'
@@ -129,6 +135,10 @@ export function createApp() {
   // everything below is private: Bearer JWT (Auth0) or personal API token
   app.use(authenticate, requireAuthenticated)
 
+  // Model Context Protocol server for AI clients (Claude, OpenAI, Grok...) - same auth as the REST API
+  app.post('/mcp', mcpHandler)
+  app.all('/mcp', mcpNotAllowed)
+
   const router = express.Router()
 
   router.get('/quizzes', async (req, res) => {
@@ -212,10 +222,13 @@ export function createApp() {
     if (input.write && !hasPermission(req, WRITE_QUIZZES)) {
       throw new HttpError(403, 'Token z prawem zapisu może utworzyć tylko admin')
     }
+    if (input.classes && !hasPermission(req, MANAGE_CLASSES)) {
+      throw new HttpError(403, 'Token z dostępem do klas może utworzyć tylko nauczyciel')
+    }
     const created = await tokens.createApiToken({
       userId: userOf(req),
       name: input.name,
-      permissions: input.write ? [WRITE_QUIZZES] : [],
+      permissions: [...(input.write ? [WRITE_QUIZZES] : []), ...(input.classes ? [MANAGE_CLASSES] : [])],
       expiresInDays: input.expiresInDays,
     })
     if (created === 'limit') throw new HttpError(409, 'Osiągnięto limit aktywnych tokenów (20)')
@@ -262,14 +275,35 @@ export function createApp() {
 
   // ---- classes: teacher side (permission manage:classes; a class is visible only to its owner) ----
   const teacherOnly = requirePermission(MANAGE_CLASSES)
+  // reading is also open to admins (`manage:users`), who see every class; changing stays with the owner
+  const classReader: RequestHandler = (req, res, next) => {
+    if (canReadClasses(viewerOf(req))) next()
+    else res.status(403).json({ error: 'Ta operacja wymaga roli nauczyciela' })
+  }
   const ownedClass = async (req: Parameters<typeof userOf>[0] & { params: Record<string, unknown> }) => {
-    const found = await classes.getClass(idParam(req.params.id), userOf(req))
+    const found = await writableClass(viewerOf(req), idParam(req.params.id))
+    if (!found) throw new HttpError(404, 'Class not found')
+    return found
+  }
+  const viewableClass = async (req: Parameters<typeof userOf>[0] & { params: Record<string, unknown> }) => {
+    const found = await readableClass(viewerOf(req), idParam(req.params.id))
     if (!found) throw new HttpError(404, 'Class not found')
     return found
   }
 
-  router.get('/classes', teacherOnly, async (req, res) => {
-    res.json(await classes.listClasses(userOf(req)))
+  router.get('/classes', classReader, async (req, res) => {
+    const scope = z.enum(['own', 'all']).default('own').parse(req.query.scope)
+    res.json(await visibleClasses(viewerOf(req), scope))
+  })
+
+  // students of the viewer's classes (one class with ?classId=), each with the classes they share
+  router.get('/students', classReader, async (req, res) => {
+    const classId = z.string().uuid().optional().parse(req.query.classId)
+    const scopeParam = z.enum(['own', 'all']).default('own').parse(req.query.scope)
+    const viewer = viewerOf(req)
+    const scope = classId ? [await readableClass(viewer, classId)].flatMap((c) => (c ? [c] : [])) : await visibleClasses(viewer, scopeParam)
+    if (classId && scope.length === 0) throw new HttpError(404, 'Class not found')
+    res.json(await classes.listStudents(scope.map((c) => c.id)))
   })
 
   router.post('/classes', teacherOnly, async (req, res) => {
@@ -277,8 +311,8 @@ export function createApp() {
     res.status(201).json(await classes.createClass(userOf(req), name))
   })
 
-  router.get('/classes/:id', teacherOnly, async (req, res) => {
-    const cls = await ownedClass(req)
+  router.get('/classes/:id', classReader, async (req, res) => {
+    const cls = await viewableClass(req)
     const [members, assignments] = await Promise.all([classes.listMembers(cls.id), classes.listAssignments(cls.id)])
     res.json({ ...cls, members, assignments })
   })
@@ -304,6 +338,24 @@ export function createApp() {
     res.json({ joinCode: code })
   })
 
+  // type-ahead for "add a student": min. 3 characters, at most 8 hits, e-mail masked
+  router.get('/classes/:id/student-candidates', teacherOnly, async (req, res) => {
+    const cls = await ownedClass(req)
+    const q = z.string().trim().min(3).max(100).parse(req.query.q)
+    const found = await classes.searchCandidates(cls.id, userOf(req), q)
+    res.json(found.map((f) => ({ userId: f.userId, name: f.name, emailMasked: maskEmail(f.email) })))
+  })
+
+  // add a student by Auth0 id (the id must belong to a real account)
+  router.post('/classes/:id/members', teacherOnly, async (req, res) => {
+    const cls = await ownedClass(req)
+    const { userId } = addMemberInput.parse(req.body)
+    const student = await resolveStudent(userId)
+    if (!student) throw new HttpError(404, 'Nie znaleziono użytkownika o takim identyfikatorze Auth0')
+    const status = await classes.addMember(cls.id, userId, student)
+    res.status(status === 'added' ? 201 : 200).json({ userId, status })
+  })
+
   router.delete('/classes/:id/members/:userId', teacherOnly, async (req, res) => {
     const cls = await ownedClass(req)
     if (!(await classes.removeMember(cls.id, String(req.params.userId)))) throw new HttpError(404, 'Member not found')
@@ -327,8 +379,8 @@ export function createApp() {
     res.json({ ok: true })
   })
 
-  router.get('/classes/:id/students/:userId', teacherOnly, async (req, res) => {
-    const cls = await ownedClass(req)
+  router.get('/classes/:id/students/:userId', classReader, async (req, res) => {
+    const cls = await viewableClass(req)
     const results = await classes.studentResults(cls.id, String(req.params.userId))
     if (!results) throw new HttpError(404, 'Student not found')
     res.json(results)
@@ -342,13 +394,18 @@ export function createApp() {
     res.json({ ok: true })
   })
 
-  router.get('/classes/:id/report', teacherOnly, async (req, res) => {
-    const cls = await ownedClass(req)
+  router.get('/classes/:id/report', classReader, async (req, res) => {
+    const cls = await viewableClass(req)
     res.json(await classes.classReport(cls.id))
   })
 
-  router.get('/classes/:id/report.csv', teacherOnly, async (req, res) => {
-    const cls = await ownedClass(req)
+  router.get('/classes/:id/analysis', classReader, async (req, res) => {
+    const cls = await viewableClass(req)
+    res.json({ class: { id: cls.id, name: cls.name }, ...analyzeClass(await classes.classReport(cls.id)) })
+  })
+
+  router.get('/classes/:id/report.csv', classReader, async (req, res) => {
+    const cls = await viewableClass(req)
     const csv = reportToCsv(await classes.classReport(cls.id))
     res
       .type('text/csv; charset=utf-8')
@@ -437,6 +494,46 @@ export function createApp() {
       targetLabel: target.email ?? target.name,
     })
     res.json({ ...target, blocked })
+  })
+
+  // ---- admin: any student's complete results (all quizzes, not only class assignments) ----
+  router.get('/admin/students', adminOnly, async (req, res) => {
+    const q = z.string().trim().max(100).default('').parse(req.query.q ?? '')
+    res.json(await classes.searchUsers(q.length >= 2 ? q : ''))
+  })
+
+  router.get('/admin/students/:userId/results', adminOnly, async (req, res) => {
+    const userId = auth0UserId.parse(String(req.params.userId))
+    const profile = await classes.profileOf(userId)
+    const attempts = await classes.allAttempts(userId)
+    if (!profile && attempts.length === 0) throw new HttpError(404, 'Nie znaleziono ucznia')
+    const [memberOf, summary, lessonsCompleted, weakStats] = await Promise.all([
+      classes.classesOfMember(userId),
+      progress.getSummary(userId),
+      classes.totalLessonsCompleted(userId),
+      reviews.weakVerbs(userId, 10),
+    ])
+    const verbs = weakStats.length ? await listVerbs({ ids: weakStats.map((s) => s.verbId) }) : []
+    const byId = new Map(verbs.map((v) => [v.id, v]))
+    const percents = attempts.map((x) => x.percent)
+    res.json({
+      userId,
+      name: profile?.name ?? null,
+      email: profile?.email ?? null,
+      classes: memberOf,
+      progress: summary,
+      lessonsCompleted,
+      weakVerbs: weakStats.flatMap((s) => {
+        const verb = byId.get(s.verbId)
+        return verb ? [{ verb, attempts: s.attempts, correct: s.correct, accuracy: s.accuracy, lastWrongAt: s.lastWrongAt }] : []
+      }),
+      totals: {
+        attempts: attempts.length,
+        averagePercent: percents.length ? Math.round(percents.reduce((x, y) => x + y, 0) / percents.length) : null,
+        passedExams: attempts.filter((x) => x.courseId && x.passed).length,
+      },
+      attempts,
+    })
   })
 
   router.get('/admin/audit', adminOnly, async (_req, res) => {

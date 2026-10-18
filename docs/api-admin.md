@@ -9,6 +9,8 @@ Pełny opis architektury jest w `CLAUDE.md`; tu są tylko rzeczy potrzebne do pr
   Każda odpowiedź ma nagłówek `X-Request-Id` (przydatny przy szukaniu w Sentry/logach).
 - Mutacje bez danych zwracają `{ "ok": true }` (nigdy 204/304).
 
+> Dla asystentów AI (Claude, OpenAI, Grok) jest też serwer MCP z narzędziami do quizów – patrz [mcp.md](mcp.md).
+
 ## 1. Uwierzytelnianie – co czym można zrobić
 
 | Credential | Skąd | Uprawnienia |
@@ -37,6 +39,9 @@ qz $API/health           # {"ok":true}
 Skrypty Node: `node --env-file=.env scripts/….mjs`.
 
 ## 2. Tokeny API (JWT)
+
+Pole `classes: true` w `POST /tokens` (tylko nauczyciel) daje tokenowi dostęp do klas i wyników uczniów (`manage:classes`).
+
 
 | Metoda | Ścieżka | Opis |
 | ------ | ------- | ---- |
@@ -108,19 +113,21 @@ qz "$API/quizzes/$ID?include=answers" | jq '.questions[].options'
 qz -X DELETE $API/quizzes/$ID
 ```
 
-### Seedowanie quizu z pliku – `scripts/seed-list-quiz.mjs`
+### Quizy jako JSON – `scripts/quiz-tool.mjs`
 
-Tworzy (lub aktualizuje – dopasowanie po tytule, więc jest idempotentny) quiz „Czasowniki nieregularne – lista z docs/lista.md”:
-jedno pytanie `text` na wiersz `docs/lista.md` (`Polskie — base, past, participle.`), z akceptowanymi wariantami zapisu.
-Literówka „de-al/de-alt” w liście jest poprawiana na `deal/dealt`.
+Jedno narzędzie do przepływu `md → json → quiz`. Format pliku quizu jest taki sam jak ciało `POST`/`PUT /quizzes`, więc `download` i `upload` są wzajemnie odwracalne.
 
 ```bash
-node scripts/seed-list-quiz.mjs --dry-run              # tylko parsowanie
-node --env-file=.env scripts/seed-list-quiz.mjs        # produkcja (PROD_API)
-API_URL=http://localhost:8888 node --env-file=.env scripts/seed-list-quiz.mjs   # lokalnie – wymaga tokenu z lokalnej bazy
+node scripts/quiz-tool.mjs list-to-json                 # docs/lista.md -> data/lista-verbs.json  ({pl, forms:[base, past, participle]})
+node scripts/quiz-tool.mjs build-choice                 # data/lista-verbs.json -> data/quiz-lista-choice.json (pytania 1 z 4)
+node --env-file=.env scripts/quiz-tool.mjs upload data/quiz-lista-choice.json [--dry-run]
+node --env-file=.env scripts/quiz-tool.mjs download <id|tytuł> [plik.json]   # eksport quizu (z poprawnymi odpowiedziami)
 ```
 
-Po zmianie `docs/lista.md` wystarczy uruchomić ponownie – quiz zostanie zastąpiony (id pytań się zmienią).
+- Format pliku opisuje schemat JSON [data/quiz.schema.json](../data/quiz.schema.json) (JSON Schema 2020‑12, reguły dla każdego typu pytania); pliki quizów wskazują go przez `"$schema"`, więc edytor podpowiada i waliduje. `tests/quizSchema.test.ts` pilnuje, żeby schemat zgadzał się z walidacją serwera.
+- `upload` tworzy quiz albo – gdy istnieje quiz o tym samym tytule – zastępuje go (id pytań się zmieniają, ustawienia gry biorą się z pliku).
+- Token to `PROD_API` z `.env`; `API_URL=http://localhost:8888` kieruje skrypt na `netlify dev`.
+- Literówka „de-al/de-alt” z listy jest poprawiana na `deal/dealt`. Złe odpowiedzi w `build-choice` to: forma regularna („blowed”), zamienione formy i formy innych czasowników z listy. Plik quizu jest losowany raz przy budowaniu, więc po edycji można go poprawić ręcznie przed `upload`.
 
 ## 4. Quizy generowane i nauka (wszyscy zalogowani)
 
@@ -144,16 +151,22 @@ Nauczyciel widzi tylko własne klasy (cudze wyglądają jak 404).
 
 | Metoda | Ścieżka | Opis |
 | ------ | ------- | ---- |
-| GET/POST | `/classes` | lista / utworzenie klasy |
+| GET/POST | `/classes` | lista (`?scope=all` – admin widzi klasy wszystkich nauczycieli, z właścicielem) / utworzenie klasy |
 | GET/PATCH/DELETE | `/classes/:id` | szczegóły / zmiana (`{ name?, joiningOpen? }`) / archiwizacja |
 | POST | `/classes/:id/code` | nowy kod dołączenia (6 znaków) |
+| GET | `/classes/:id/student-candidates?q=` | podpowiedzi „kogo dodać”: min. 3 znaki, do 8 kont spoza klasy po fragmencie imienia/e‑maila/id, e‑mail zamaskowany |
 | DELETE | `/classes/:id/members/:userId` | usunięcie ucznia |
 | POST | `/classes/:id/assignments` | zadanie: kurs **albo** quiz, opcjonalny termin |
 | PATCH | `/classes/:id/assignments/:assignmentId` | zmiana terminu `{ dueAt: ISO \| null }` |
 | DELETE | `/classes/:id/assignments/:assignmentId` | usunięcie zadania |
 | GET | `/classes/:id/students/:userId` | wyniki ucznia: postęp w zadaniach klasy i podejścia z odpowiedziami na pytania (tylko zadania przydzielone w tej klasie) |
 | GET | `/classes/:id/report`, `/classes/:id/report.csv` | raport (CSV odporny na wstrzyknięcie formuł) |
+| POST | `/classes/:id/members` | dodanie ucznia po identyfikatorze Auth0 `{ userId }` (konto musi istnieć; 201 `added` / 200 `already`) |
+| GET | `/students?classId=&scope=` | uczniowie własnych klas (z `classId` jednej klasy; admin z `scope=all` wszyscy) wraz z klasami |
+| GET | `/classes/:id/analysis` | zbiorcza analiza klasy (wyniki zadań, uczniowie wymagający uwagi) |
 | POST | `/classes/join` | uczeń: `{ code }` (403, gdy nauczyciel zamknął zapisy) |
+
+Odczytowe trasy klas (`GET /classes?scope=all`, `/classes/:id`, `/report`, `/analysis`, `/students…`) są też dostępne dla admina (`manage:users`) – widzi wszystkie klasy, zmienia tylko nauczyciel‑właściciel.
 | GET | `/my/classes`, `/my/assignments`; DELETE `/my/classes/:id` | widok ucznia |
 
 ## 6. Panel admina (`manage:users`, tylko JWT admina)
@@ -167,6 +180,8 @@ Osobisty token dostanie tu **403**. JWT bierzesz z sesji przeglądarki (DevTools
 | PATCH | `/admin/users/:id/blocked` | `{ "blocked": true\|false }` |
 | GET | `/admin/feedback?status=new\|in_progress\|done` | zgłoszenia (maks. 200, najnowsze pierwsze) |
 | PATCH | `/admin/feedback/:id` | `{ "status": "new\|in_progress\|done" }` |
+| GET | `/admin/students?q=` | wszyscy użytkownicy aplikacji (najnowsza aktywność najpierw; `q` ≥ 2 znaki filtruje po imieniu, e‑mailu, id) |
+| GET | `/admin/students/:userId/results` | **wszystkie** wyniki użytkownika: każde podejście z odpowiedziami, seria i cel dzienny, lekcje, słabe czasowniki, klasy |
 | GET | `/admin/audit` | 100 ostatnich zmian administracyjnych |
 
 Zabezpieczenia (zwracają **409**): nie odbierzesz sobie roli admin, nie odbierzesz jej ostatniemu adminowi, nie zablokujesz siebie ani ostatniego admina.
