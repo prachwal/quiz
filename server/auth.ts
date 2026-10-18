@@ -1,6 +1,7 @@
 import { auth } from 'express-oauth2-jwt-bearer'
 import type { Request, RequestHandler, Response } from 'express'
 import { TOKEN_PREFIX, findActiveToken, touchToken } from './apiTokens'
+import { devAuthEnabled, devIdentity } from './devAuth'
 
 const domain = process.env.AUTH0_DOMAIN
 const audience = process.env.AUTH0_AUDIENCE
@@ -25,6 +26,14 @@ export const currentUserId = (req: Request): string | null => identityOf(req)?.u
 const jwtAuth: RequestHandler | null =
   domain && audience ? auth({ issuerBaseURL: `https://${domain}/`, audience, authRequired: false }) : null
 
+if (process.env.DEV_AUTH_TOKEN) {
+  console.warn(
+    devAuthEnabled(process.env)
+      ? '[auth] DEV_AUTH_TOKEN bypass is ACTIVE (netlify dev only)'
+      : '[auth] DEV_AUTH_TOKEN is set but ignored: the bypass only works under `netlify dev`',
+  )
+}
+
 const bearerOf = (req: Request) => /^Bearer\s+(\S+)$/i.exec(req.headers.authorization ?? '')?.[1]
 
 /**
@@ -35,6 +44,13 @@ const bearerOf = (req: Request) => /^Bearer\s+(\S+)$/i.exec(req.headers.authoriz
 export const authenticate: RequestHandler = async (req, res, next) => {
   const credential = bearerOf(req)
   if (!credential) return next()
+
+  // local development only (netlify dev + DEV_AUTH_TOKEN), see server/devAuth.ts
+  const local = devIdentity(process.env, credential)
+  if (local) {
+    identities.set(req, { userId: local.userId, permissions: local.permissions, via: 'jwt', name: local.name, email: local.email })
+    return next()
+  }
 
   if (credential.startsWith(TOKEN_PREFIX)) {
     try {

@@ -12,6 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run build` — `tsc -b && vite build` (output in `dist/`)
 - `npm run lint` — Oxlint (config in `.oxlintrc.json`; not ESLint)
 - `npm run preview` — serve the production build
+- **Local login bypass** (`server/devAuth.ts`, `src/features/auth/devAuth.ts`): `DEV_AUTH_TOKEN` in `.env` is accepted as a Bearer credential acting as `DEV_AUTH_USER_ID` with `DEV_AUTH_ROLES`, but only under `netlify dev` (`NETLIFY_DEV=true`, no production `NODE_ENV`/`CONTEXT`); `VITE_DEV_AUTH_TOKEN` skips the Auth0 login in dev builds (stripped from production bundles). Details in `docs/mcp.md`.
 - `npm run test:mcp` — full local MCP test (`scripts/mcp-local-e2e.sh/.ts`): starts `netlify dev` for its local DB (or reuses a running one) and exercises all 25 tools, permissions and the audit trail with the official MCP client; test rows use the `mcp-e2e` prefix and are removed.
 - `npm test` — unit tests in `tests/*.test.ts` (node:test; esbuild bundles them into `.test-build/` because this Node build cannot run TypeScript). Only pure logic is tested (no DB, no browser); keep such logic in import-free modules so tests can load it.
 

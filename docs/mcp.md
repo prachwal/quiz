@@ -115,6 +115,19 @@ claude mcp add --transport http quiz https://fabulous-dieffenbachia.netlify.app/
 
 **Grok (interfejs z formularzem OAuth):** szczegółowa instrukcja dodania konektora przez Auth0 jest w [mcp-grok.md](mcp-grok.md).
 
+## Lokalny dostęp bez Auth0 (tylko `netlify dev`)
+
+Do pracy lokalnej (curl, klienty MCP, skrypty) nie potrzebujesz tokenu `qz_…` ani logowania. W `.env` ustaw losowe `DEV_AUTH_TOKEN` (min. 16 znaków) i opcjonalnie `DEV_AUTH_ROLES` (`admin,teacher,student`, domyślnie `admin,teacher`) oraz `DEV_AUTH_USER_ID` (domyślnie `dev|local`), zrestartuj `netlify dev` i używaj go jak tokenu:
+
+```bash
+curl -H "Authorization: Bearer $DEV_AUTH_TOKEN" localhost:8888/api/classes?scope=all
+claude mcp add --transport http quiz-local http://localhost:8888/api/mcp --header "Authorization: Bearer $DEV_AUTH_TOKEN"
+```
+
+Zapytanie działa wtedy jako `dev|local` z uprawnieniami wybranych ról (admin: zapis quizów i podgląd wszystkich klas; teacher: własne klasy – to konto jest właścicielem klas tworzonych w tym trybie). **Nie działa nigdzie poza `netlify dev`**: wymaga `NETLIFY_DEV=true`, braku `NODE_ENV=production` i kontekstu innego niż `dev` (testy w `tests/devAuth.test.ts`); poza lokalnym serwerem zmienna jest ignorowana, a w logu pojawia się ostrzeżenie.
+
+Ten sam mechanizm w przeglądarce: `VITE_DEV_AUTH_TOKEN` (ta sama wartość) pomija logowanie Auth0 w `npm run dev`/`netlify dev`, pokazuje pomarańczowy pasek „Tryb deweloperski” i działa jako `VITE_DEV_AUTH_USER_ID` z rolami `VITE_DEV_AUTH_ROLES`. Wartości `VITE_*` są wycinane z buildów produkcyjnych (sprawdzone: token nie trafia do bundla). Domyślnie jest wyłączone, bo zmienia konto, na którym pracujesz lokalnie.
+
 ## Pełny test lokalny
 
 ```bash
