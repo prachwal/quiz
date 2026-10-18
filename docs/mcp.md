@@ -113,7 +113,7 @@ claude mcp add --transport http quiz https://fabulous-dieffenbachia.netlify.app/
 
 `require_approval` zostaw włączone dla narzędzi zapisujących, jeśli klient to wspiera. Przetestowane jest wywołanie oficjalnym klientem MCP SDK (lista narzędzi, tworzenie, odczyt, zamiana, usuwanie, odmowa bez prawa zapisu); konfiguracje powyżej dla Claude Desktop, OpenAI i Grok wynikają z ich dokumentacji i nie były uruchamiane na tych usługach.
 
-**Grok (interfejs z formularzem OAuth):** szczegółowa instrukcja dodania konektora przez Auth0 jest w [mcp-grok.md](mcp-grok.md).
+**Konektory z logowaniem OAuth (Claude, ChatGPT, Mistral, Grok):** zamiast tokenu `qz_…` klient loguje użytkownika przez Auth0. Każdy klient ma własną aplikację Auth0 – patrz [Nowy klient OAuth](#nowy-klient-oauth-nowa-aplikacja-auth0). Szczegóły dla Grok: [mcp-grok.md](mcp-grok.md).
 
 ## Lokalny dostęp bez Auth0 (tylko `netlify dev`)
 
@@ -147,4 +147,50 @@ curl -s -X POST $API/mcp -H "Authorization: Bearer $TOKEN" -H "Content-Type: app
 
 `GET`/`DELETE /api/mcp` zwracają 405 (serwer jest bezsesyjny, tylko `POST`).
 
-**Claude (konektor w claude.ai, OAuth):** w „Dodaj konektor” podaj adres `https://fabulous-dieffenbachia.netlify.app/api/mcp`, a w ustawieniach zaawansowanych Client ID `bH1zf4YpkRYRo4x9gQJdFo4CRrNEPvyq` (aplikacja Auth0 „Quiz MCP (Claude)”, publiczna, PKCE, bez sekretu). Klient znajduje Auth0 przez `/.well-known/oauth-protected-resource` (RFC 9728, `server/protectedResource.ts`), a Auth0 nie ma dynamicznej rejestracji klientów, stąd stały Client ID. Gdyby Auth0 zgłosił „Callback URL mismatch”, dopisz adres z `auth0 logs list --filter "type:f"` do `--callbacks` tej aplikacji.
+## Nowy klient OAuth (nowa aplikacja Auth0)
+
+Konektory w aplikacjach AI (claude.ai, ChatGPT, Le Chat, Grok…) logują użytkownika przez Auth0, a nie tokenem `qz_…`. Auth0 w tym tenancie **nie ma dynamicznej rejestracji klientów** (brak `registration_endpoint`), więc dla każdego klienta tworzymy osobną aplikację z jego adresem zwrotnym i podajemy jej Client ID w formularzu konektora.
+
+Jak klient znajduje Auth0: odpowiedź 401 z `/api/mcp` ma w `WWW-Authenticate` parametr `resource_metadata`, który wskazuje `/.well-known/oauth-protected-resource/api/mcp` (RFC 9728, `server/protectedResource.ts`). Metadane zawierają adres tenanta Auth0 jako serwer autoryzacji. Funkcja `netlify/functions/api.mts` obsługuje te ścieżki `/.well-known/…` obok `/api/*`.
+
+Istniejące aplikacje:
+
+| Klient | Aplikacja Auth0 | Adres zwrotny |
+| ------ | --------------- | ------------- |
+| Claude (claude.ai) | „Quiz MCP (Claude)”, `bH1zf4YpkRYRo4x9gQJdFo4CRrNEPvyq` | `https://claude.ai/api/mcp/auth_callback`, `https://claude.com/api/mcp/auth_callback` |
+| ChatGPT | „Quiz MCP (ChatGPT)”, `sJXSXHmpybLDu3XKi1SsammcaD4FHuhs` | `https://chatgpt.com/connector/oauth/t4V0BDhxcgpm` |
+| Mistral (Le Chat) | „Quiz MCP (Mistral)”, `KXAj39YXvdtlFGS7pIyVePWq2HWykGp4` | `https://callback.mistral.ai/v1/integrations_auth/oauth2_callback` |
+| Grok | „Quiz MCP (Grok)”, `uqhQ3SV4BdKL1cUvyZC735N4ZdaGw6el` | `https://grok.com/connectors-oauth-exchange-code/` |
+
+### Dodanie nowego klienta
+
+1. **Zdobądź adres zwrotny** (redirect URI) klienta: z jego dokumentacji albo z formularza konektora. Jeśli go nie masz, wykonaj próbę logowania z dowolnym Client ID – Auth0 zgłosi „Callback URL mismatch”, a właściwy adres znajdziesz w logu: `auth0 logs list --filter "type:f" --json` (pole `details.qs.redirect_uri`). Adres bywa unikalny dla konektora (np. końcówka w ChatGPT), więc po ponownym utworzeniu konektora może się zmienić.
+2. **Utwórz aplikację** (publiczna SPA, PKCE, bez sekretu), osobną dla każdego klienta – dostęp jednego klienta można wtedy odebrać, usuwając jedną aplikację, a adres zwrotny obcej usługi nie trafia do „Quiz SPA”:
+
+   ```bash
+   auth0 apps create --name "Quiz MCP (<klient>)" --type spa \
+     --callbacks "<adres zwrotny>" \
+     --origins "https://<domena klienta>" --web-origins "https://<domena klienta>" \
+     --description "<klient> connector for the quiz MCP server (PKCE, no secret)" --no-input --json
+   ```
+
+   Z odpowiedzi zapisz `client_id`. `token_endpoint_auth_method` ma być `none`.
+3. **Wpisz w konektorze klienta:**
+   - adres serwera: `https://fabulous-dieffenbachia.netlify.app/api/mcp`,
+   - Client ID z kroku 2, **sekret pusty**,
+   - jeśli formularz pyta o adresy (zamiast je wykrywać): Authorization URL `https://dev-4xxb1z18b3z4hc6s.us.auth0.com/authorize`, Token URL `https://dev-4xxb1z18b3z4hc6s.us.auth0.com/oauth/token`, scope `openid profile email offline_access`.
+4. **Dopisz klienta do tabeli powyżej.**
+
+Co jest już ustawione w tenancie i nie wymaga zmian dla kolejnych klientów: `default_audience` = `https://api.quiz.local` (formularze zwykle nie pozwalają podać `audience`; bez niego Auth0 wystawia token, który API odrzuca) i `allow_offline_access` w API (klienci proszą o `offline_access`).
+
+### Rozwiązywanie problemów
+
+| Objaw | Przyczyna i rozwiązanie |
+| ----- | ----------------------- |
+| „Callback URL mismatch” | w logu zobacz `client_name` – najczęściej w konektorze jest Client ID innej aplikacji (np. Grok). Usuń konektor i dodaj go od nowa z właściwym ID. Jeśli ID jest dobre, dopisz adres z logu do `--callbacks` (`auth0 apps update <client_id> --callbacks "…"`, podaj wszystkie adresy) |
+| konektor dodany, ale lista narzędzi pusta, „auth: unavailable” | token bez `audience` (sprawdź `default_audience`) albo użytkownik bez dostępu do narzędzi (uprawnienia zależą od roli) |
+| klient nie znajduje logowania i pyta o `/authorize` lub `/register` na naszej domenie | sprawdź `curl https://fabulous-dieffenbachia.netlify.app/.well-known/oauth-protected-resource/api/mcp` – ma zwrócić JSON, nie stronę aplikacji |
+| błąd CORS / origin | dopisz domenę klienta do `--origins` i `--web-origins` aplikacji |
+| odebranie dostępu klientowi | usuń jego aplikację: `auth0 apps delete <client_id>` oraz konektor po stronie klienta |
+
+Nie używaj w formularzach klientów danych aplikacji „Quiz Management” (`AUTH0_MGMT_CLIENT_ID/SECRET`) – to sekret administracyjny tylko dla serwera.
