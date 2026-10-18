@@ -26,8 +26,11 @@ const PLAIN = `plain|${P}`
 const STUDENT = `discord|${P}-student`
 const STUDENT2 = `discord|${P}-student2`
 
-const app = createServer(createApp()).listen(0)
-const base = `http://localhost:${(app.address() as AddressInfo).port}`
+// MCP_E2E_URL=http://localhost:8888/api runs the same checks through a running `netlify dev` (the real function,
+// Lambda adapter and dev proxy) instead of the in-process app; both use the same local database.
+const external = process.env.MCP_E2E_URL?.replace(/\/$/, '')
+const app = external ? null : createServer(createApp()).listen(0)
+const base = external ?? `http://localhost:${(app!.address() as AddressInfo).port}`
 
 const token = async (userId: string, permissions: string[]) =>
   ((await createApiToken({ userId, name: P, permissions, expiresInDays: 30 })) as { token: string }).token
@@ -246,9 +249,9 @@ try {
   failures.push(`test crashed: ${(error as Error).stack ?? error}`)
 } finally {
   await cleanup().catch((e) => failures.push(`cleanup failed: ${e}`))
-  app.close()
+  app?.close()
 }
 
-console.log(`\nMCP local e2e: ${passed} passed, ${failures.length} failed`)
+console.log(`\nMCP local e2e (${external ? `via ${external}` : 'in-process app'}): ${passed} passed, ${failures.length} failed`)
 for (const f of failures) console.log(`  FAIL ${f}`)
 process.exit(failures.length ? 1 : 0)

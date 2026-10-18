@@ -34,4 +34,9 @@ DBPORT=$(ss -ltnp 2>/dev/null | grep "pid=$PID," | awk '{print $4}' | grep '^127
 npx esbuild scripts/mcp-local-e2e.ts --bundle --platform=node --format=esm --packages=external --outfile="$BUNDLE" --log-level=error || exit 2
 NETLIFY_DB_URL="postgres://postgres@localhost:$DBPORT/postgres" node --env-file=.env "$BUNDLE"
 STATUS=$?
+if [ "${MCP_E2E_VIA_DEV:-}" = "1" ] && [ $STATUS -eq 0 ]; then
+  # the same checks again through the real function behind `netlify dev` (adapter + proxy)
+  NETLIFY_DB_URL="postgres://postgres@localhost:$DBPORT/postgres" MCP_E2E_URL="http://localhost:8888/api" node --env-file=.env "$BUNDLE"
+  STATUS=$?
+fi
 exit $STATUS

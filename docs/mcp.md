@@ -134,6 +134,8 @@ Ten sam mechanizm w przeglądarce: `VITE_DEV_AUTH_TOKEN` (ta sama wartość) pom
 npm run test:mcp
 ```
 
+`MCP_E2E_VIA_DEV=1 npm run test:mcp` powtarza te same sprawdzenia przez prawdziwą funkcję za `netlify dev` (adapter Lambda i proxy), a nie tylko na aplikacji w procesie.
+
 Skrypt uruchamia `netlify dev` (lokalna baza), a gdy port 8888 jest już zajęty, używa działającego serwera i niczego nie zatrzymuje. Oficjalnym klientem MCP wywołuje **wszystkie 25 narzędzi** na prawdziwej aplikacji i bazie: poprawne scenariusze, walidację, odmowy dla innego nauczyciela, admina (tylko podgląd), tokenu bez uprawnień i bez potwierdzenia oraz wpisy w audycie. Dane testowe mają prefiks `mcp-e2e` i są usuwane przed i po teście; kod wyjścia ≠ 0 przy błędzie. Test produkcji (tylko quizy, tymczasowy quiz): `node --env-file=.env scripts/mcp-smoke.mjs`.
 
 ## Szybki test z linii poleceń
