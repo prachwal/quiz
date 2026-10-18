@@ -4,6 +4,7 @@
 //
 //   node scripts/quiz-tool.mjs list-to-json [docs/lista.md] [data/lista-verbs.json]
 //   node scripts/quiz-tool.mjs build-choice [data/lista-verbs.json] [data/quiz-lista-choice.json]
+//   node scripts/quiz-tool.mjs build-elements [data/pierwiastki.json] [data/quiz-pierwiastki.json]   # symbol <-> name, 1 of 4
 //   node --env-file=.env scripts/quiz-tool.mjs upload data/quiz-lista-choice.json   # creates, or replaces the quiz with the same title
 //   node --env-file=.env scripts/quiz-tool.mjs download <quiz id | title> [file.json]
 //
@@ -91,6 +92,54 @@ async function buildChoice(src = 'data/lista-verbs.json', out = 'data/quiz-lista
   console.log(`${quiz.questions.length} pytań (1 z 4) -> ${out}`)
 }
 
+// ---- elements json -> quiz json (symbol <-> name, 1 of 4) ----------------------------------
+
+const shuffled = (items) => {
+  const copy = [...items]
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[copy[i], copy[j]] = [copy[j], copy[i]]
+  }
+  return copy
+}
+
+/** Three distractors from `pool`: lookalikes first (same first letter), then random ones. */
+const distractors = (pool, key, correct) => {
+  const others = shuffled(pool.filter((e) => e[key] !== correct[key]))
+  const similar = others.filter((e) => e[key][0].toLowerCase() === correct[key][0].toLowerCase())
+  return [...new Set([...similar, ...others])].slice(0, 3).map((e) => e[key])
+}
+
+const elementQuestion = (prompt, key, element, pool) => ({
+  type: 'single',
+  prompt,
+  explanation: `${element.symbol} – ${element.name} (liczba atomowa ${element.z})`,
+  points: 1,
+  options: [
+    { text: element[key], isCorrect: true },
+    ...distractors(pool, key, element).map((text) => ({ text, isCorrect: false })),
+  ],
+})
+
+async function buildElements(src = 'data/pierwiastki.json', out = 'data/quiz-pierwiastki.json') {
+  const elements = await readJson(src)
+  const quiz = {
+    $schema: SCHEMA_REF,
+    title: 'Pierwiastki chemiczne – symbole i nazwy (1 z 4)',
+    description: `${elements.length} pierwiastków w obie strony: z nazwy odgadujesz symbol i odwrotnie. Przy każdym podejściu losowane jest 20 pytań z puli.`,
+    difficulty: 'easy',
+    shuffleQuestions: true,
+    shuffleOptions: true,
+    sampleSize: 20,
+    questions: elements.flatMap((e) => [
+      elementQuestion(`Jaki symbol ma pierwiastek: ${e.name}?`, 'symbol', e, elements),
+      elementQuestion(`Jaki pierwiastek oznacza symbol ${e.symbol}?`, 'name', e, elements),
+    ]),
+  }
+  await writeJson(out, quiz)
+  console.log(`${quiz.questions.length} pytań (${elements.length} pierwiastków × 2 kierunki) -> ${out}`)
+}
+
 // ---- API: upload / download --------------------------------------------------------------
 
 const call = async (method, path, payload) => {
@@ -143,7 +192,7 @@ async function download(ref, file) {
   console.log(`${out.questions.length} pytań -> ${target}`)
 }
 
-const commands = { 'list-to-json': listToJson, 'build-choice': buildChoice, upload, download }
+const commands = { 'list-to-json': listToJson, 'build-choice': buildChoice, 'build-elements': buildElements, upload, download }
 if (!commands[command]) {
   console.error(`Użycie: quiz-tool.mjs <${Object.keys(commands).join(' | ')}> [argumenty]  (szczegóły na górze pliku)`)
   process.exit(1)

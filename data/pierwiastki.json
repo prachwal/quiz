@@ -1,0 +1,202 @@
+[
+  {
+    "z": 1,
+    "symbol": "H",
+    "name": "wodór"
+  },
+  {
+    "z": 2,
+    "symbol": "He",
+    "name": "hel"
+  },
+  {
+    "z": 3,
+    "symbol": "Li",
+    "name": "lit"
+  },
+  {
+    "z": 4,
+    "symbol": "Be",
+    "name": "beryl"
+  },
+  {
+    "z": 5,
+    "symbol": "B",
+    "name": "bor"
+  },
+  {
+    "z": 6,
+    "symbol": "C",
+    "name": "węgiel"
+  },
+  {
+    "z": 7,
+    "symbol": "N",
+    "name": "azot"
+  },
+  {
+    "z": 8,
+    "symbol": "O",
+    "name": "tlen"
+  },
+  {
+    "z": 9,
+    "symbol": "F",
+    "name": "fluor"
+  },
+  {
+    "z": 10,
+    "symbol": "Ne",
+    "name": "neon"
+  },
+  {
+    "z": 11,
+    "symbol": "Na",
+    "name": "sód"
+  },
+  {
+    "z": 12,
+    "symbol": "Mg",
+    "name": "magnez"
+  },
+  {
+    "z": 13,
+    "symbol": "Al",
+    "name": "glin"
+  },
+  {
+    "z": 14,
+    "symbol": "Si",
+    "name": "krzem"
+  },
+  {
+    "z": 15,
+    "symbol": "P",
+    "name": "fosfor"
+  },
+  {
+    "z": 16,
+    "symbol": "S",
+    "name": "siarka"
+  },
+  {
+    "z": 17,
+    "symbol": "Cl",
+    "name": "chlor"
+  },
+  {
+    "z": 18,
+    "symbol": "Ar",
+    "name": "argon"
+  },
+  {
+    "z": 19,
+    "symbol": "K",
+    "name": "potas"
+  },
+  {
+    "z": 20,
+    "symbol": "Ca",
+    "name": "wapń"
+  },
+  {
+    "z": 24,
+    "symbol": "Cr",
+    "name": "chrom"
+  },
+  {
+    "z": 25,
+    "symbol": "Mn",
+    "name": "mangan"
+  },
+  {
+    "z": 26,
+    "symbol": "Fe",
+    "name": "żelazo"
+  },
+  {
+    "z": 27,
+    "symbol": "Co",
+    "name": "kobalt"
+  },
+  {
+    "z": 28,
+    "symbol": "Ni",
+    "name": "nikiel"
+  },
+  {
+    "z": 29,
+    "symbol": "Cu",
+    "name": "miedź"
+  },
+  {
+    "z": 30,
+    "symbol": "Zn",
+    "name": "cynk"
+  },
+  {
+    "z": 35,
+    "symbol": "Br",
+    "name": "brom"
+  },
+  {
+    "z": 36,
+    "symbol": "Kr",
+    "name": "krypton"
+  },
+  {
+    "z": 47,
+    "symbol": "Ag",
+    "name": "srebro"
+  },
+  {
+    "z": 50,
+    "symbol": "Sn",
+    "name": "cyna"
+  },
+  {
+    "z": 53,
+    "symbol": "I",
+    "name": "jod"
+  },
+  {
+    "z": 54,
+    "symbol": "Xe",
+    "name": "ksenon"
+  },
+  {
+    "z": 56,
+    "symbol": "Ba",
+    "name": "bar"
+  },
+  {
+    "z": 74,
+    "symbol": "W",
+    "name": "wolfram"
+  },
+  {
+    "z": 78,
+    "symbol": "Pt",
+    "name": "platyna"
+  },
+  {
+    "z": 79,
+    "symbol": "Au",
+    "name": "złoto"
+  },
+  {
+    "z": 80,
+    "symbol": "Hg",
+    "name": "rtęć"
+  },
+  {
+    "z": 82,
+    "symbol": "Pb",
+    "name": "ołów"
+  },
+  {
+    "z": 92,
+    "symbol": "U",
+    "name": "uran"
+  }
+]

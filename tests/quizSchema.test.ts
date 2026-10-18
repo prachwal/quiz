@@ -13,7 +13,7 @@ const option = (text: string, isCorrect: boolean) => ({ text, isCorrect })
 const quiz = (question: object) => ({ title: 'T', questions: [{ prompt: 'P', ...question }] })
 
 test('the shipped quiz files satisfy the schema and the server validation', () => {
-  for (const file of ['quiz-lista-choice.json']) {
+  for (const file of ['quiz-lista-choice.json', 'quiz-pierwiastki.json']) {
     const data = read(file)
     assert.equal(validate(data), true, JSON.stringify(validate.errors))
     const { $schema: _ref, ...body } = data

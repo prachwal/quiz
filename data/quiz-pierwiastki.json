@@ -1,0 +1,1931 @@
+{
+  "$schema": "./quiz.schema.json",
+  "title": "Pierwiastki chemiczne – symbole i nazwy (1 z 4)",
+  "description": "40 pierwiastków w obie strony: z nazwy odgadujesz symbol i odwrotnie. Przy każdym podejściu losowane jest 20 pytań z puli.",
+  "difficulty": "easy",
+  "shuffleQuestions": true,
+  "shuffleOptions": true,
+  "sampleSize": 20,
+  "questions": [
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: wodór?",
+      "explanation": "H – wodór (liczba atomowa 1)",
+      "points": 1,
+      "options": [
+        {
+          "text": "H",
+          "isCorrect": true
+        },
+        {
+          "text": "Hg",
+          "isCorrect": false
+        },
+        {
+          "text": "He",
+          "isCorrect": false
+        },
+        {
+          "text": "S",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol H?",
+      "explanation": "H – wodór (liczba atomowa 1)",
+      "points": 1,
+      "options": [
+        {
+          "text": "wodór",
+          "isCorrect": true
+        },
+        {
+          "text": "wapń",
+          "isCorrect": false
+        },
+        {
+          "text": "węgiel",
+          "isCorrect": false
+        },
+        {
+          "text": "wolfram",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: hel?",
+      "explanation": "He – hel (liczba atomowa 2)",
+      "points": 1,
+      "options": [
+        {
+          "text": "He",
+          "isCorrect": true
+        },
+        {
+          "text": "Hg",
+          "isCorrect": false
+        },
+        {
+          "text": "H",
+          "isCorrect": false
+        },
+        {
+          "text": "Cl",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol He?",
+      "explanation": "He – hel (liczba atomowa 2)",
+      "points": 1,
+      "options": [
+        {
+          "text": "hel",
+          "isCorrect": true
+        },
+        {
+          "text": "fosfor",
+          "isCorrect": false
+        },
+        {
+          "text": "srebro",
+          "isCorrect": false
+        },
+        {
+          "text": "ksenon",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: lit?",
+      "explanation": "Li – lit (liczba atomowa 3)",
+      "points": 1,
+      "options": [
+        {
+          "text": "Li",
+          "isCorrect": true
+        },
+        {
+          "text": "Cu",
+          "isCorrect": false
+        },
+        {
+          "text": "Br",
+          "isCorrect": false
+        },
+        {
+          "text": "Cl",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol Li?",
+      "explanation": "Li – lit (liczba atomowa 3)",
+      "points": 1,
+      "options": [
+        {
+          "text": "lit",
+          "isCorrect": true
+        },
+        {
+          "text": "wodór",
+          "isCorrect": false
+        },
+        {
+          "text": "wolfram",
+          "isCorrect": false
+        },
+        {
+          "text": "nikiel",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: beryl?",
+      "explanation": "Be – beryl (liczba atomowa 4)",
+      "points": 1,
+      "options": [
+        {
+          "text": "Be",
+          "isCorrect": true
+        },
+        {
+          "text": "Ba",
+          "isCorrect": false
+        },
+        {
+          "text": "Br",
+          "isCorrect": false
+        },
+        {
+          "text": "B",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol Be?",
+      "explanation": "Be – beryl (liczba atomowa 4)",
+      "points": 1,
+      "options": [
+        {
+          "text": "beryl",
+          "isCorrect": true
+        },
+        {
+          "text": "bar",
+          "isCorrect": false
+        },
+        {
+          "text": "brom",
+          "isCorrect": false
+        },
+        {
+          "text": "bor",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: bor?",
+      "explanation": "B – bor (liczba atomowa 5)",
+      "points": 1,
+      "options": [
+        {
+          "text": "B",
+          "isCorrect": true
+        },
+        {
+          "text": "Ba",
+          "isCorrect": false
+        },
+        {
+          "text": "Be",
+          "isCorrect": false
+        },
+        {
+          "text": "Br",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol B?",
+      "explanation": "B – bor (liczba atomowa 5)",
+      "points": 1,
+      "options": [
+        {
+          "text": "bor",
+          "isCorrect": true
+        },
+        {
+          "text": "beryl",
+          "isCorrect": false
+        },
+        {
+          "text": "brom",
+          "isCorrect": false
+        },
+        {
+          "text": "bar",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: węgiel?",
+      "explanation": "C – węgiel (liczba atomowa 6)",
+      "points": 1,
+      "options": [
+        {
+          "text": "C",
+          "isCorrect": true
+        },
+        {
+          "text": "Cu",
+          "isCorrect": false
+        },
+        {
+          "text": "Co",
+          "isCorrect": false
+        },
+        {
+          "text": "Ca",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol C?",
+      "explanation": "C – węgiel (liczba atomowa 6)",
+      "points": 1,
+      "options": [
+        {
+          "text": "węgiel",
+          "isCorrect": true
+        },
+        {
+          "text": "wolfram",
+          "isCorrect": false
+        },
+        {
+          "text": "wapń",
+          "isCorrect": false
+        },
+        {
+          "text": "wodór",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: azot?",
+      "explanation": "N – azot (liczba atomowa 7)",
+      "points": 1,
+      "options": [
+        {
+          "text": "N",
+          "isCorrect": true
+        },
+        {
+          "text": "Ni",
+          "isCorrect": false
+        },
+        {
+          "text": "Ne",
+          "isCorrect": false
+        },
+        {
+          "text": "Na",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol N?",
+      "explanation": "N – azot (liczba atomowa 7)",
+      "points": 1,
+      "options": [
+        {
+          "text": "azot",
+          "isCorrect": true
+        },
+        {
+          "text": "argon",
+          "isCorrect": false
+        },
+        {
+          "text": "potas",
+          "isCorrect": false
+        },
+        {
+          "text": "nikiel",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: tlen?",
+      "explanation": "O – tlen (liczba atomowa 8)",
+      "points": 1,
+      "options": [
+        {
+          "text": "O",
+          "isCorrect": true
+        },
+        {
+          "text": "Na",
+          "isCorrect": false
+        },
+        {
+          "text": "Fe",
+          "isCorrect": false
+        },
+        {
+          "text": "Pb",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol O?",
+      "explanation": "O – tlen (liczba atomowa 8)",
+      "points": 1,
+      "options": [
+        {
+          "text": "tlen",
+          "isCorrect": true
+        },
+        {
+          "text": "uran",
+          "isCorrect": false
+        },
+        {
+          "text": "jod",
+          "isCorrect": false
+        },
+        {
+          "text": "azot",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: fluor?",
+      "explanation": "F – fluor (liczba atomowa 9)",
+      "points": 1,
+      "options": [
+        {
+          "text": "F",
+          "isCorrect": true
+        },
+        {
+          "text": "Fe",
+          "isCorrect": false
+        },
+        {
+          "text": "Be",
+          "isCorrect": false
+        },
+        {
+          "text": "Ni",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol F?",
+      "explanation": "F – fluor (liczba atomowa 9)",
+      "points": 1,
+      "options": [
+        {
+          "text": "fluor",
+          "isCorrect": true
+        },
+        {
+          "text": "fosfor",
+          "isCorrect": false
+        },
+        {
+          "text": "krypton",
+          "isCorrect": false
+        },
+        {
+          "text": "miedź",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: neon?",
+      "explanation": "Ne – neon (liczba atomowa 10)",
+      "points": 1,
+      "options": [
+        {
+          "text": "Ne",
+          "isCorrect": true
+        },
+        {
+          "text": "Ni",
+          "isCorrect": false
+        },
+        {
+          "text": "N",
+          "isCorrect": false
+        },
+        {
+          "text": "Na",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol Ne?",
+      "explanation": "Ne – neon (liczba atomowa 10)",
+      "points": 1,
+      "options": [
+        {
+          "text": "neon",
+          "isCorrect": true
+        },
+        {
+          "text": "nikiel",
+          "isCorrect": false
+        },
+        {
+          "text": "bor",
+          "isCorrect": false
+        },
+        {
+          "text": "siarka",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: sód?",
+      "explanation": "Na – sód (liczba atomowa 11)",
+      "points": 1,
+      "options": [
+        {
+          "text": "Na",
+          "isCorrect": true
+        },
+        {
+          "text": "Ne",
+          "isCorrect": false
+        },
+        {
+          "text": "Ni",
+          "isCorrect": false
+        },
+        {
+          "text": "N",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol Na?",
+      "explanation": "Na – sód (liczba atomowa 11)",
+      "points": 1,
+      "options": [
+        {
+          "text": "sód",
+          "isCorrect": true
+        },
+        {
+          "text": "siarka",
+          "isCorrect": false
+        },
+        {
+          "text": "srebro",
+          "isCorrect": false
+        },
+        {
+          "text": "fluor",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: magnez?",
+      "explanation": "Mg – magnez (liczba atomowa 12)",
+      "points": 1,
+      "options": [
+        {
+          "text": "Mg",
+          "isCorrect": true
+        },
+        {
+          "text": "Mn",
+          "isCorrect": false
+        },
+        {
+          "text": "S",
+          "isCorrect": false
+        },
+        {
+          "text": "Kr",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol Mg?",
+      "explanation": "Mg – magnez (liczba atomowa 12)",
+      "points": 1,
+      "options": [
+        {
+          "text": "magnez",
+          "isCorrect": true
+        },
+        {
+          "text": "miedź",
+          "isCorrect": false
+        },
+        {
+          "text": "mangan",
+          "isCorrect": false
+        },
+        {
+          "text": "krzem",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: glin?",
+      "explanation": "Al – glin (liczba atomowa 13)",
+      "points": 1,
+      "options": [
+        {
+          "text": "Al",
+          "isCorrect": true
+        },
+        {
+          "text": "Ar",
+          "isCorrect": false
+        },
+        {
+          "text": "Au",
+          "isCorrect": false
+        },
+        {
+          "text": "Ag",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol Al?",
+      "explanation": "Al – glin (liczba atomowa 13)",
+      "points": 1,
+      "options": [
+        {
+          "text": "glin",
+          "isCorrect": true
+        },
+        {
+          "text": "żelazo",
+          "isCorrect": false
+        },
+        {
+          "text": "neon",
+          "isCorrect": false
+        },
+        {
+          "text": "cynk",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: krzem?",
+      "explanation": "Si – krzem (liczba atomowa 14)",
+      "points": 1,
+      "options": [
+        {
+          "text": "Si",
+          "isCorrect": true
+        },
+        {
+          "text": "Sn",
+          "isCorrect": false
+        },
+        {
+          "text": "S",
+          "isCorrect": false
+        },
+        {
+          "text": "O",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol Si?",
+      "explanation": "Si – krzem (liczba atomowa 14)",
+      "points": 1,
+      "options": [
+        {
+          "text": "krzem",
+          "isCorrect": true
+        },
+        {
+          "text": "krypton",
+          "isCorrect": false
+        },
+        {
+          "text": "ksenon",
+          "isCorrect": false
+        },
+        {
+          "text": "kobalt",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: fosfor?",
+      "explanation": "P – fosfor (liczba atomowa 15)",
+      "points": 1,
+      "options": [
+        {
+          "text": "P",
+          "isCorrect": true
+        },
+        {
+          "text": "Pb",
+          "isCorrect": false
+        },
+        {
+          "text": "Pt",
+          "isCorrect": false
+        },
+        {
+          "text": "Xe",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol P?",
+      "explanation": "P – fosfor (liczba atomowa 15)",
+      "points": 1,
+      "options": [
+        {
+          "text": "fosfor",
+          "isCorrect": true
+        },
+        {
+          "text": "fluor",
+          "isCorrect": false
+        },
+        {
+          "text": "ksenon",
+          "isCorrect": false
+        },
+        {
+          "text": "wapń",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: siarka?",
+      "explanation": "S – siarka (liczba atomowa 16)",
+      "points": 1,
+      "options": [
+        {
+          "text": "S",
+          "isCorrect": true
+        },
+        {
+          "text": "Si",
+          "isCorrect": false
+        },
+        {
+          "text": "Sn",
+          "isCorrect": false
+        },
+        {
+          "text": "C",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol S?",
+      "explanation": "S – siarka (liczba atomowa 16)",
+      "points": 1,
+      "options": [
+        {
+          "text": "siarka",
+          "isCorrect": true
+        },
+        {
+          "text": "srebro",
+          "isCorrect": false
+        },
+        {
+          "text": "sód",
+          "isCorrect": false
+        },
+        {
+          "text": "uran",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: chlor?",
+      "explanation": "Cl – chlor (liczba atomowa 17)",
+      "points": 1,
+      "options": [
+        {
+          "text": "Cl",
+          "isCorrect": true
+        },
+        {
+          "text": "Cu",
+          "isCorrect": false
+        },
+        {
+          "text": "Cr",
+          "isCorrect": false
+        },
+        {
+          "text": "Ca",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol Cl?",
+      "explanation": "Cl – chlor (liczba atomowa 17)",
+      "points": 1,
+      "options": [
+        {
+          "text": "chlor",
+          "isCorrect": true
+        },
+        {
+          "text": "cynk",
+          "isCorrect": false
+        },
+        {
+          "text": "cyna",
+          "isCorrect": false
+        },
+        {
+          "text": "chrom",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: argon?",
+      "explanation": "Ar – argon (liczba atomowa 18)",
+      "points": 1,
+      "options": [
+        {
+          "text": "Ar",
+          "isCorrect": true
+        },
+        {
+          "text": "Au",
+          "isCorrect": false
+        },
+        {
+          "text": "Ag",
+          "isCorrect": false
+        },
+        {
+          "text": "Al",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol Ar?",
+      "explanation": "Ar – argon (liczba atomowa 18)",
+      "points": 1,
+      "options": [
+        {
+          "text": "argon",
+          "isCorrect": true
+        },
+        {
+          "text": "azot",
+          "isCorrect": false
+        },
+        {
+          "text": "siarka",
+          "isCorrect": false
+        },
+        {
+          "text": "kobalt",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: potas?",
+      "explanation": "K – potas (liczba atomowa 19)",
+      "points": 1,
+      "options": [
+        {
+          "text": "K",
+          "isCorrect": true
+        },
+        {
+          "text": "Kr",
+          "isCorrect": false
+        },
+        {
+          "text": "Zn",
+          "isCorrect": false
+        },
+        {
+          "text": "P",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol K?",
+      "explanation": "K – potas (liczba atomowa 19)",
+      "points": 1,
+      "options": [
+        {
+          "text": "potas",
+          "isCorrect": true
+        },
+        {
+          "text": "platyna",
+          "isCorrect": false
+        },
+        {
+          "text": "neon",
+          "isCorrect": false
+        },
+        {
+          "text": "azot",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: wapń?",
+      "explanation": "Ca – wapń (liczba atomowa 20)",
+      "points": 1,
+      "options": [
+        {
+          "text": "Ca",
+          "isCorrect": true
+        },
+        {
+          "text": "Cl",
+          "isCorrect": false
+        },
+        {
+          "text": "Cr",
+          "isCorrect": false
+        },
+        {
+          "text": "Cu",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol Ca?",
+      "explanation": "Ca – wapń (liczba atomowa 20)",
+      "points": 1,
+      "options": [
+        {
+          "text": "wapń",
+          "isCorrect": true
+        },
+        {
+          "text": "wolfram",
+          "isCorrect": false
+        },
+        {
+          "text": "wodór",
+          "isCorrect": false
+        },
+        {
+          "text": "węgiel",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: chrom?",
+      "explanation": "Cr – chrom (liczba atomowa 24)",
+      "points": 1,
+      "options": [
+        {
+          "text": "Cr",
+          "isCorrect": true
+        },
+        {
+          "text": "Cu",
+          "isCorrect": false
+        },
+        {
+          "text": "Ca",
+          "isCorrect": false
+        },
+        {
+          "text": "C",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol Cr?",
+      "explanation": "Cr – chrom (liczba atomowa 24)",
+      "points": 1,
+      "options": [
+        {
+          "text": "chrom",
+          "isCorrect": true
+        },
+        {
+          "text": "cynk",
+          "isCorrect": false
+        },
+        {
+          "text": "cyna",
+          "isCorrect": false
+        },
+        {
+          "text": "chlor",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: mangan?",
+      "explanation": "Mn – mangan (liczba atomowa 25)",
+      "points": 1,
+      "options": [
+        {
+          "text": "Mn",
+          "isCorrect": true
+        },
+        {
+          "text": "Mg",
+          "isCorrect": false
+        },
+        {
+          "text": "Ni",
+          "isCorrect": false
+        },
+        {
+          "text": "Hg",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol Mn?",
+      "explanation": "Mn – mangan (liczba atomowa 25)",
+      "points": 1,
+      "options": [
+        {
+          "text": "mangan",
+          "isCorrect": true
+        },
+        {
+          "text": "magnez",
+          "isCorrect": false
+        },
+        {
+          "text": "miedź",
+          "isCorrect": false
+        },
+        {
+          "text": "platyna",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: żelazo?",
+      "explanation": "Fe – żelazo (liczba atomowa 26)",
+      "points": 1,
+      "options": [
+        {
+          "text": "Fe",
+          "isCorrect": true
+        },
+        {
+          "text": "F",
+          "isCorrect": false
+        },
+        {
+          "text": "Ni",
+          "isCorrect": false
+        },
+        {
+          "text": "Ne",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol Fe?",
+      "explanation": "Fe – żelazo (liczba atomowa 26)",
+      "points": 1,
+      "options": [
+        {
+          "text": "żelazo",
+          "isCorrect": true
+        },
+        {
+          "text": "potas",
+          "isCorrect": false
+        },
+        {
+          "text": "cyna",
+          "isCorrect": false
+        },
+        {
+          "text": "złoto",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: kobalt?",
+      "explanation": "Co – kobalt (liczba atomowa 27)",
+      "points": 1,
+      "options": [
+        {
+          "text": "Co",
+          "isCorrect": true
+        },
+        {
+          "text": "C",
+          "isCorrect": false
+        },
+        {
+          "text": "Cr",
+          "isCorrect": false
+        },
+        {
+          "text": "Cl",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol Co?",
+      "explanation": "Co – kobalt (liczba atomowa 27)",
+      "points": 1,
+      "options": [
+        {
+          "text": "kobalt",
+          "isCorrect": true
+        },
+        {
+          "text": "krzem",
+          "isCorrect": false
+        },
+        {
+          "text": "ksenon",
+          "isCorrect": false
+        },
+        {
+          "text": "krypton",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: nikiel?",
+      "explanation": "Ni – nikiel (liczba atomowa 28)",
+      "points": 1,
+      "options": [
+        {
+          "text": "Ni",
+          "isCorrect": true
+        },
+        {
+          "text": "N",
+          "isCorrect": false
+        },
+        {
+          "text": "Ne",
+          "isCorrect": false
+        },
+        {
+          "text": "Na",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol Ni?",
+      "explanation": "Ni – nikiel (liczba atomowa 28)",
+      "points": 1,
+      "options": [
+        {
+          "text": "nikiel",
+          "isCorrect": true
+        },
+        {
+          "text": "neon",
+          "isCorrect": false
+        },
+        {
+          "text": "chlor",
+          "isCorrect": false
+        },
+        {
+          "text": "cyna",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: miedź?",
+      "explanation": "Cu – miedź (liczba atomowa 29)",
+      "points": 1,
+      "options": [
+        {
+          "text": "Cu",
+          "isCorrect": true
+        },
+        {
+          "text": "C",
+          "isCorrect": false
+        },
+        {
+          "text": "Co",
+          "isCorrect": false
+        },
+        {
+          "text": "Cl",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol Cu?",
+      "explanation": "Cu – miedź (liczba atomowa 29)",
+      "points": 1,
+      "options": [
+        {
+          "text": "miedź",
+          "isCorrect": true
+        },
+        {
+          "text": "mangan",
+          "isCorrect": false
+        },
+        {
+          "text": "magnez",
+          "isCorrect": false
+        },
+        {
+          "text": "tlen",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: cynk?",
+      "explanation": "Zn – cynk (liczba atomowa 30)",
+      "points": 1,
+      "options": [
+        {
+          "text": "Zn",
+          "isCorrect": true
+        },
+        {
+          "text": "Kr",
+          "isCorrect": false
+        },
+        {
+          "text": "Co",
+          "isCorrect": false
+        },
+        {
+          "text": "B",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol Zn?",
+      "explanation": "Zn – cynk (liczba atomowa 30)",
+      "points": 1,
+      "options": [
+        {
+          "text": "cynk",
+          "isCorrect": true
+        },
+        {
+          "text": "chrom",
+          "isCorrect": false
+        },
+        {
+          "text": "cyna",
+          "isCorrect": false
+        },
+        {
+          "text": "chlor",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: brom?",
+      "explanation": "Br – brom (liczba atomowa 35)",
+      "points": 1,
+      "options": [
+        {
+          "text": "Br",
+          "isCorrect": true
+        },
+        {
+          "text": "B",
+          "isCorrect": false
+        },
+        {
+          "text": "Ba",
+          "isCorrect": false
+        },
+        {
+          "text": "Be",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol Br?",
+      "explanation": "Br – brom (liczba atomowa 35)",
+      "points": 1,
+      "options": [
+        {
+          "text": "brom",
+          "isCorrect": true
+        },
+        {
+          "text": "bor",
+          "isCorrect": false
+        },
+        {
+          "text": "beryl",
+          "isCorrect": false
+        },
+        {
+          "text": "bar",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: krypton?",
+      "explanation": "Kr – krypton (liczba atomowa 36)",
+      "points": 1,
+      "options": [
+        {
+          "text": "Kr",
+          "isCorrect": true
+        },
+        {
+          "text": "K",
+          "isCorrect": false
+        },
+        {
+          "text": "Ne",
+          "isCorrect": false
+        },
+        {
+          "text": "He",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol Kr?",
+      "explanation": "Kr – krypton (liczba atomowa 36)",
+      "points": 1,
+      "options": [
+        {
+          "text": "krypton",
+          "isCorrect": true
+        },
+        {
+          "text": "kobalt",
+          "isCorrect": false
+        },
+        {
+          "text": "krzem",
+          "isCorrect": false
+        },
+        {
+          "text": "ksenon",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: srebro?",
+      "explanation": "Ag – srebro (liczba atomowa 47)",
+      "points": 1,
+      "options": [
+        {
+          "text": "Ag",
+          "isCorrect": true
+        },
+        {
+          "text": "Au",
+          "isCorrect": false
+        },
+        {
+          "text": "Al",
+          "isCorrect": false
+        },
+        {
+          "text": "Ar",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol Ag?",
+      "explanation": "Ag – srebro (liczba atomowa 47)",
+      "points": 1,
+      "options": [
+        {
+          "text": "srebro",
+          "isCorrect": true
+        },
+        {
+          "text": "sód",
+          "isCorrect": false
+        },
+        {
+          "text": "siarka",
+          "isCorrect": false
+        },
+        {
+          "text": "argon",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: cyna?",
+      "explanation": "Sn – cyna (liczba atomowa 50)",
+      "points": 1,
+      "options": [
+        {
+          "text": "Sn",
+          "isCorrect": true
+        },
+        {
+          "text": "Si",
+          "isCorrect": false
+        },
+        {
+          "text": "S",
+          "isCorrect": false
+        },
+        {
+          "text": "Fe",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol Sn?",
+      "explanation": "Sn – cyna (liczba atomowa 50)",
+      "points": 1,
+      "options": [
+        {
+          "text": "cyna",
+          "isCorrect": true
+        },
+        {
+          "text": "cynk",
+          "isCorrect": false
+        },
+        {
+          "text": "chrom",
+          "isCorrect": false
+        },
+        {
+          "text": "chlor",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: jod?",
+      "explanation": "I – jod (liczba atomowa 53)",
+      "points": 1,
+      "options": [
+        {
+          "text": "I",
+          "isCorrect": true
+        },
+        {
+          "text": "F",
+          "isCorrect": false
+        },
+        {
+          "text": "Mg",
+          "isCorrect": false
+        },
+        {
+          "text": "Mn",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol I?",
+      "explanation": "I – jod (liczba atomowa 53)",
+      "points": 1,
+      "options": [
+        {
+          "text": "jod",
+          "isCorrect": true
+        },
+        {
+          "text": "żelazo",
+          "isCorrect": false
+        },
+        {
+          "text": "wapń",
+          "isCorrect": false
+        },
+        {
+          "text": "tlen",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: ksenon?",
+      "explanation": "Xe – ksenon (liczba atomowa 54)",
+      "points": 1,
+      "options": [
+        {
+          "text": "Xe",
+          "isCorrect": true
+        },
+        {
+          "text": "Si",
+          "isCorrect": false
+        },
+        {
+          "text": "C",
+          "isCorrect": false
+        },
+        {
+          "text": "Ca",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol Xe?",
+      "explanation": "Xe – ksenon (liczba atomowa 54)",
+      "points": 1,
+      "options": [
+        {
+          "text": "ksenon",
+          "isCorrect": true
+        },
+        {
+          "text": "krzem",
+          "isCorrect": false
+        },
+        {
+          "text": "kobalt",
+          "isCorrect": false
+        },
+        {
+          "text": "krypton",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: bar?",
+      "explanation": "Ba – bar (liczba atomowa 56)",
+      "points": 1,
+      "options": [
+        {
+          "text": "Ba",
+          "isCorrect": true
+        },
+        {
+          "text": "Br",
+          "isCorrect": false
+        },
+        {
+          "text": "B",
+          "isCorrect": false
+        },
+        {
+          "text": "Be",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol Ba?",
+      "explanation": "Ba – bar (liczba atomowa 56)",
+      "points": 1,
+      "options": [
+        {
+          "text": "bar",
+          "isCorrect": true
+        },
+        {
+          "text": "bor",
+          "isCorrect": false
+        },
+        {
+          "text": "beryl",
+          "isCorrect": false
+        },
+        {
+          "text": "brom",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: wolfram?",
+      "explanation": "W – wolfram (liczba atomowa 74)",
+      "points": 1,
+      "options": [
+        {
+          "text": "W",
+          "isCorrect": true
+        },
+        {
+          "text": "C",
+          "isCorrect": false
+        },
+        {
+          "text": "Ar",
+          "isCorrect": false
+        },
+        {
+          "text": "Li",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol W?",
+      "explanation": "W – wolfram (liczba atomowa 74)",
+      "points": 1,
+      "options": [
+        {
+          "text": "wolfram",
+          "isCorrect": true
+        },
+        {
+          "text": "węgiel",
+          "isCorrect": false
+        },
+        {
+          "text": "wapń",
+          "isCorrect": false
+        },
+        {
+          "text": "wodór",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: platyna?",
+      "explanation": "Pt – platyna (liczba atomowa 78)",
+      "points": 1,
+      "options": [
+        {
+          "text": "Pt",
+          "isCorrect": true
+        },
+        {
+          "text": "P",
+          "isCorrect": false
+        },
+        {
+          "text": "Pb",
+          "isCorrect": false
+        },
+        {
+          "text": "Mg",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol Pt?",
+      "explanation": "Pt – platyna (liczba atomowa 78)",
+      "points": 1,
+      "options": [
+        {
+          "text": "platyna",
+          "isCorrect": true
+        },
+        {
+          "text": "potas",
+          "isCorrect": false
+        },
+        {
+          "text": "ołów",
+          "isCorrect": false
+        },
+        {
+          "text": "chlor",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: złoto?",
+      "explanation": "Au – złoto (liczba atomowa 79)",
+      "points": 1,
+      "options": [
+        {
+          "text": "Au",
+          "isCorrect": true
+        },
+        {
+          "text": "Ag",
+          "isCorrect": false
+        },
+        {
+          "text": "Ar",
+          "isCorrect": false
+        },
+        {
+          "text": "Al",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol Au?",
+      "explanation": "Au – złoto (liczba atomowa 79)",
+      "points": 1,
+      "options": [
+        {
+          "text": "złoto",
+          "isCorrect": true
+        },
+        {
+          "text": "lit",
+          "isCorrect": false
+        },
+        {
+          "text": "bar",
+          "isCorrect": false
+        },
+        {
+          "text": "glin",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: rtęć?",
+      "explanation": "Hg – rtęć (liczba atomowa 80)",
+      "points": 1,
+      "options": [
+        {
+          "text": "Hg",
+          "isCorrect": true
+        },
+        {
+          "text": "H",
+          "isCorrect": false
+        },
+        {
+          "text": "He",
+          "isCorrect": false
+        },
+        {
+          "text": "Xe",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol Hg?",
+      "explanation": "Hg – rtęć (liczba atomowa 80)",
+      "points": 1,
+      "options": [
+        {
+          "text": "rtęć",
+          "isCorrect": true
+        },
+        {
+          "text": "złoto",
+          "isCorrect": false
+        },
+        {
+          "text": "azot",
+          "isCorrect": false
+        },
+        {
+          "text": "glin",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: ołów?",
+      "explanation": "Pb – ołów (liczba atomowa 82)",
+      "points": 1,
+      "options": [
+        {
+          "text": "Pb",
+          "isCorrect": true
+        },
+        {
+          "text": "P",
+          "isCorrect": false
+        },
+        {
+          "text": "Pt",
+          "isCorrect": false
+        },
+        {
+          "text": "K",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol Pb?",
+      "explanation": "Pb – ołów (liczba atomowa 82)",
+      "points": 1,
+      "options": [
+        {
+          "text": "ołów",
+          "isCorrect": true
+        },
+        {
+          "text": "brom",
+          "isCorrect": false
+        },
+        {
+          "text": "potas",
+          "isCorrect": false
+        },
+        {
+          "text": "cyna",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki symbol ma pierwiastek: uran?",
+      "explanation": "U – uran (liczba atomowa 92)",
+      "points": 1,
+      "options": [
+        {
+          "text": "U",
+          "isCorrect": true
+        },
+        {
+          "text": "Cl",
+          "isCorrect": false
+        },
+        {
+          "text": "Br",
+          "isCorrect": false
+        },
+        {
+          "text": "Al",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "prompt": "Jaki pierwiastek oznacza symbol U?",
+      "explanation": "U – uran (liczba atomowa 92)",
+      "points": 1,
+      "options": [
+        {
+          "text": "uran",
+          "isCorrect": true
+        },
+        {
+          "text": "miedź",
+          "isCorrect": false
+        },
+        {
+          "text": "fluor",
+          "isCorrect": false
+        },
+        {
+          "text": "cynk",
+          "isCorrect": false
+        }
+      ]
+    }
+  ]
+}
