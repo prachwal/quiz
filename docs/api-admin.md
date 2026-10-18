@@ -9,6 +9,8 @@ Pełny opis architektury jest w `CLAUDE.md`; tu są tylko rzeczy potrzebne do pr
   Każda odpowiedź ma nagłówek `X-Request-Id` (przydatny przy szukaniu w Sentry/logach).
 - Mutacje bez danych zwracają `{ "ok": true }` (nigdy 204/304).
 
+> Dla asystentów AI (Claude, OpenAI, Grok) jest też serwer MCP z narzędziami do quizów – patrz [mcp.md](mcp.md).
+
 ## 1. Uwierzytelnianie – co czym można zrobić
 
 | Credential | Skąd | Uprawnienia |

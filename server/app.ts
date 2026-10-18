@@ -24,6 +24,7 @@ import {
   rolesInput,
   tokenInput,
 } from '../src/shared/quiz/schema'
+import { mcpHandler, mcpNotAllowed } from './mcp'
 import { resolveGradedIds } from '../src/shared/quiz/sampling'
 import * as admin from './adminRepo'
 import * as progress from './progressRepo'
@@ -128,6 +129,10 @@ export function createApp() {
 
   // everything below is private: Bearer JWT (Auth0) or personal API token
   app.use(authenticate, requireAuthenticated)
+
+  // Model Context Protocol server for AI clients (Claude, OpenAI, Grok...) - same auth as the REST API
+  app.post('/mcp', mcpHandler)
+  app.all('/mcp', mcpNotAllowed)
 
   const router = express.Router()
 
