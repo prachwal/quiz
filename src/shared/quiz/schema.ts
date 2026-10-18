@@ -25,8 +25,17 @@ export const DIFFICULTIES = ['easy', 'medium', 'hard'] as const
 export const POPULARITIES = ['core', 'common', 'rare'] as const
 export const QUIZ_VARIANTS = ['mixed', 'typing', 'choice', 'translation'] as const
 
+/** How many questions are drawn from the whole pool on each play (null = all). */
+export const SAMPLE_SIZES = [10, 20, 30] as const
+
 export const quizInput = z.object({
   difficulty: z.enum(DIFFICULTIES).nullish(),
+  /** null = follow the player's setting, true/false = override it */
+  shuffleQuestions: z.boolean().nullish(),
+  shuffleOptions: z.boolean().default(false),
+  sampleSize: z
+    .union([z.literal(10), z.literal(20), z.literal(30)])
+    .nullish(),
   title: z.string().trim().min(1, 'Tytuł jest wymagany').max(200),
   description: z.string().trim().max(2000).default(''),
   questions: z.array(questionInput).min(1, 'Dodaj co najmniej jedno pytanie').max(100),
@@ -37,7 +46,11 @@ export const answerInput = z.object({
   text: z.string().max(2000).optional(),
 })
 
-export const gradeInput = z.object({ answers: z.record(z.string(), answerInput) })
+export const gradeInput = z.object({
+  answers: z.record(z.string(), answerInput),
+  /** The questions the player was shown (quizzes that draw a sample from a larger pool). */
+  questionIds: z.array(z.string()).max(100).optional(),
+})
 
 export type QuizInput = z.input<typeof quizInput>
 
@@ -102,6 +115,12 @@ export const reviewSessionInput = z.object({ count: z.number().int().min(1).max(
 export const retryWrongInput = z.object({ questionIds: z.array(z.string().uuid()).min(1).max(60) })
 
 export const classInput = z.object({ name: z.string().trim().min(2, 'Nazwa klasy (min. 2 znaki)').max(80) })
+
+export const classPatchInput = z
+  .object({ name: classInput.shape.name.optional(), joiningOpen: z.boolean().optional() })
+  .refine((v) => v.name !== undefined || v.joiningOpen !== undefined, 'Podaj nazwę lub stan zapisów')
+
+export const assignmentPatchInput = z.object({ dueAt: z.string().datetime().nullable() })
 
 export const joinInput = z.object({
   code: z

@@ -7,24 +7,25 @@ import PageHeader from '../../components/PageHeader'
 import { useFocusMode } from '../../components/useFocusMode'
 import { useAppSelector } from '../../app/hooks'
 import type { Answer } from '../../shared/quiz/engine'
+import { effectiveShuffle, sampleFromPool, shuffle } from '../../shared/quiz/sampling'
 import type { QuizDetail } from '../../shared/quiz/types'
 import { isAnswered, questionRenderers } from './questionRenderers'
 import ResultView from './ResultView'
 
 const PAD = 'clamp(16px, 4vw, 28px)'
 
-const shuffled = <T,>(items: T[]) => {
-  const copy = [...items]
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[copy[i], copy[j]] = [copy[j], copy[i]]
-  }
-  return copy
+/** What the player sees: a random sample of the pool (if the quiz asks for one), shuffled when required. */
+const prepareQuestions = (quiz: QuizDetail, playerShuffles: boolean) => {
+  const drawn = sampleFromPool(quiz.questions, quiz.sampleSize)
+  const ordered = effectiveShuffle(quiz.shuffleQuestions, playerShuffles) ? shuffle(drawn) : drawn
+  return quiz.shuffleOptions
+    ? ordered.map((q) => (q.type === 'single' || q.type === 'multiple' ? { ...q, options: shuffle(q.options) } : q))
+    : ordered
 }
 
 function Runner({ quiz, onRestart }: { quiz: QuizDetail; onRestart: () => void }) {
   const { shuffleQuestions, showExplanations } = useAppSelector((state) => state.settings)
-  const [questions] = useState(() => (shuffleQuestions ? shuffled(quiz.questions) : quiz.questions))
+  const [questions] = useState(() => prepareQuestions(quiz, shuffleQuestions))
   const [index, setIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<string, Answer>>({})
   const [grade, { data: result, isLoading, error }] = useGradeQuizMutation()
@@ -112,7 +113,7 @@ function Runner({ quiz, onRestart }: { quiz: QuizDetail; onRestart: () => void }
               iconPlacement="end"
               className="action-primary"
               loading={isLoading}
-              onClick={() => void grade({ id: quiz.id, answers })}
+              onClick={() => void grade({ id: quiz.id, answers, questionIds: questions.map((q) => q.id) })}
             >
               Zakończ i sprawdź
             </Button>

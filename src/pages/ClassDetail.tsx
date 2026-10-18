@@ -1,4 +1,4 @@
-import { CopyOutlined, DeleteOutlined, DownloadOutlined, ReloadOutlined } from '@ant-design/icons'
+import { CopyOutlined, DeleteOutlined, DownloadOutlined, EditOutlined, ReloadOutlined } from '@ant-design/icons'
 import {
   Alert,
   Button,
@@ -6,10 +6,14 @@ import {
   DatePicker,
   Empty,
   Flex,
+  Form,
+  Input,
+  Modal,
   Popconfirm,
   Segmented,
   Select,
   Skeleton,
+  Switch,
   Table,
   Tabs,
   Tag,
@@ -18,7 +22,7 @@ import {
 } from 'antd'
 import type { TableColumnsType } from 'antd'
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   errorMessage,
   useArchiveClassMutation,
@@ -30,6 +34,8 @@ import {
   useListQuizzesQuery,
   useRegenerateClassCodeMutation,
   useRemoveClassMemberMutation,
+  useUpdateAssignmentDueMutation,
+  useUpdateClassMutation,
 } from '../app/api'
 import { PHONE_QUERY, useMediaQuery } from '../app/useMediaQuery'
 import PageHeader from '../components/PageHeader'
@@ -37,6 +43,53 @@ import { downloadCsv } from '../features/classes/downloadCsv'
 import { formatDue } from '../features/classes/formatDue'
 import { StatusTag } from '../features/classes/statusTags'
 import type { ClassDetail as ClassDetailData, ClassReportRow } from '../shared/quiz/types'
+
+function RenameClass({ cls }: { cls: ClassDetailData }) {
+  const [open, setOpen] = useState(false)
+  const [update, { isLoading }] = useUpdateClassMutation()
+  const [form] = Form.useForm<{ name: string }>()
+  const { message } = AntdApp.useApp()
+  return (
+    <>
+      <Button icon={<EditOutlined />} onClick={() => setOpen(true)}>
+        Zmień nazwę
+      </Button>
+      <Modal
+        open={open}
+        title="Zmień nazwę klasy"
+        okText="Zapisz"
+        cancelText="Anuluj"
+        confirmLoading={isLoading}
+        onOk={() => form.submit()}
+        onCancel={() => setOpen(false)}
+        destroyOnHidden
+        forceRender
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          initialValues={{ name: cls.name }}
+          onFinish={async ({ name }) => {
+            try {
+              await update({ id: cls.id, name }).unwrap()
+              setOpen(false)
+            } catch (e) {
+              void message.error(errorMessage(e))
+            }
+          }}
+        >
+          <Form.Item
+            name="name"
+            label="Nazwa klasy"
+            rules={[{ required: true, whitespace: true, min: 2, message: 'Podaj nazwę (min. 2 znaki)' }]}
+          >
+            <Input maxLength={80} autoFocus />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </>
+  )
+}
 
 function Students({ cls }: { cls: ClassDetailData }) {
   const [remove] = useRemoveClassMemberMutation()
@@ -49,15 +102,20 @@ function Students({ cls }: { cls: ClassDetailData }) {
       {cls.members.map((m) => (
         <Flex key={m.userId} justify="space-between" align="center" gap={12}>
           <Flex vertical style={{ minWidth: 0 }}>
-            <Typography.Text strong ellipsis>
-              {m.name ?? m.email ?? m.userId}
-            </Typography.Text>
+            <Link to={`/classes/${cls.id}/students/${encodeURIComponent(m.userId)}`} className="student-link">
+              <Typography.Text strong ellipsis>
+                {m.name ?? m.email ?? m.userId}
+              </Typography.Text>
+            </Link>
             {m.email && m.email !== m.name && (
               <Typography.Text type="secondary" ellipsis style={{ fontSize: 13 }}>
                 {m.email}
               </Typography.Text>
             )}
           </Flex>
+          <Link to={`/classes/${cls.id}/students/${encodeURIComponent(m.userId)}`}>
+            <Button size="small">Wyniki</Button>
+          </Link>
           <Popconfirm
             title="Usunąć ucznia z klasy?"
             okText="Usuń"
@@ -84,6 +142,7 @@ function Assignments({ cls }: { cls: ClassDetailData }) {
   const { data: quizzes } = useListQuizzesQuery()
   const [create, { isLoading }] = useCreateAssignmentMutation()
   const [remove] = useDeleteAssignmentMutation()
+  const [setDue] = useUpdateAssignmentDueMutation()
   const [kind, setKind] = useState<'course' | 'quiz'>('course')
   const [target, setTarget] = useState<string>()
   const [dueAt, setDueAt] = useState<string | null>(null)
@@ -160,6 +219,21 @@ function Assignments({ cls }: { cls: ClassDetailData }) {
                 <Tag style={{ marginInlineEnd: 6 }}>{a.kind === 'course' ? 'kurs' : 'quiz'}</Tag>
                 termin: {formatDue(a.dueAt)}
               </Typography.Text>
+              <DatePicker
+                showTime
+                size="small"
+                placeholder="Zmień termin"
+                aria-label={`Termin zadania ${a.title}`}
+                style={{ marginTop: 6, maxWidth: 220 }}
+                onChange={async (d) => {
+                  try {
+                    await setDue({ classId: cls.id, assignmentId: a.id, dueAt: d ? d.toISOString() : null }).unwrap()
+                    void message.success('Termin zapisany')
+                  } catch (e) {
+                    void message.error(errorMessage(e))
+                  }
+                }}
+              />
             </Flex>
             <Popconfirm
               title="Usunąć zadanie?"
@@ -205,7 +279,12 @@ function Report({ cls }: { cls: ClassDetailData }) {
     ))
 
   const columns: TableColumnsType<ClassReportRow> = [
-    { title: 'Uczeń', key: 'who', render: (_v, r) => <Typography.Text strong>{who(r)}</Typography.Text> },
+    { title: 'Uczeń', key: 'who', render: (_v, r) => (
+        <Link to={`/classes/${cls.id}/students/${encodeURIComponent(r.userId)}`}>
+          <Typography.Text strong>{who(r)}</Typography.Text>
+        </Link>
+      ),
+    },
     { title: 'Lekcje', dataIndex: 'lessonsCompleted', align: 'right' },
     { title: 'Ostatnio aktywny', dataIndex: 'lastActiveDay', render: (v: string | null) => v ?? '—' },
     { title: 'Słabe czasowniki', dataIndex: 'weakVerbs', align: 'right' },
@@ -226,7 +305,9 @@ function Report({ cls }: { cls: ClassDetailData }) {
       key: 'card',
       render: (_v, r) => (
         <Flex vertical gap={6}>
-          <Typography.Text strong>{who(r)}</Typography.Text>
+          <Link to={`/classes/${cls.id}/students/${encodeURIComponent(r.userId)}`}>
+            <Typography.Text strong>{who(r)}</Typography.Text>
+          </Link>
           <Typography.Text type="secondary" style={{ fontSize: 13 }}>
             lekcje: {r.lessonsCompleted} · ostatnio: {r.lastActiveDay ?? '—'} · słabe czasowniki: {r.weakVerbs}
           </Typography.Text>
@@ -273,6 +354,7 @@ export default function ClassDetail() {
   const { data: cls, error, isLoading } = useGetClassQuery(id)
   const [regenerate, { isLoading: regenerating }] = useRegenerateClassCodeMutation()
   const [archive] = useArchiveClassMutation()
+  const [update, { isLoading: updating }] = useUpdateClassMutation()
   const navigate = useNavigate()
   const { message } = AntdApp.useApp()
 
@@ -308,9 +390,25 @@ export default function ClassDetail() {
                 Nowy kod
               </Button>
             </Popconfirm>
+            <Switch
+              size="small"
+              checked={cls.joiningOpen}
+              loading={updating}
+              aria-label="Zapisy do klasy"
+              onChange={async (joiningOpen) => {
+                try {
+                  await update({ id: cls.id, joiningOpen }).unwrap()
+                } catch (e) {
+                  void message.error(errorMessage(e))
+                }
+              }}
+            />
+            <Typography.Text type="secondary">{cls.joiningOpen ? 'zapisy otwarte' : 'zapisy zamknięte'}</Typography.Text>
           </Flex>
         }
         extra={
+          <Flex gap={8} wrap>
+          <RenameClass cls={cls} />
           <Popconfirm
             title="Zarchiwizować klasę?"
             description="Zniknie z list, ale wyniki zostają zachowane."
@@ -328,6 +426,7 @@ export default function ClassDetail() {
           >
             <Button danger>Archiwizuj</Button>
           </Popconfirm>
+          </Flex>
         }
       />
       <Tabs

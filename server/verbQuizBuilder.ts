@@ -127,7 +127,7 @@ export function buildVerbQuiz(
     })()
     return { ...question, verbId: verb.id }
   })
-  return { title, description, questions }
+  return { title, description, shuffleOptions: false, questions }
 }
 
 export const randomSample = <T>(items: T[], count: number) => shuffled(items).slice(0, count)

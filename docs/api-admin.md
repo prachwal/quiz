@@ -87,6 +87,16 @@ Reguły (1–100 pytań, do 20 opcji na pytanie):
 
 `verbId` (opcjonalne) podpina pytanie pod czasownik z katalogu – ocena takiego pytania aktualizuje powtórki (Leitner).
 
+Ustawienia gry (opcjonalne, domyślnie jak w aplikacji):
+
+| Pole | Wartości | Znaczenie |
+| ---- | -------- | --------- |
+| `shuffleQuestions` | `null` / `true` / `false` | `null` = decyduje ustawienie gracza, `true`/`false` nadpisuje je dla quizu |
+| `shuffleOptions` | `false` (domyślnie) / `true` | losowa kolejność odpowiedzi w pytaniach `single`/`multiple` |
+| `sampleSize` | `null` / `10` / `20` / `30` | tyle pytań losowanych z całej puli przy każdym podejściu (`null` = wszystkie) |
+
+`POST /quizzes/:id/grade` przyjmuje opcjonalne `questionIds` – dla quizu z `sampleSize` muszą to być dokładnie `sampleSize` różnych pytań quizu (inaczej 400); ocenione zostaną tylko te pytania. `PUT` zastępuje także ustawienia gry – pomiń je tylko wtedy, gdy chcesz je wyzerować.
+
 ### Przykład: utwórz, podejrzyj, usuń
 
 ```bash
@@ -135,13 +145,15 @@ Nauczyciel widzi tylko własne klasy (cudze wyglądają jak 404).
 | Metoda | Ścieżka | Opis |
 | ------ | ------- | ---- |
 | GET/POST | `/classes` | lista / utworzenie klasy |
-| GET/PATCH/DELETE | `/classes/:id` | szczegóły / zmiana / archiwizacja |
+| GET/PATCH/DELETE | `/classes/:id` | szczegóły / zmiana (`{ name?, joiningOpen? }`) / archiwizacja |
 | POST | `/classes/:id/code` | nowy kod dołączenia (6 znaków) |
 | DELETE | `/classes/:id/members/:userId` | usunięcie ucznia |
 | POST | `/classes/:id/assignments` | zadanie: kurs **albo** quiz, opcjonalny termin |
+| PATCH | `/classes/:id/assignments/:assignmentId` | zmiana terminu `{ dueAt: ISO \| null }` |
 | DELETE | `/classes/:id/assignments/:assignmentId` | usunięcie zadania |
+| GET | `/classes/:id/students/:userId` | wyniki ucznia: postęp w zadaniach klasy i podejścia z odpowiedziami na pytania (tylko zadania przydzielone w tej klasie) |
 | GET | `/classes/:id/report`, `/classes/:id/report.csv` | raport (CSV odporny na wstrzyknięcie formuł) |
-| POST | `/classes/join` | uczeń: `{ code }` |
+| POST | `/classes/join` | uczeń: `{ code }` (403, gdy nauczyciel zamknął zapisy) |
 | GET | `/my/classes`, `/my/assignments`; DELETE `/my/classes/:id` | widok ucznia |
 
 ## 6. Panel admina (`manage:users`, tylko JWT admina)

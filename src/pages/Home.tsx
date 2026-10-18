@@ -319,7 +319,7 @@ export default function Home() {
                   {quiz.description || 'Brak opisu'}
                 </Typography.Paragraph>
                 <Typography.Text type="secondary" style={{ fontSize: 14 }}>
-                  <QuestionCircleOutlined /> {quiz.questionCount} pytań · <TrophyOutlined /> {quiz.totalPoints} pkt
+                  <QuestionCircleOutlined /> {quiz.sampleSize && quiz.sampleSize < quiz.questionCount ? `${quiz.sampleSize} z ${quiz.questionCount}` : quiz.questionCount} pytań · <TrophyOutlined /> {quiz.totalPoints} pkt
                 </Typography.Text>
               </Flex>
             </Card>

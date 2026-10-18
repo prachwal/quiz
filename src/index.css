@@ -820,3 +820,16 @@ summary,
     transform: none;
   }
 }
+
+/* Admin users grid: fixed layout so the table never scrolls sideways; cells wrap instead. */
+.app-shell .users-table .ant-table-cell {
+  overflow-wrap: anywhere;
+}
+.app-shell .users-table .ant-checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.app-shell a.student-link {
+  min-width: 0;
+}

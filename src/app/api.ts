@@ -8,6 +8,7 @@ import type {
   AssignmentItem,
   ClassDetail,
   ClassReport,
+  StudentResults,
   ClassSummary,
   MyAssignment,
   MyClass,
@@ -76,8 +77,8 @@ export const api = createApi({
         { type: 'Quiz', id: 'LIST' },
       ],
     }),
-    gradeQuiz: build.mutation<GradedAttempt, { id: string; answers: Record<string, Answer> }>({
-      query: ({ id, answers }) => ({ url: `quizzes/${id}/grade`, method: 'POST', body: { answers } }),
+    gradeQuiz: build.mutation<GradedAttempt, { id: string; answers: Record<string, Answer>; questionIds?: string[] }>({
+      query: ({ id, answers, questionIds }) => ({ url: `quizzes/${id}/grade`, method: 'POST', body: { answers, questionIds } }),
       invalidatesTags: ['Attempt', 'Course', 'Progress', 'Review', { type: 'Quiz', id: 'LIST' }],
     }),
     generateIrregularVerbsQuiz: build.mutation<QuizDetail, GenerateInput>({
@@ -175,6 +176,22 @@ export const api = createApi({
         method: 'DELETE',
       }),
       invalidatesTags: ['Class', 'MyClass'],
+    }),
+    updateClass: build.mutation<ClassSummary, { id: string; name?: string; joiningOpen?: boolean }>({
+      query: ({ id, ...body }) => ({ url: `classes/${id}`, method: 'PATCH', body }),
+      invalidatesTags: ['Class'],
+    }),
+    updateAssignmentDue: build.mutation<void, { classId: string; assignmentId: string; dueAt: string | null }>({
+      query: ({ classId, assignmentId, dueAt }) => ({
+        url: `classes/${classId}/assignments/${assignmentId}`,
+        method: 'PATCH',
+        body: { dueAt },
+      }),
+      invalidatesTags: ['Class', 'MyClass'],
+    }),
+    getStudentResults: build.query<StudentResults, { classId: string; userId: string }>({
+      query: ({ classId, userId }) => `classes/${classId}/students/${encodeURIComponent(userId)}`,
+      providesTags: ['Class'],
     }),
     getClassReport: build.query<ClassReport, string>({
       query: (id) => `classes/${id}/report`,
@@ -280,6 +297,9 @@ export const {
   useCreateAssignmentMutation,
   useDeleteAssignmentMutation,
   useGetClassReportQuery,
+  useUpdateClassMutation,
+  useUpdateAssignmentDueMutation,
+  useGetStudentResultsQuery,
   useJoinClassMutation,
   useListMyClassesQuery,
   useLeaveClassMutation,

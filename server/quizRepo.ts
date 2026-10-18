@@ -39,6 +39,9 @@ interface QuizRow {
   difficulty: DifficultyCode | null
   course_id: string | null
   owner_id: string | null
+  shuffle_questions: boolean | null
+  shuffle_options: boolean
+  sample_size: number | null
   created_at: Date
   updated_at: Date
 }
@@ -73,7 +76,7 @@ export async function listQuizzes(filter: ListFilter = {}, canEdit = false): Pro
   const order = filter.sort === 'popular' ? 'plays DESC, q.updated_at DESC' : 'q.updated_at DESC'
 
   const { rows } = await pool().query(
-    `SELECT q.id, q.title, q.description, q.created_at, q.updated_at, d.code AS difficulty,
+    `SELECT q.id, q.title, q.description, q.created_at, q.updated_at, q.sample_size, d.code AS difficulty,
             (SELECT COUNT(*)::int FROM questions qu WHERE qu.quiz_id = q.id) AS question_count,
             (SELECT COALESCE(SUM(qu.points), 0)::int FROM questions qu WHERE qu.quiz_id = q.id) AS total_points,
             (SELECT COUNT(*)::int FROM quiz_attempts a WHERE a.quiz_id = q.id) AS plays
@@ -91,6 +94,7 @@ export async function listQuizzes(filter: ListFilter = {}, canEdit = false): Pro
     canEdit,
     plays: row.plays,
     questionCount: row.question_count,
+    sampleSize: row.sample_size,
     totalPoints: row.total_points,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
@@ -137,6 +141,9 @@ export async function getQuiz(
     difficulty: quiz.difficulty,
     courseId: quiz.course_id,
     canEdit,
+    shuffleQuestions: quiz.shuffle_questions,
+    shuffleOptions: quiz.shuffle_options,
+    sampleSize: quiz.sample_size,
     createdAt: quiz.created_at.toISOString(),
     updatedAt: quiz.updated_at.toISOString(),
     questions: questions.rows.map((question): QuizQuestion => {
@@ -217,8 +224,10 @@ export async function createQuiz(
 ): Promise<string> {
   return inTransaction(async (client) => {
     const created = await client.query<{ id: string }>(
-      `INSERT INTO quizzes (title, description, kind, source, course_id, owner_id, difficulty_id)
-       VALUES ($1, $2, $3, $4, $5, $6, (SELECT id FROM difficulty_levels WHERE code = $7)) RETURNING id`,
+      `INSERT INTO quizzes (title, description, kind, source, course_id, owner_id, difficulty_id,
+                            shuffle_questions, shuffle_options, sample_size)
+       VALUES ($1, $2, $3, $4, $5, $6, (SELECT id FROM difficulty_levels WHERE code = $7), $8, $9, $10)
+       RETURNING id`,
       [
         input.title,
         input.description,
@@ -227,6 +236,9 @@ export async function createQuiz(
         meta.courseId ?? null,
         meta.ownerId ?? null,
         meta.difficulty ?? null,
+        input.shuffleQuestions ?? null,
+        input.shuffleOptions ?? false,
+        input.sampleSize ?? null,
       ],
     )
     const id = created.rows[0].id
@@ -241,9 +253,18 @@ export async function replaceQuiz(id: string, input: ParsedQuiz): Promise<boolea
     const updated = await client.query(
       `UPDATE quizzes
        SET title = $2, description = $3, updated_at = now(),
-           difficulty_id = (SELECT id FROM difficulty_levels WHERE code = $4)
+           difficulty_id = (SELECT id FROM difficulty_levels WHERE code = $4),
+           shuffle_questions = $5, shuffle_options = $6, sample_size = $7
        WHERE id = $1 RETURNING id`,
-      [id, input.title, input.description, input.difficulty ?? null],
+      [
+        id,
+        input.title,
+        input.description,
+        input.difficulty ?? null,
+        input.shuffleQuestions ?? null,
+        input.shuffleOptions ?? false,
+        input.sampleSize ?? null,
+      ],
     )
     if (updated.rowCount === 0) return false
     await client.query('DELETE FROM questions WHERE quiz_id = $1', [id])
