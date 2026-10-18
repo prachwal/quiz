@@ -254,6 +254,8 @@ export interface ClassSummary {
   name: string
   /** Auth0 id of the teacher who owns the class. */
   ownerId: string
+  /** Teacher's name when known (from their profile). */
+  ownerName: string | null
   joinCode: string
   memberCount: number
   assignmentCount: number

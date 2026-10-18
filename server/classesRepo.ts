@@ -22,6 +22,7 @@ interface ClassRow {
   id: string
   name: string
   owner_id: string
+  owner_name: string | null
   join_code: string
   member_count: number
   assignment_count: number
@@ -34,6 +35,7 @@ const toClass = (r: ClassRow): ClassSummary => ({
   id: r.id,
   name: r.name,
   ownerId: r.owner_id,
+  ownerName: r.owner_name,
   joinCode: r.join_code,
   memberCount: r.member_count,
   assignmentCount: r.assignment_count,
@@ -43,10 +45,11 @@ const toClass = (r: ClassRow): ClassSummary => ({
 })
 
 const CLASS_SELECT = `
-  SELECT c.id, c.name, c.owner_id, c.join_code, c.joining_open, c.archived_at, c.created_at,
+  SELECT c.id, c.name, c.owner_id, op.display_name AS owner_name, c.join_code, c.joining_open, c.archived_at, c.created_at,
          (SELECT COUNT(*)::int FROM class_members m WHERE m.class_id = c.id) AS member_count,
          (SELECT COUNT(*)::int FROM assignments a WHERE a.class_id = c.id) AS assignment_count
-  FROM classes c`
+  FROM classes c
+  LEFT JOIN user_profiles op ON op.user_id = c.owner_id`
 
 export async function createClass(ownerId: string, name: string): Promise<ClassSummary> {
   for (let attempt = 0; attempt < 5; attempt++) {

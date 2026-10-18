@@ -1,4 +1,4 @@
-import { CopyOutlined, DeleteOutlined, DownloadOutlined, EditOutlined, ReloadOutlined } from '@ant-design/icons'
+import { CopyOutlined, DeleteOutlined, DownloadOutlined, ReloadOutlined } from '@ant-design/icons'
 import {
   Alert,
   Button,
@@ -6,9 +6,6 @@ import {
   DatePicker,
   Empty,
   Flex,
-  Form,
-  Input,
-  Modal,
   Popconfirm,
   Segmented,
   Select,
@@ -25,7 +22,6 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   errorMessage,
-  useAddClassMemberMutation,
   useArchiveClassMutation,
   useCreateAssignmentMutation,
   useDeleteAssignmentMutation,
@@ -34,151 +30,19 @@ import {
   useListCoursesQuery,
   useListQuizzesQuery,
   useRegenerateClassCodeMutation,
-  useRemoveClassMemberMutation,
   useUpdateAssignmentDueMutation,
   useUpdateClassMutation,
 } from '../app/api'
 import { PHONE_QUERY, useMediaQuery } from '../app/useMediaQuery'
+import { useAuth } from '../features/auth/useAuth'
 import PageHeader from '../components/PageHeader'
 import { downloadCsv } from '../features/classes/downloadCsv'
 import { formatDue } from '../features/classes/formatDue'
+import { RenameClass, Students } from '../features/classes/ClassParts'
 import { StatusTag } from '../features/classes/statusTags'
 import type { ClassDetail as ClassDetailData, ClassReportRow } from '../shared/quiz/types'
 
-function RenameClass({ cls }: { cls: ClassDetailData }) {
-  const [open, setOpen] = useState(false)
-  const [update, { isLoading }] = useUpdateClassMutation()
-  const [form] = Form.useForm<{ name: string }>()
-  const { message } = AntdApp.useApp()
-  return (
-    <>
-      <Button icon={<EditOutlined />} onClick={() => setOpen(true)}>
-        Zmień nazwę
-      </Button>
-      <Modal
-        open={open}
-        title="Zmień nazwę klasy"
-        okText="Zapisz"
-        cancelText="Anuluj"
-        confirmLoading={isLoading}
-        onOk={() => form.submit()}
-        onCancel={() => setOpen(false)}
-        destroyOnHidden
-        forceRender
-      >
-        <Form
-          form={form}
-          layout="vertical"
-          initialValues={{ name: cls.name }}
-          onFinish={async ({ name }) => {
-            try {
-              await update({ id: cls.id, name }).unwrap()
-              setOpen(false)
-            } catch (e) {
-              void message.error(errorMessage(e))
-            }
-          }}
-        >
-          <Form.Item
-            name="name"
-            label="Nazwa klasy"
-            rules={[{ required: true, whitespace: true, min: 2, message: 'Podaj nazwę (min. 2 znaki)' }]}
-          >
-            <Input maxLength={80} autoFocus />
-          </Form.Item>
-        </Form>
-      </Modal>
-    </>
-  )
-}
-
-function AddStudent({ cls }: { cls: ClassDetailData }) {
-  const [add, { isLoading }] = useAddClassMemberMutation()
-  const [value, setValue] = useState('')
-  const { message } = AntdApp.useApp()
-  const submit = async () => {
-    const userId = value.trim()
-    if (!userId) return
-    try {
-      const result = await add({ classId: cls.id, userId }).unwrap()
-      void message.success(result.status === 'added' ? 'Uczeń dodany do klasy' : 'Uczeń już jest w tej klasie')
-      setValue('')
-    } catch (e) {
-      void message.error(errorMessage(e))
-    }
-  }
-  return (
-    <Flex vertical gap={4} style={{ marginBottom: 16 }}>
-      <Input.Search
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onSearch={() => void submit()}
-        enterButton="Dodaj ucznia"
-        loading={isLoading}
-        placeholder="Identyfikator Auth0, np. google-oauth2|123456"
-        maxLength={200}
-        aria-label="Identyfikator Auth0 ucznia"
-      />
-      <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-        Identyfikator znajdziesz w Ustawienia → Użytkownicy (admin) lub uczeń może dołączyć kodem klasy: {cls.joinCode}.
-      </Typography.Text>
-    </Flex>
-  )
-}
-
-function Students({ cls }: { cls: ClassDetailData }) {
-  const [remove] = useRemoveClassMemberMutation()
-  const { message } = AntdApp.useApp()
-  if (cls.members.length === 0) {
-    return (
-      <>
-        <AddStudent cls={cls} />
-        <Empty description={`Brak uczniów. Przekaż im kod klasy: ${cls.joinCode}`} />
-      </>
-    )
-  }
-  return (
-    <Flex vertical gap={8}>
-      <AddStudent cls={cls} />
-      {cls.members.map((m) => (
-        <Flex key={m.userId} justify="space-between" align="center" gap={12}>
-          <Flex vertical style={{ minWidth: 0 }}>
-            <Link to={`/classes/${cls.id}/students/${encodeURIComponent(m.userId)}`} className="student-link">
-              <Typography.Text strong ellipsis>
-                {m.name ?? m.email ?? m.userId}
-              </Typography.Text>
-            </Link>
-            {m.email && m.email !== m.name && (
-              <Typography.Text type="secondary" ellipsis style={{ fontSize: 13 }}>
-                {m.email}
-              </Typography.Text>
-            )}
-          </Flex>
-          <Link to={`/classes/${cls.id}/students/${encodeURIComponent(m.userId)}`}>
-            <Button size="small">Wyniki</Button>
-          </Link>
-          <Popconfirm
-            title="Usunąć ucznia z klasy?"
-            okText="Usuń"
-            cancelText="Anuluj"
-            okButtonProps={{ danger: true }}
-            onConfirm={async () => {
-              try {
-                await remove({ classId: cls.id, userId: m.userId }).unwrap()
-              } catch (e) {
-                void message.error(errorMessage(e))
-              }
-            }}
-          >
-            <Button type="text" danger icon={<DeleteOutlined />} aria-label="Usuń ucznia" />
-          </Popconfirm>
-        </Flex>
-      ))}
-    </Flex>
-  )
-}
-
-function Assignments({ cls }: { cls: ClassDetailData }) {
+function Assignments({ cls, readOnly }: { cls: ClassDetailData; readOnly: boolean }) {
   const { data: courses } = useListCoursesQuery()
   const { data: quizzes } = useListQuizzesQuery()
   const [create, { isLoading }] = useCreateAssignmentMutation()
@@ -213,6 +77,7 @@ function Assignments({ cls }: { cls: ClassDetailData }) {
 
   return (
     <Flex vertical gap={16}>
+      {!readOnly && (
       <Card size="small" title="Nowe zadanie">
         <Flex vertical gap={12}>
           <Segmented
@@ -248,6 +113,7 @@ function Assignments({ cls }: { cls: ClassDetailData }) {
           </Button>
         </Flex>
       </Card>
+      )}
 
       {cls.assignments.length === 0 ? (
         <Empty description="Brak zadań" />
@@ -260,6 +126,7 @@ function Assignments({ cls }: { cls: ClassDetailData }) {
                 <Tag style={{ marginInlineEnd: 6 }}>{a.kind === 'course' ? 'kurs' : 'quiz'}</Tag>
                 termin: {formatDue(a.dueAt)}
               </Typography.Text>
+              {!readOnly && (
               <DatePicker
                 showTime
                 size="small"
@@ -275,7 +142,9 @@ function Assignments({ cls }: { cls: ClassDetailData }) {
                   }
                 }}
               />
+              )}
             </Flex>
+            {!readOnly && (
             <Popconfirm
               title="Usunąć zadanie?"
               okText="Usuń"
@@ -291,6 +160,7 @@ function Assignments({ cls }: { cls: ClassDetailData }) {
             >
               <Button type="text" danger icon={<DeleteOutlined />} aria-label="Usuń zadanie" />
             </Popconfirm>
+            )}
           </Flex>
         ))
       )}
@@ -398,14 +268,17 @@ export default function ClassDetail() {
   const [update, { isLoading: updating }] = useUpdateClassMutation()
   const navigate = useNavigate()
   const { message } = AntdApp.useApp()
+  const { user } = useAuth()
 
   if (error) return <Alert type="error" showIcon title={errorMessage(error)} />
   if (isLoading || !cls) return <Skeleton active paragraph={{ rows: 6 }} />
+  // admins may look at any class but only the owning teacher changes it
+  const readOnly = cls.ownerId !== user?.sub
 
   return (
     <>
       <PageHeader
-        back={{ to: '/classes', label: 'Klasy' }}
+        back={{ to: '/manage/classes', label: 'Panel klas' }}
         eyebrow="Klasa"
         title={cls.name}
         meta={
@@ -414,6 +287,7 @@ export default function ClassDetail() {
             <Typography.Text strong code copyable={{ icon: <CopyOutlined />, text: cls.joinCode }} style={{ fontSize: 18 }}>
               {cls.joinCode}
             </Typography.Text>
+            {!readOnly && (
             <Popconfirm
               title="Wygenerować nowy kod?"
               description="Stary kod przestanie działać. Uczniowie już w klasie zostają."
@@ -431,7 +305,9 @@ export default function ClassDetail() {
                 Nowy kod
               </Button>
             </Popconfirm>
+            )}
             <Switch
+              disabled={readOnly}
               size="small"
               checked={cls.joiningOpen}
               loading={updating}
@@ -448,6 +324,9 @@ export default function ClassDetail() {
           </Flex>
         }
         extra={
+          readOnly ? (
+            <Tag>podgląd: właściciel {cls.ownerName ?? cls.ownerId}</Tag>
+          ) : (
           <Flex gap={8} wrap>
           <RenameClass cls={cls} />
           <Popconfirm
@@ -459,7 +338,7 @@ export default function ClassDetail() {
             onConfirm={async () => {
               try {
                 await archive(cls.id).unwrap()
-                navigate('/classes')
+                navigate('/manage/classes')
               } catch (e) {
                 void message.error(errorMessage(e))
               }
@@ -468,13 +347,14 @@ export default function ClassDetail() {
             <Button danger>Archiwizuj</Button>
           </Popconfirm>
           </Flex>
+          )
         }
       />
       <Tabs
         destroyOnHidden
         items={[
-          { key: 'students', label: `Uczniowie (${cls.members.length})`, children: <Students cls={cls} /> },
-          { key: 'assignments', label: `Zadania (${cls.assignments.length})`, children: <Assignments cls={cls} /> },
+          { key: 'students', label: `Uczniowie (${cls.members.length})`, children: <Students cls={cls} readOnly={readOnly} /> },
+          { key: 'assignments', label: `Zadania (${cls.assignments.length})`, children: <Assignments cls={cls} readOnly={readOnly} /> },
           { key: 'report', label: 'Raport', children: <Report cls={cls} /> },
         ]}
       />

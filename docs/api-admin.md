@@ -151,7 +151,7 @@ Nauczyciel widzi tylko własne klasy (cudze wyglądają jak 404).
 
 | Metoda | Ścieżka | Opis |
 | ------ | ------- | ---- |
-| GET/POST | `/classes` | lista / utworzenie klasy |
+| GET/POST | `/classes` | lista (`?scope=all` – admin widzi klasy wszystkich nauczycieli, z właścicielem) / utworzenie klasy |
 | GET/PATCH/DELETE | `/classes/:id` | szczegóły / zmiana (`{ name?, joiningOpen? }`) / archiwizacja |
 | POST | `/classes/:id/code` | nowy kod dołączenia (6 znaków) |
 | DELETE | `/classes/:id/members/:userId` | usunięcie ucznia |
@@ -161,7 +161,7 @@ Nauczyciel widzi tylko własne klasy (cudze wyglądają jak 404).
 | GET | `/classes/:id/students/:userId` | wyniki ucznia: postęp w zadaniach klasy i podejścia z odpowiedziami na pytania (tylko zadania przydzielone w tej klasie) |
 | GET | `/classes/:id/report`, `/classes/:id/report.csv` | raport (CSV odporny na wstrzyknięcie formuł) |
 | POST | `/classes/:id/members` | dodanie ucznia po identyfikatorze Auth0 `{ userId }` (konto musi istnieć; 201 `added` / 200 `already`) |
-| GET | `/students?classId=` | uczniowie własnych klas (z `classId` jednej klasy) wraz z klasami |
+| GET | `/students?classId=&scope=` | uczniowie własnych klas (z `classId` jednej klasy; admin z `scope=all` wszyscy) wraz z klasami |
 | GET | `/classes/:id/analysis` | zbiorcza analiza klasy (wyniki zadań, uczniowie wymagający uwagi) |
 | POST | `/classes/join` | uczeń: `{ code }` (403, gdy nauczyciel zamknął zapisy) |
 

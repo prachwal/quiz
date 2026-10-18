@@ -2,9 +2,14 @@ import { FieldTimeOutlined, RiseOutlined, TrophyOutlined } from '@ant-design/ico
 import { Alert, Card, Col, Empty, Flex, Progress, Row, Table, Tag, Typography, theme } from 'antd'
 import type { TableColumnsType } from 'antd'
 import type { ReactNode } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { errorMessage, useListAttemptsQuery } from '../app/api'
 import { PHONE_QUERY, useMediaQuery } from '../app/useMediaQuery'
 import PageHeader from '../components/PageHeader'
+import { useAuth } from '../features/auth/useAuth'
+import StudentPicker from '../features/classes/StudentPicker'
+import { parseStudentKey } from '../features/classes/studentKey'
+import StudentResultsView from '../features/classes/StudentResultsView'
 import DailyGoalCard from '../features/progress/DailyGoalCard'
 import WeakVerbs from '../features/progress/WeakVerbs'
 import type { AttemptSummary } from '../shared/quiz/types'
@@ -117,6 +122,26 @@ function StatCard({ label, value, icon, color }: { label: string; value: string 
 }
 
 export default function Results() {
+  const { isTeacher, isAdmin } = useAuth()
+  // ?student=<classId>::<auth0 id> shows a student's results (teachers and admins), the link can be shared
+  const [params, setParams] = useSearchParams()
+  const picked = isTeacher || isAdmin ? params.get('student') : null
+  const choose = (key: string | null) => setParams(key ? { student: key } : {}, { replace: true })
+
+  if (picked) {
+    const { classId, userId } = parseStudentKey(picked)
+    return (
+      <>
+        <PageHeader title="Wyniki ucznia" subtitle="Podgląd wyników z zadań przydzielonych w klasie." />
+        <StudentPicker value={picked} onChange={choose} />
+        <StudentResultsView classId={classId} userId={userId} />
+      </>
+    )
+  }
+  return <OwnResults picker={isTeacher || isAdmin ? <StudentPicker value={null} onChange={choose} /> : null} />
+}
+
+function OwnResults({ picker }: { picker: ReactNode }) {
   const { data, error, isLoading } = useListAttemptsQuery()
   const { token } = theme.useToken()
   const phone = useMediaQuery(PHONE_QUERY)
@@ -126,6 +151,7 @@ export default function Results() {
   return (
     <>
       <PageHeader title="Historia wyników" subtitle="Wszystkie Twoje podejścia do quizów i egzaminów." />
+      {picker}
       {error && <Alert type="error" showIcon title={errorMessage(error)} style={{ marginBottom: 16 }} />}
       <div style={{ marginBottom: 24 }}>
         <DailyGoalCard />

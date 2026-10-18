@@ -297,8 +297,9 @@ export function createApp() {
   // students of the viewer's classes (one class with ?classId=), each with the classes they share
   router.get('/students', classReader, async (req, res) => {
     const classId = z.string().uuid().optional().parse(req.query.classId)
+    const scopeParam = z.enum(['own', 'all']).default('own').parse(req.query.scope)
     const viewer = viewerOf(req)
-    const scope = classId ? [await readableClass(viewer, classId)].flatMap((c) => (c ? [c] : [])) : await visibleClasses(viewer, 'own')
+    const scope = classId ? [await readableClass(viewer, classId)].flatMap((c) => (c ? [c] : [])) : await visibleClasses(viewer, scopeParam)
     if (classId && scope.length === 0) throw new HttpError(404, 'Class not found')
     res.json(await classes.listStudents(scope.map((c) => c.id)))
   })
