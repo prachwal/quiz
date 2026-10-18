@@ -7,6 +7,8 @@
 //   node --env-file=.env scripts/quiz-tool.mjs upload data/quiz-lista-choice.json   # creates, or replaces the quiz with the same title
 //   node --env-file=.env scripts/quiz-tool.mjs download <quiz id | title> [file.json]
 //
+// Quiz files follow data/quiz.schema.json (JSON Schema 2020-12).
+//
 // Env: PROD_API = personal API token with write access (admin), API_URL (default: the production site,
 // e.g. http://localhost:8888 for `netlify dev`). Add --dry-run to `upload` to only validate the file.
 import { readFile, writeFile } from 'node:fs/promises'
@@ -15,6 +17,8 @@ const BASE = (process.env.API_URL ?? 'https://fabulous-dieffenbachia.netlify.app
 const args = process.argv.slice(2).filter((a) => !a.startsWith('--'))
 const dryRun = process.argv.includes('--dry-run')
 const [command, ...rest] = args
+
+const SCHEMA_REF = './quiz.schema.json' // data/quiz.schema.json - editors use it for hints and validation
 
 const writeJson = (file, data) => writeFile(file, `${JSON.stringify(data, null, 2)}\n`)
 const readJson = async (file) => JSON.parse(await readFile(file, 'utf8'))
@@ -73,6 +77,7 @@ const choiceQuestion = ({ pl, forms }, others) => {
 async function buildChoice(src = 'data/lista-verbs.json', out = 'data/quiz-lista-choice.json') {
   const verbs = await readJson(src)
   const quiz = {
+    $schema: SCHEMA_REF,
     title: QUIZ_TITLE,
     description: `Wszystkie ${verbs.length} czasowników z listy: po polsku → wybierz poprawne trzy formy (bezokolicznik, past simple, past participle) spośród czterech.`,
     difficulty: 'medium',
@@ -103,7 +108,7 @@ const call = async (method, path, payload) => {
 
 async function upload(file) {
   if (!file) throw new Error('Podaj plik quizu JSON')
-  const quiz = await readJson(file)
+  const { $schema: _schema, ...quiz } = await readJson(file)
   console.log(`${quiz.title}: ${quiz.questions?.length ?? 0} pytań, API: ${BASE}`)
   if (dryRun) return
   const existing = (await call('GET', '/quizzes')).find((q) => q.title === quiz.title)
@@ -118,6 +123,7 @@ async function download(ref, file) {
   if (!id) throw new Error(`Nie znaleziono quizu: ${ref}`)
   const q = await call('GET', `/quizzes/${id}?include=answers`)
   const out = {
+    $schema: SCHEMA_REF,
     title: q.title,
     description: q.description,
     difficulty: q.difficulty,

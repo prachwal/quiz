@@ -1,4 +1,5 @@
 {
+  "$schema": "./quiz.schema.json",
   "title": "Czasowniki nieregularne – wybór 1 z 4 (lista)",
   "description": "Wszystkie 50 czasowników z listy: po polsku → wybierz poprawne trzy formy (bezokolicznik, past simple, past participle) spośród czterech.",
   "difficulty": "medium",
@@ -25,7 +26,7 @@
           "isCorrect": false
         },
         {
-          "text": "blow – blew – withdrawn",
+          "text": "blow – blew – set",
           "isCorrect": false
         }
       ]
@@ -45,11 +46,11 @@
           "isCorrect": false
         },
         {
-          "text": "flee – fled – ridden",
+          "text": "flee – fled – lost",
           "isCorrect": false
         },
         {
-          "text": "flee – threw – swept",
+          "text": "flee – leant – sewn",
           "isCorrect": false
         }
       ]
@@ -69,11 +70,11 @@
           "isCorrect": false
         },
         {
-          "text": "breed – bred – rung",
+          "text": "breed – bred – stuck",
           "isCorrect": false
         },
         {
-          "text": "breed – spent – swept",
+          "text": "breed – lent – shone",
           "isCorrect": false
         }
       ]
@@ -93,11 +94,11 @@
           "isCorrect": false
         },
         {
-          "text": "deal – dealt – thrown",
+          "text": "deal – dealt – risen",
           "isCorrect": false
         },
         {
-          "text": "deal – wore – blown",
+          "text": "deal – rid – told",
           "isCorrect": false
         }
       ]
@@ -117,11 +118,11 @@
           "isCorrect": false
         },
         {
-          "text": "leap – leapt – leant",
+          "text": "leap – leapt – sped",
           "isCorrect": false
         },
         {
-          "text": "leap – showed – seen",
+          "text": "leap – struck – meant",
           "isCorrect": false
         }
       ]
@@ -145,7 +146,7 @@
           "isCorrect": false
         },
         {
-          "text": "lie – lay – lost",
+          "text": "lie – lay – swum",
           "isCorrect": false
         }
       ]
@@ -165,11 +166,11 @@
           "isCorrect": false
         },
         {
-          "text": "seek – sought – wound",
+          "text": "seek – sought – told",
           "isCorrect": false
         },
         {
-          "text": "seek – dealt – undergone",
+          "text": "seek – wound – ridden",
           "isCorrect": false
         }
       ]
@@ -189,11 +190,11 @@
           "isCorrect": false
         },
         {
-          "text": "shed – shed – withdrawn",
+          "text": "shed – shed – dealt",
           "isCorrect": false
         },
         {
-          "text": "shed – tore – shown",
+          "text": "shed – withdrew – lost",
           "isCorrect": false
         }
       ]
@@ -217,7 +218,7 @@
           "isCorrect": false
         },
         {
-          "text": "tear – tore – thrust",
+          "text": "tear – tore – run",
           "isCorrect": false
         }
       ]
@@ -241,7 +242,7 @@
           "isCorrect": false
         },
         {
-          "text": "swear – swore – undergone",
+          "text": "swear – swore – worn",
           "isCorrect": false
         }
       ]
@@ -265,7 +266,7 @@
           "isCorrect": false
         },
         {
-          "text": "swell – swelled – sought",
+          "text": "swell – swelled – knelt",
           "isCorrect": false
         }
       ]
@@ -289,7 +290,7 @@
           "isCorrect": false
         },
         {
-          "text": "withdraw – withdrew – run",
+          "text": "withdraw – withdrew – wound",
           "isCorrect": false
         }
       ]
@@ -309,11 +310,11 @@
           "isCorrect": false
         },
         {
-          "text": "wind – wound – worn",
+          "text": "wind – wound – learnt",
           "isCorrect": false
         },
         {
-          "text": "wind – saw – stuck",
+          "text": "wind – threw – fled",
           "isCorrect": false
         }
       ]
@@ -333,11 +334,11 @@
           "isCorrect": false
         },
         {
-          "text": "sweep – swept – taught",
+          "text": "sweep – swept – rung",
           "isCorrect": false
         },
         {
-          "text": "sweep – spent – left",
+          "text": "sweep – saw – swollen",
           "isCorrect": false
         }
       ]
@@ -357,11 +358,11 @@
           "isCorrect": false
         },
         {
-          "text": "wring – wrung – swept",
+          "text": "wring – wrung – shown",
           "isCorrect": false
         },
         {
-          "text": "wring – meant – learnt",
+          "text": "wring – shone – seen",
           "isCorrect": false
         }
       ]
@@ -385,7 +386,7 @@
           "isCorrect": false
         },
         {
-          "text": "wear – wore – shown",
+          "text": "wear – wore – spent",
           "isCorrect": false
         }
       ]
@@ -409,7 +410,7 @@
           "isCorrect": false
         },
         {
-          "text": "undergo – underwent – left",
+          "text": "undergo – underwent – struck",
           "isCorrect": false
         }
       ]
@@ -429,11 +430,11 @@
           "isCorrect": false
         },
         {
-          "text": "thrust – thrust – told",
+          "text": "thrust – thrust – bred",
           "isCorrect": false
         },
         {
-          "text": "thrust – swore – told",
+          "text": "thrust – threw – taught",
           "isCorrect": false
         }
       ]
@@ -453,11 +454,11 @@
           "isCorrect": false
         },
         {
-          "text": "tell – told – sat",
+          "text": "tell – told – withdrawn",
           "isCorrect": false
         },
         {
-          "text": "tell – left – stuck",
+          "text": "tell – dealt – sought",
           "isCorrect": false
         }
       ]
@@ -481,7 +482,7 @@
           "isCorrect": false
         },
         {
-          "text": "throw – threw – seen",
+          "text": "throw – threw – leant",
           "isCorrect": false
         }
       ]
@@ -501,11 +502,11 @@
           "isCorrect": false
         },
         {
-          "text": "lay – laid – swept",
+          "text": "lay – laid – slid",
           "isCorrect": false
         },
         {
-          "text": "lay – shone – wrung",
+          "text": "lay – lent – swollen",
           "isCorrect": false
         }
       ]
@@ -525,11 +526,11 @@
           "isCorrect": false
         },
         {
-          "text": "lean – leant – seen",
+          "text": "lean – leant – quit",
           "isCorrect": false
         },
         {
-          "text": "lean – shed – mown",
+          "text": "lean – lent – torn",
           "isCorrect": false
         }
       ]
@@ -549,11 +550,11 @@
           "isCorrect": false
         },
         {
-          "text": "learn – learnt – set",
+          "text": "learn – learnt – ridden",
           "isCorrect": false
         },
         {
-          "text": "learn – shed – mown",
+          "text": "learn – underwent – worn",
           "isCorrect": false
         }
       ]
@@ -573,11 +574,11 @@
           "isCorrect": false
         },
         {
-          "text": "leave – left – undergone",
+          "text": "leave – left – blown",
           "isCorrect": false
         },
         {
-          "text": "leave – wound – bred",
+          "text": "leave – shone – taught",
           "isCorrect": false
         }
       ]
@@ -597,11 +598,11 @@
           "isCorrect": false
         },
         {
-          "text": "lend – lent – slid",
+          "text": "lend – lent – thrust",
           "isCorrect": false
         },
         {
-          "text": "lend – wrung – mown",
+          "text": "lend – lost – slid",
           "isCorrect": false
         }
       ]
@@ -621,11 +622,11 @@
           "isCorrect": false
         },
         {
-          "text": "kneel – knelt – lost",
+          "text": "kneel – knelt – seen",
           "isCorrect": false
         },
         {
-          "text": "kneel – bred – sewn",
+          "text": "kneel – laid – left",
           "isCorrect": false
         }
       ]
@@ -645,11 +646,11 @@
           "isCorrect": false
         },
         {
-          "text": "light – lit – blown",
+          "text": "light – lit – torn",
           "isCorrect": false
         },
         {
-          "text": "light – swung – lain",
+          "text": "light – ran – knelt",
           "isCorrect": false
         }
       ]
@@ -669,11 +670,11 @@
           "isCorrect": false
         },
         {
-          "text": "lose – lost – taught",
+          "text": "lose – lost – dealt",
           "isCorrect": false
         },
         {
-          "text": "lose – ran – laid",
+          "text": "lose – knelt – sat",
           "isCorrect": false
         }
       ]
@@ -693,11 +694,11 @@
           "isCorrect": false
         },
         {
-          "text": "mean – meant – lain",
+          "text": "mean – meant – dealt",
           "isCorrect": false
         },
         {
-          "text": "mean – swept – leant",
+          "text": "mean – sped – slid",
           "isCorrect": false
         }
       ]
@@ -721,7 +722,7 @@
           "isCorrect": false
         },
         {
-          "text": "mow – mowed – risen",
+          "text": "mow – mowed – blown",
           "isCorrect": false
         }
       ]
@@ -741,11 +742,11 @@
           "isCorrect": false
         },
         {
-          "text": "quit – quit – undergone",
+          "text": "quit – quit – left",
           "isCorrect": false
         },
         {
-          "text": "quit – swelled – sat",
+          "text": "quit – rode – withdrawn",
           "isCorrect": false
         }
       ]
@@ -765,11 +766,11 @@
           "isCorrect": false
         },
         {
-          "text": "rid – rid – set",
+          "text": "rid – rid – mown",
           "isCorrect": false
         },
         {
-          "text": "rid – rang – set",
+          "text": "rid – swam – risen",
           "isCorrect": false
         }
       ]
@@ -793,7 +794,7 @@
           "isCorrect": false
         },
         {
-          "text": "ride – rode – lost",
+          "text": "ride – rode – laid",
           "isCorrect": false
         }
       ]
@@ -817,7 +818,7 @@
           "isCorrect": false
         },
         {
-          "text": "ring – rang – bred",
+          "text": "ring – rang – shown",
           "isCorrect": false
         }
       ]
@@ -841,7 +842,7 @@
           "isCorrect": false
         },
         {
-          "text": "rise – rose – sworn",
+          "text": "rise – rose – taught",
           "isCorrect": false
         }
       ]
@@ -865,7 +866,7 @@
           "isCorrect": false
         },
         {
-          "text": "run – ran – struck",
+          "text": "run – ran – blown",
           "isCorrect": false
         }
       ]
@@ -889,7 +890,7 @@
           "isCorrect": false
         },
         {
-          "text": "see – saw – quit",
+          "text": "see – saw – sewn",
           "isCorrect": false
         }
       ]
@@ -909,11 +910,11 @@
           "isCorrect": false
         },
         {
-          "text": "teach – taught – swum",
+          "text": "teach – taught – fled",
           "isCorrect": false
         },
         {
-          "text": "teach – saw – risen",
+          "text": "teach – wound – worn",
           "isCorrect": false
         }
       ]
@@ -933,11 +934,11 @@
           "isCorrect": false
         },
         {
-          "text": "swing – swung – bred",
+          "text": "swing – swung – told",
           "isCorrect": false
         },
         {
-          "text": "swing – blew – leant",
+          "text": "swing – meant – withdrawn",
           "isCorrect": false
         }
       ]
@@ -961,7 +962,7 @@
           "isCorrect": false
         },
         {
-          "text": "swim – swam – left",
+          "text": "swim – swam – fled",
           "isCorrect": false
         }
       ]
@@ -981,11 +982,11 @@
           "isCorrect": false
         },
         {
-          "text": "strike – struck – swum",
+          "text": "strike – struck – lain",
           "isCorrect": false
         },
         {
-          "text": "strike – mowed – withdrawn",
+          "text": "strike – swore – laid",
           "isCorrect": false
         }
       ]
@@ -1005,11 +1006,11 @@
           "isCorrect": false
         },
         {
-          "text": "stick – stuck – undergone",
+          "text": "stick – stuck – rung",
           "isCorrect": false
         },
         {
-          "text": "stick – sat – taught",
+          "text": "stick – rode – swept",
           "isCorrect": false
         }
       ]
@@ -1029,11 +1030,11 @@
           "isCorrect": false
         },
         {
-          "text": "spend – spent – quit",
+          "text": "spend – spent – lit",
           "isCorrect": false
         },
         {
-          "text": "spend – lost – struck",
+          "text": "spend – tore – left",
           "isCorrect": false
         }
       ]
@@ -1053,11 +1054,11 @@
           "isCorrect": false
         },
         {
-          "text": "speed – sped – fled",
+          "text": "speed – sped – dealt",
           "isCorrect": false
         },
         {
-          "text": "speed – blew – taught",
+          "text": "speed – struck – fled",
           "isCorrect": false
         }
       ]
@@ -1077,11 +1078,11 @@
           "isCorrect": false
         },
         {
-          "text": "slide – slid – sat",
+          "text": "slide – slid – sworn",
           "isCorrect": false
         },
         {
-          "text": "slide – showed – learnt",
+          "text": "slide – learnt – meant",
           "isCorrect": false
         }
       ]
@@ -1101,11 +1102,11 @@
           "isCorrect": false
         },
         {
-          "text": "sit – sat – torn",
+          "text": "sit – sat – swum",
           "isCorrect": false
         },
         {
-          "text": "sit – lost – taught",
+          "text": "sit – showed – sewn",
           "isCorrect": false
         }
       ]
@@ -1129,7 +1130,7 @@
           "isCorrect": false
         },
         {
-          "text": "show – showed – swung",
+          "text": "show – showed – undergone",
           "isCorrect": false
         }
       ]
@@ -1153,7 +1154,7 @@
           "isCorrect": false
         },
         {
-          "text": "sew – sewed – wound",
+          "text": "sew – sewed – rid",
           "isCorrect": false
         }
       ]
@@ -1177,7 +1178,7 @@
           "isCorrect": false
         },
         {
-          "text": "set – learnt – undergone",
+          "text": "set – rid – swept",
           "isCorrect": false
         }
       ]
@@ -1197,11 +1198,11 @@
           "isCorrect": false
         },
         {
-          "text": "shine – shone – thrown",
+          "text": "shine – shone – rid",
           "isCorrect": false
         },
         {
-          "text": "shine – shed – laid",
+          "text": "shine – quit – meant",
           "isCorrect": false
         }
       ]

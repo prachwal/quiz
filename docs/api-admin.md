@@ -119,6 +119,7 @@ node --env-file=.env scripts/quiz-tool.mjs upload data/quiz-lista-choice.json [-
 node --env-file=.env scripts/quiz-tool.mjs download <id|tytuł> [plik.json]   # eksport quizu (z poprawnymi odpowiedziami)
 ```
 
+- Format pliku opisuje schemat JSON [data/quiz.schema.json](../data/quiz.schema.json) (JSON Schema 2020‑12, reguły dla każdego typu pytania); pliki quizów wskazują go przez `"$schema"`, więc edytor podpowiada i waliduje. `tests/quizSchema.test.ts` pilnuje, żeby schemat zgadzał się z walidacją serwera.
 - `upload` tworzy quiz albo – gdy istnieje quiz o tym samym tytule – zastępuje go (id pytań się zmieniają, ustawienia gry biorą się z pliku).
 - Token to `PROD_API` z `.env`; `API_URL=http://localhost:8888` kieruje skrypt na `netlify dev`.
 - Literówka „de-al/de-alt” z listy jest poprawiana na `deal/dealt`. Złe odpowiedzi w `build-choice` to: forma regularna („blowed”), zamienione formy i formy innych czasowników z listy. Plik quizu jest losowany raz przy budowaniu, więc po edycji można go poprawić ręcznie przed `upload`.
