@@ -1,6 +1,9 @@
 // Smoke test of the MCP endpoint with the official client: lists tools, creates, reads, replaces and deletes a
 // throw-away quiz. Needs a token with write access.
 //   node --env-file=.env scripts/mcp-smoke.mjs [url]   (default: production /api/mcp, token from PROD_API)
+import { Client } from '@modelcontextprotocol/sdk/client/index.js'
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
+
 const url = process.argv[2] ?? 'https://fabulous-dieffenbachia.netlify.app/api/mcp'
 const token = process.env.PROD_API
 const client = new Client({ name: 'smoke', version: '1' })
