@@ -21,7 +21,7 @@ const formatDate = (value: string | null, fallback: string) =>
 type FormValues = Required<TokenInput>
 
 export default function ApiTokens() {
-  const { isAdmin } = useAuth()
+  const { isAdmin, isTeacher } = useAuth()
   const { message } = AntdApp.useApp()
   const { data, isLoading, error } = useListTokensQuery()
   const [createToken, { isLoading: creating }] = useCreateTokenMutation()
@@ -48,8 +48,13 @@ export default function ApiTokens() {
     }
   }
 
-  const permissionTag = (permissions: string[]) =>
-    permissions.length ? <Tag color="gold">odczyt + zapis quizów</Tag> : <Tag>odczyt i nauka</Tag>
+  const permissionTag = (permissions: string[]) => (
+    <>
+      {permissions.includes('write:quizzes') && <Tag color="gold">zapis quizów</Tag>}
+      {permissions.includes('manage:classes') && <Tag color="blue">klasy i wyniki uczniów</Tag>}
+      {permissions.length === 0 && <Tag>odczyt i nauka</Tag>}
+    </>
+  )
 
   const revokeButton = (token: ApiTokenSummary) => (
     <Popconfirm
@@ -113,7 +118,7 @@ export default function ApiTokens() {
       <Form<FormValues>
         form={form}
         layout={phone ? 'vertical' : 'inline'}
-        initialValues={{ expiresInDays: 90, write: false }}
+        initialValues={{ expiresInDays: 90, write: false, classes: false }}
         onFinish={onFinish}
         style={{ rowGap: 12, marginBottom: 16 }}
       >
@@ -125,6 +130,11 @@ export default function ApiTokens() {
         </Form.Item>
         {isAdmin && (
           <Form.Item name="write" valuePropName="checked" label="Zapis quizów">
+            <Switch />
+          </Form.Item>
+        )}
+        {isTeacher && (
+          <Form.Item name="classes" valuePropName="checked" label="Klasy i wyniki uczniów">
             <Switch />
           </Form.Item>
         )}

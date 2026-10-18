@@ -40,6 +40,9 @@ Skrypty Node: `node --env-file=.env scripts/….mjs`.
 
 ## 2. Tokeny API (JWT)
 
+Pole `classes: true` w `POST /tokens` (tylko nauczyciel) daje tokenowi dostęp do klas i wyników uczniów (`manage:classes`).
+
+
 | Metoda | Ścieżka | Opis |
 | ------ | ------- | ---- |
 | GET | `/tokens` | lista własnych tokenów |

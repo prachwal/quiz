@@ -72,6 +72,8 @@ export const tokenInput = z.object({
   expiresInDays: z.union([z.literal(30), z.literal(90), z.literal(365), z.null()]).default(90),
   /** Token may write quizzes (only if its creator is allowed to). */
   write: z.boolean().default(false),
+  /** Token may use the teacher's classes and student results (only if its creator is a teacher). */
+  classes: z.boolean().default(false),
 })
 
 export type TokenInput = z.input<typeof tokenInput>

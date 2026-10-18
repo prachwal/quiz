@@ -16,6 +16,9 @@ Tak samo jak REST API: nagłówek `Authorization: Bearer qz_…` z **osobistym t
 | ----- | ------- |
 | zwykły | `list_quizzes`, `get_quiz` (widok gracza), `get_quiz_schema`, `list_irregular_verbs` |
 | z prawem zapisu (tworzy admin) | dodatkowo `get_quiz` z `withAnswers`, `create_quiz`, `update_quiz`, `delete_quiz` |
+| z dostępem do klas (tworzy nauczyciel) | `list_classes`, `get_class_report`, `get_student_results`, `analyze_student` – tylko dla własnych klas nauczyciela |
+
+Token z dostępem do klas tworzysz w Ustawieniach → Tokeny API przełącznikiem „Klasy i wyniki uczniów” (widoczny dla nauczyciela; `POST /api/tokens` z `classes: true`). Pokazuje imiona, e‑maile i wyniki uczniów, więc traktuj go jak dane osobowe: podawaj go tylko usłudze, której możesz je powierzyć. Admin nie ma tego dostępu automatycznie – potrzebuje roli nauczyciela.
 
 Zarządzanie użytkownikami/uwagami i tokenami nie jest dostępne przez MCP (wymaga sesji admina, patrz `docs/api-admin.md`). Token daj asystentowi tylko wtedy, gdy ufasz temu usługodawcy – ma on prawo zapisu do wszystkich quizów.
 
@@ -30,8 +33,14 @@ Zarządzanie użytkownikami/uwagami i tokenami nie jest dostępne przez MCP (wym
 | `create_quiz` | tworzy quiz (`quiz` zgodny ze schematem) |
 | `update_quiz` | zastępuje cały quiz i jego ustawienia (id pytań się zmieniają) |
 | `delete_quiz` | usuwa quiz; wymaga `confirm: true` |
+| `list_classes` | klasy nauczyciela |
+| `get_class_report` | uczniowie klasy z postępem w zadaniach, lekcjami, aktywnością, słabymi czasownikami |
+| `get_student_results` | surowe wyniki ucznia: zadania i podejścia z odpowiedziami na pytania |
+| `analyze_student` | gotowa analiza ucznia: średnia, trend, zadania po terminie, dni bez aktywności, najtrudniejsze pytania, najsłabsze czasowniki i ostrzeżenia |
 
-Dobry przepływ dla asystenta: `get_quiz_schema` → (opcjonalnie `list_irregular_verbs`) → `create_quiz` → `get_quiz` do sprawdzenia. Przy zmianie: `get_quiz` z `withAnswers`, modyfikacja, `update_quiz`.
+Analiza ucznia: `list_classes` → `get_class_report` (wybierz ucznia, weź jego `userId`) → `analyze_student` (a po szczegóły `get_student_results`). Wnioski i rekomendacje pisze asystent na podstawie zwróconych danych; narzędzie liczy tylko statystyki.
+
+Dobry przepływ dla asystenta przy quizach: `get_quiz_schema` → (opcjonalnie `list_irregular_verbs`) → `create_quiz` → `get_quiz` do sprawdzenia. Przy zmianie: `get_quiz` z `withAnswers`, modyfikacja, `update_quiz`.
 
 ## Podłączenie klientów
 

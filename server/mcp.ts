@@ -5,15 +5,19 @@ import type { Request, RequestHandler, Response } from 'express'
 import { z } from 'zod'
 import quizFileSchema from '../data/quiz.schema.json' with { type: 'json' }
 import { DIFFICULTIES, POPULARITIES, quizInput } from '../src/shared/quiz/schema'
-import { currentUserId, hasPermission, WRITE_QUIZZES } from './auth'
+import { analyzeStudent } from '../src/shared/quiz/studentAnalysis'
+import { currentUserId, hasPermission, MANAGE_CLASSES, WRITE_QUIZZES } from './auth'
+import * as classes from './classesRepo'
 import { listVerbs } from './irregularVerbs'
 import * as repo from './quizRepo'
+import * as reviews from './reviewsRepo'
 
 /**
  * Model Context Protocol endpoint (`POST /api/mcp`, Streamable HTTP, stateless, JSON responses).
  * It sits behind the normal authentication, so a client authenticates with `Authorization: Bearer qz_...`
  * (a personal API token) and gets exactly the permissions of that token: reading for everybody,
- * writing quizzes only with `write:quizzes`.
+ * writing quizzes only with `write:quizzes`, classes and student results only with `manage:classes`
+ * (a teacher; the token must have been created with that access). A teacher only ever sees their own classes.
  */
 
 const text = (value: unknown): CallToolResult => ({
@@ -26,6 +30,10 @@ const uuid = z.string().uuid().describe('Id quizu (UUID)')
 function buildServer(req: Request) {
   const canWrite = hasPermission(req, WRITE_QUIZZES)
   const needWrite = () => failure('Ta operacja wymaga uprawnienia write:quizzes (token administratora z prawem zapisu).')
+
+  const canClasses = hasPermission(req, MANAGE_CLASSES)
+  const needClasses = () => failure('Ta operacja wymaga roli nauczyciela (token z dostępem do klas i wyników uczniów).')
+  const teacherId = () => currentUserId(req) as string
 
   const server = new McpServer({ name: 'quiz', version: '1.0.0' })
 
@@ -125,6 +133,94 @@ function buildServer(req: Request) {
     async ({ id }) => {
       if (!canWrite) return needWrite()
       return (await repo.deleteQuiz(id)) ? text({ ok: true }) : failure('Nie znaleziono quizu')
+    },
+  )
+
+  // ---- teacher: classes and student results -------------------------------------------------
+
+  server.registerTool(
+    'list_classes',
+    {
+      title: 'Moje klasy',
+      description: 'Klasy nauczyciela (id, nazwa, liczba uczniów i zadań, kod dołączenia).',
+      inputSchema: {},
+      annotations: { readOnlyHint: true },
+    },
+    async () => (canClasses ? text(await classes.listClasses(teacherId())) : needClasses()),
+  )
+
+  server.registerTool(
+    'get_class_report',
+    {
+      title: 'Raport klasy',
+      description:
+        'Uczniowie klasy z postępem w każdym zadaniu (status, najlepszy wynik), liczbą ukończonych lekcji, ostatnią aktywnością i liczbą słabych czasowników. Z userId z tego raportu można pobrać szczegóły ucznia.',
+      inputSchema: { classId: z.string().uuid() },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ classId }) => {
+      if (!canClasses) return needClasses()
+      if (!(await classes.getClass(classId, teacherId()))) return failure('Nie znaleziono klasy')
+      return text(await classes.classReport(classId))
+    },
+  )
+
+  server.registerTool(
+    'get_student_results',
+    {
+      title: 'Wyniki ucznia',
+      description:
+        'Surowe wyniki ucznia z klasy: postęp w zadaniach oraz podejścia z odpowiedziami na każde pytanie (tylko zadania przydzielone w tej klasie).',
+      inputSchema: { classId: z.string().uuid(), userId: z.string().min(1).max(200) },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ classId, userId }) => {
+      if (!canClasses) return needClasses()
+      if (!(await classes.getClass(classId, teacherId()))) return failure('Nie znaleziono klasy')
+      const results = await classes.studentResults(classId, userId)
+      return results ? text(results) : failure('Nie znaleziono ucznia w tej klasie')
+    },
+  )
+
+  server.registerTool(
+    'analyze_student',
+    {
+      title: 'Analiza wyników ucznia',
+      description:
+        'Gotowa analiza ucznia z klasy: średnia, najlepszy i ostatni wynik, trend, zadania po terminie, dni bez aktywności, pytania najczęściej błędnie rozwiązywane, wyniki w podziale na zadania, najsłabsze czasowniki i lista ostrzeżeń. Na tej podstawie możesz napisać wnioski i zaproponować dalszą pracę (np. nowy quiz z trudnych pytań).',
+      inputSchema: { classId: z.string().uuid(), userId: z.string().min(1).max(200) },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ classId, userId }) => {
+      if (!canClasses) return needClasses()
+      if (!(await classes.getClass(classId, teacherId()))) return failure('Nie znaleziono klasy')
+      const results = await classes.studentResults(classId, userId)
+      if (!results) return failure('Nie znaleziono ucznia w tej klasie')
+
+      const weak = await reviews.weakVerbs(userId, 8)
+      const verbs = weak.length ? await listVerbs({ ids: weak.map((w) => w.verbId) }) : []
+      const weakVerbs = weak.flatMap((w) => {
+        const verb = verbs.find((v) => v.id === w.verbId)
+        return verb
+          ? [
+              {
+                verb: verb.base,
+                forms: [verb.base, verb.pastSimple[0], verb.pastParticiple[0]].join(' – '),
+                meanings: verb.meanings,
+                accuracyPercent: Math.round(w.accuracy * 100),
+                attempts: w.attempts,
+              },
+            ]
+          : []
+      })
+
+      return text({
+        student: { name: results.name, email: results.email, joinedAt: results.joinedAt },
+        lessonsCompleted: results.lessonsCompleted,
+        weakVerbCount: results.weakVerbs,
+        weakVerbs,
+        analysis: analyzeStudent(results),
+      })
     },
   )
 

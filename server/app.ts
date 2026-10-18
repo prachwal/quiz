@@ -217,10 +217,13 @@ export function createApp() {
     if (input.write && !hasPermission(req, WRITE_QUIZZES)) {
       throw new HttpError(403, 'Token z prawem zapisu może utworzyć tylko admin')
     }
+    if (input.classes && !hasPermission(req, MANAGE_CLASSES)) {
+      throw new HttpError(403, 'Token z dostępem do klas może utworzyć tylko nauczyciel')
+    }
     const created = await tokens.createApiToken({
       userId: userOf(req),
       name: input.name,
-      permissions: input.write ? [WRITE_QUIZZES] : [],
+      permissions: [...(input.write ? [WRITE_QUIZZES] : []), ...(input.classes ? [MANAGE_CLASSES] : [])],
       expiresInDays: input.expiresInDays,
     })
     if (created === 'limit') throw new HttpError(409, 'Osiągnięto limit aktywnych tokenów (20)')
