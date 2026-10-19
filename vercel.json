@@ -3,10 +3,13 @@
   "framework": null,
   "buildCommand": "npm run build && npm run build:api",
   "outputDirectory": "dist",
-  "routes": [
-    { "src": "/\\.well-known/(.*)", "dest": "/api/index.mjs?__original=/.well-known/$1" },
-    { "src": "/api(?:/(.*))?", "dest": "/api/index.mjs?__original=/api/$1" },
-    { "handle": "filesystem" },
-    { "src": "^(?!/api(?:/|$)|\\.well-known/).*$", "dest": "/index.html" }
-  ]
+  "rewrites": [
+    { "source": "/.well-known/(.*)", "destination": "/api/index.mjs?__original=/.well-known/$1" },
+    { "source": "/api", "destination": "/api/index.mjs?__original=/api" },
+    { "source": "/api/(.*)", "destination": "/api/index.mjs?__original=/api/$1" },
+    { "source": "/((?!api(?:/|$)|\\.well-known/).*)", "destination": "/index.html" }
+  ],
+  "functions": {
+    "api/index.mjs": { "maxDuration": 30 }
+  }
 }
