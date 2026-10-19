@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "obsidian": {
+        "type": "local",
+        "command": ["/home/prachwal/.local/bin/obsidian-mcp", "./docs"]
+      }
+    }
+  }
+}

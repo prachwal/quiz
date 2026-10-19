@@ -1,0 +1,9 @@
+{
+  "servers": {
+    "obsidian": {
+      "type": "stdio",
+      "command": "mcp-obsidian",
+      "args": ["${workspaceFolder}/docs"]
+    }
+  }
+}
