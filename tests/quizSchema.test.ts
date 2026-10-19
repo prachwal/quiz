@@ -72,6 +72,11 @@ const cases: [string, object, boolean][] = [
   ['ordering with empty text', quiz({ type: 'ordering', options: [], config: { items: [{ id: 'a', text: 'A' }, { id: 'b', text: '' }] } }), false],
   // duplicate item ids are rejected by the engine, not by JSON Schema (it cannot express unique keys of array items)
   ['ordering with options', quiz({ type: 'ordering', options: [option('x', true)], config: { items: [{ id: 'a', text: 'A' }, { id: 'b', text: 'B' }] } }), false],
+  ['matching ok', quiz({ type: 'matching', options: [], config: { pairs: [{ id: '1', rightId: 'r1', left: 'kot', right: 'cat' }, { id: '2', rightId: 'r2', left: 'pies', right: 'dog' }] } }), true],
+  ['matching without config', quiz({ type: 'matching', options: [] }), false],
+  ['matching with one pair', quiz({ type: 'matching', options: [], config: { pairs: [{ id: '1', rightId: 'r1', left: 'kot', right: 'cat' }] } }), false],
+  ['matching with an empty side', quiz({ type: 'matching', options: [], config: { pairs: [{ id: '1', rightId: 'r1', left: 'kot', right: '' }, { id: '2', rightId: 'r2', left: 'pies', right: 'dog' }] } }), false],
+  ['matching without rightId', quiz({ type: 'matching', options: [], config: { pairs: [{ id: '1', left: 'kot', right: 'cat' }, { id: '2', rightId: 'r2', left: 'pies', right: 'dog' }] } }), false],
   ['empty prompt', { title: 'T', questions: [{ type: 'text', prompt: '', options: [option('a', true)] }] }, false],
   ['no questions', { title: 'T', questions: [] }, false],
   ['bad sample size', { ...quiz({ type: 'text', options: [option('a', true)] }), sampleSize: 15 }, false],

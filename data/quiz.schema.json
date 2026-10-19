@@ -56,8 +56,8 @@
       "required": ["type", "prompt"],
       "properties": {
         "type": {
-          "enum": ["single", "multiple", "truefalse", "text", "numeric", "ordering"],
-          "description": "single: jedna poprawna; multiple: co najmniej jedna; truefalse: dwie opcje, jedna poprawna; text: opcje to akceptowane odpowiedzi; numeric: wynik liczbowy w config (odpowiedź + tolerancja); ordering: elementy w poprawnej kolejności w config (gracz je układa)."
+          "enum": ["single", "multiple", "truefalse", "text", "numeric", "ordering", "matching"],
+          "description": "single: jedna poprawna; multiple: co najmniej jedna; truefalse: dwie opcje, jedna poprawna; text: opcje to akceptowane odpowiedzi; numeric: wynik liczbowy w config (odpowiedź + tolerancja); ordering: elementy w poprawnej kolejności w config (gracz je układa); matching: pary w config (lewa → prawa)."
         },
         "prompt": { "type": "string", "minLength": 1, "maxLength": 2000 },
         "explanation": { "type": "string", "maxLength": 2000, "default": "" },
@@ -181,6 +181,35 @@
                       "properties": {
                         "id": { "type": "string", "minLength": 1, "maxLength": 64 },
                         "text": { "type": "string", "minLength": 1, "maxLength": 500 }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "matching" } }, "required": ["type"] },
+          "then": {
+            "required": ["config"],
+            "properties": {
+              "options": { "maxItems": 0 },
+              "config": {
+                "required": ["pairs"],
+                "properties": {
+                  "pairs": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 20,
+                    "items": {
+                      "type": "object",
+                      "required": ["id", "rightId", "left", "right"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 64 },
+                        "rightId": { "type": "string", "minLength": 1, "maxLength": 64 },
+                        "left": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "right": { "type": "string", "minLength": 1, "maxLength": 200 }
                       }
                     }
                   }
