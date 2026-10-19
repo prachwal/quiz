@@ -2,6 +2,8 @@
 
 Stan: `single`, `multiple`, `truefalse`, `text` - wszystkie opierają się na tabeli `options` (tekst + `isCorrect`). Ocena jest tylko po stronie serwera (`src/shared/quiz/engine.ts`, rejestr `questionTypes`). Ten dokument opisuje rozbudowę o kolejne typy; **nic z tego nie jest jeszcze zrobione**.
 
+Plan wykonawczy (decyzje, kolejnosc commitow, kontrakty, kryteria akceptacji): [question-types-plan.md](question-types-plan.md).
+
 ## Typy do dodania
 
 | Typ | Zastosowanie | Ocena |
