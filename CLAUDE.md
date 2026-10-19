@@ -47,3 +47,5 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Gotchas
 
 - The tsconfigs need TypeScript 6 (`~6.0.2`); installing Netlify packages previously downgraded it to 4.9, which breaks `tsc -b`. Re-check `package.json` after adding dependencies.
+- npm 11.21+ blocks dependency install scripts unless `package.json` has an `allowScripts` entry (the build log lists skipped packages as `npm warn install-scripts`). Both entries here are deliberate: `esbuild@0.28.2: true` (its postinstall validates/fetches the platform binary) and `browser-tabs-lock: false` (its postinstall only prints a banner). Approvals are pinned, so bumping esbuild re-triggers the warning — review with `npm install-scripts ls`, refresh with `npm install-scripts approve <pkg>`, drop stale pins with `prune`. Older npm (9.x local, 10.x CI) ignores the field.
+- The build log prints `npm warn Unknown env config "cache-dir"`: nothing in this repo sets it (no `.npmrc` anywhere, not in the env files or the site's variables) — the build environment passes that legacy key. Harmless until npm 12, which turns it into an error; the fix belongs to the platform.
