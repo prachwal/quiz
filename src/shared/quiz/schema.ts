@@ -14,13 +14,30 @@ export const questionInput = z
     prompt: z.string().trim().min(1, 'Treść pytania jest wymagana').max(2000),
     explanation: z.string().trim().max(2000).default(''),
     points: z.number().int().min(1).max(100).default(1),
-    options: z.array(optionInput).max(20),
+    /** Answers for the four option-based types; empty for types that use `config`. */
+    options: z.array(optionInput).max(20).default([]),
+    /** Per-type payload (numeric tolerances, ordering items, matching pairs, cloze gaps). */
+    config: z.unknown().optional(),
     /** Irregular verb the question is about (set by quiz generators; feeds spaced repetition). */
     verbId: z.number().int().positive().optional(),
   })
   .superRefine((question, ctx) => {
-    const error = questionTypes[question.type].validate(question)
-    if (error) ctx.addIssue({ code: 'custom', message: error, path: ['options'] })
+    const def = questionTypes[question.type]
+    if (!def.usesOptions && question.options.length > 0) {
+      ctx.addIssue({ code: 'custom', message: 'Ten typ pytania nie używa opcji', path: ['options'] })
+    }
+    if (def.usesOptions && question.config !== undefined && question.config !== null) {
+      ctx.addIssue({ code: 'custom', message: 'Ten typ pytania nie używa konfiguracji', path: ['config'] })
+    }
+    if (question.config !== undefined && question.config !== null) {
+      if (typeof question.config !== 'object') {
+        ctx.addIssue({ code: 'custom', message: 'Konfiguracja musi być obiektem', path: ['config'] })
+      } else if (JSON.stringify(question.config).length > 20_000) {
+        ctx.addIssue({ code: 'custom', message: 'Konfiguracja jest zbyt duża', path: ['config'] })
+      }
+    }
+    const error = def.validate(question)
+    if (error) ctx.addIssue({ code: 'custom', message: error, path: [def.usesOptions ? 'options' : 'config'] })
   })
 
 export const DIFFICULTIES = ['easy', 'medium', 'hard'] as const
@@ -48,6 +65,12 @@ export const quizInput = z.object({
 export const answerInput = z.object({
   optionIds: z.array(z.string()).max(20).optional(),
   text: z.string().max(2000).optional(),
+  /** ordering: element ids in the order the player arranged them. */
+  order: z.array(z.string().max(64)).max(50).optional(),
+  /** matching: pair id -> chosen right-hand id. */
+  pairs: z.record(z.string().max(64), z.string().max(64)).optional(),
+  /** cloze: gap number -> text typed by the player. */
+  gaps: z.record(z.string().max(8), z.string().max(500)).optional(),
 })
 
 export const gradeInput = z.object({

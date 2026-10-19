@@ -53,7 +53,7 @@
     "question": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["type", "prompt", "options"],
+      "required": ["type", "prompt"],
       "properties": {
         "type": {
           "enum": ["single", "multiple", "truefalse", "text"],
@@ -62,7 +62,11 @@
         "prompt": { "type": "string", "minLength": 1, "maxLength": 2000 },
         "explanation": { "type": "string", "maxLength": 2000, "default": "" },
         "points": { "type": "integer", "minimum": 1, "maximum": 100, "default": 1 },
-        "options": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/option" } },
+        "options": { "type": "array", "maxItems": 20, "default": [], "items": { "$ref": "#/$defs/option" } },
+        "config": {
+          "type": "object",
+          "description": "Dane typu pytania dla typów, które nie używają tabeli options (np. tolerancja liczbowa, elementy do uporządkowania, pary, luki)."
+        },
         "verbId": {
           "type": "integer",
           "minimum": 1,
@@ -73,6 +77,7 @@
         {
           "if": { "properties": { "type": { "const": "single" } }, "required": ["type"] },
           "then": {
+            "required": ["options"],
             "properties": {
               "options": {
                 "minItems": 2,
@@ -86,6 +91,7 @@
         {
           "if": { "properties": { "type": { "const": "multiple" } }, "required": ["type"] },
           "then": {
+            "required": ["options"],
             "properties": {
               "options": {
                 "minItems": 2,
@@ -98,6 +104,7 @@
         {
           "if": { "properties": { "type": { "const": "truefalse" } }, "required": ["type"] },
           "then": {
+            "required": ["options"],
             "properties": {
               "options": {
                 "minItems": 2,
@@ -112,6 +119,7 @@
         {
           "if": { "properties": { "type": { "const": "text" } }, "required": ["type"] },
           "then": {
+            "required": ["options"],
             "properties": {
               "options": {
                 "minItems": 1,
