@@ -63,7 +63,7 @@ Opis narzędzi do wklejenia w claude.ai: [[Claude-Web]].
 | Klient | Aplikacja Auth0 | Client ID | Adres zwrotny |
 | --- | --- | --- | --- |
 | Claude (claude.ai) | Quiz MCP (Claude) | `bH1zf4YpkRYRo4x9gQJdFo4CRrNEPvyq` | `https://claude.ai/api/mcp/auth_callback`, `https://claude.com/api/mcp/auth_callback` |
-| ChatGPT | Quiz MCP (ChatGPT) | `sJXSXHmpybLDu3XKi1SsammcaD4FHuhs` | `https://chatgpt.com/connector/oauth/t4V0BDhxcgpm` |
+| ChatGPT | Quiz MCP (ChatGPT) | `sJXSXHmpybLDu3XKi1SsammcaD4FHuhs` | `https://chatgpt.com/connector/oauth/KyVUTbJemWMq`, `https://chatgpt.com/connector/oauth/t4V0BDhxcgpm` |
 | Mistral (Le Chat) | Quiz MCP (Mistral) | `KXAj39YXvdtlFGS7pIyVePWq2HWykGp4` | `https://callback.mistral.ai/v1/integrations_auth/oauth2_callback` |
 | Grok | Quiz MCP (Grok) | `uqhQ3SV4BdKL1cUvyZC735N4ZdaGw6el` | `https://grok.com/connectors-oauth-exchange-code/` |
 
@@ -143,9 +143,23 @@ Plik: `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) 
    - Client Secret: **puste**.
 4. Zapisz, zaloguj się przez Auth0 i w rozmowie włącz konektor w menu narzędzi.
 
-> Adres zwrotny ChatGPT zawiera unikalny identyfikator konektora (`…/connector/oauth/t4V0BDhxcgpm`).
-> Po usunięciu i ponownym utworzeniu konektora **zmieni się** — dopisz nowy do aplikacji Auth0
-> (patrz „Dodanie nowego klienta”, krok 4).
+> Adres zwrotny ChatGPT zawiera unikalny identyfikator konektora (`…/connector/oauth/KyVUTbJemWMq`).
+> Po usunięciu i ponownym utworzeniu konektora **zmieni się**, a logowanie skończy się błędem
+> `unauthorized_client: Callback URL mismatch` — wtedy dopisz nowy adres do aplikacji Auth0,
+> zachowując stary. Oba naraz są w porządku: nieużywany wpis nie przeszkadza, a po jego
+> usunięciu stary konektor przestałby działać:
+>
+> ```bash
+> auth0 api patch "clients/sJXSXHmpybLDu3XKi1SsammcaD4FHuhs" --json --data '{
+>   "callbacks": [
+>     "https://chatgpt.com/connector/oauth/<nowy>",
+>     "https://chatgpt.com/connector/oauth/<stary>"
+>   ]
+> }'
+> ```
+>
+> Właściwy adres znajdziesz też w logu: `auth0 logs list --filter "type:f" --json` (pole
+> `details.error.payload.attempt`).
 
 ## 5. OpenAI — Responses API (programowo)
 
@@ -267,7 +281,7 @@ oraz `allow_offline_access` w API.
 
 | Objaw | Przyczyna i działanie |
 | --- | --- |
-| „Callback URL mismatch” | sprawdź `client_name` w logu — w formularzu jest Client ID innej aplikacji. Jeśli ID jest dobre, dopisz adres z logu: `auth0 apps update <client_id> --callbacks "…"` (podaj **wszystkie**, obecne nadpisują się) |
+| „Callback URL mismatch” | dwie przyczyny. (1) W formularzu jest Client ID innej aplikacji — porównaj `client_name` w logu z tabelą aplikacji. (2) Konektor został usunięty i utworzony ponownie: ChatGPT generuje nowy adres `…/connector/oauth/<id>` przy **każdym nowym** konektorze. Dopisz go, zachowując poprzedni: `auth0 api patch "clients/<client_id>" --json --data '{"callbacks":["<nowy>","<stary>"]}'` (lista nadpisuje się w całości, więc podaj wszystkie) |
 | konektor połączony, lista narzędzi pusta, „auth: unavailable” | token bez `audience` — sprawdź `auth0 logs list --filter "type:seacft"` (ma być `https://api.quiz.local`) i `default_audience` tenanta; potem **usuń i dodaj konektor ponownie** (stary token zostaje) |
 | klient pyta o `/authorize` albo `/register` na naszej domenie | discovery nie działa — `curl <serwer>/.well-known/oauth-protected-resource/api/mcp` ma zwrócić JSON, nie stronę aplikacji |
 | narzędzia są, ale zapis/klasy zwracają odmowę | rola użytkownika: zapis quizów = admin, klasy i wyniki = nauczyciel; role zmienia admin w Ustawieniach, działają po ponownym zalogowaniu |

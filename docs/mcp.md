@@ -180,7 +180,7 @@ Istniejące aplikacje:
 | Klient | Aplikacja Auth0 | Adres zwrotny |
 | ------ | --------------- | ------------- |
 | Claude (claude.ai) | „Quiz MCP (Claude)”, `bH1zf4YpkRYRo4x9gQJdFo4CRrNEPvyq` | `https://claude.ai/api/mcp/auth_callback`, `https://claude.com/api/mcp/auth_callback` |
-| ChatGPT | „Quiz MCP (ChatGPT)”, `sJXSXHmpybLDu3XKi1SsammcaD4FHuhs` | `https://chatgpt.com/connector/oauth/t4V0BDhxcgpm` |
+| ChatGPT | „Quiz MCP (ChatGPT)”, `sJXSXHmpybLDu3XKi1SsammcaD4FHuhs` | `https://chatgpt.com/connector/oauth/KyVUTbJemWMq` i `https://chatgpt.com/connector/oauth/t4V0BDhxcgpm` (każdy konektor ma własny) |
 | Mistral (Le Chat) | „Quiz MCP (Mistral)”, `KXAj39YXvdtlFGS7pIyVePWq2HWykGp4` | `https://callback.mistral.ai/v1/integrations_auth/oauth2_callback` |
 | Grok | „Quiz MCP (Grok)”, `uqhQ3SV4BdKL1cUvyZC735N4ZdaGw6el` | `https://grok.com/connectors-oauth-exchange-code/` |
 
@@ -209,7 +209,7 @@ Co jest już ustawione w tenancie i nie wymaga zmian dla kolejnych klientów: `d
 
 | Objaw | Przyczyna i rozwiązanie |
 | ----- | ----------------------- |
-| „Callback URL mismatch” | w logu zobacz `client_name` – najczęściej w konektorze jest Client ID innej aplikacji (np. Grok). Usuń konektor i dodaj go od nowa z właściwym ID. Jeśli ID jest dobre, dopisz adres z logu do `--callbacks` (`auth0 apps update <client_id> --callbacks "…"`, podaj wszystkie adresy) |
+| „Callback URL mismatch” | dwie przyczyny: (1) w konektorze jest Client ID innej aplikacji (np. Grok) – porównaj `client_name` w logu z tabelą aplikacji; (2) konektor zostaĹ‚ usuniÄ™ty i utworzony ponownie, wiÄ™c ChatGPT wygenerowaĹ‚ nowy adres (`…/connector/oauth/<id>`) – dopisz go do `callbacks`, zachowujÄ…c stary (`auth0 api patch "clients/<client_id>" --json --data '{"callbacks":["<nowy>","<stary>"]}'`) |
 | konektor dodany, ale lista narzędzi pusta, „auth: unavailable” | token bez `audience` (sprawdź `default_audience`) albo użytkownik bez dostępu do narzędzi (uprawnienia zależą od roli) |
 | klient nie znajduje logowania i pyta o `/authorize` lub `/register` na naszej domenie | sprawdź `curl https://quiz-vercel-rho.vercel.app/.well-known/oauth-protected-resource/api/mcp` – ma zwrócić JSON, nie stronę aplikacji |
 | błąd CORS / origin | dopisz domenę klienta do `--origins` i `--web-origins` aplikacji |
