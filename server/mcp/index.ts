@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
 import type { Request, RequestHandler, Response } from 'express'
 import { contextOf } from './context'
+import { registerAdminTools } from './tools/admin'
 import { registerClassTools } from './classTools'
 import { registerQuizTools } from './quizTools'
 
@@ -11,7 +12,8 @@ import { registerQuizTools } from './quizTools'
  * (a personal API token) or an Auth0 login and gets exactly the permissions of that identity:
  *   - quizzes (`quiz_*`, `verbs_list`): reading for everybody, changes with `write:quizzes`;
  *   - classes (`class_*`, `student_*`, `assignment_*`, `course_list`): teachers (`manage:classes`) work on their
- *     own classes, admins (`manage:users`, OAuth login only) can read every class.
+ *     own classes, admins (`manage:users`, OAuth login only) can read every class;
+ *   - admin tools (`attempt_*`): `manage:users` only, so OAuth login only.
  * Tool names follow `<object>_<action>`; destructive tools require `confirm: true`; every change is audited.
  */
 function buildServer(req: Request) {
@@ -24,6 +26,7 @@ function buildServer(req: Request) {
   })
   registerQuizTools(server, ctx)
   registerClassTools(server, ctx)
+  registerAdminTools(server, ctx)
   return server
 }
 

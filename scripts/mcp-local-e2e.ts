@@ -92,8 +92,8 @@ try {
   const getOk = await fetch(`${base}/mcp`, { headers: { Authorization: `Bearer ${await token(PLAIN, [])}` } })
   check('GET /mcp -> 405', getOk.status === 405, getOk.status)
   const names = (await tPlain.listTools()).tools.map((t) => t.name).sort()
-  check('25 tools listed', names.length === 25, names.length)
-  for (const required of ['quiz_create', 'class_create', 'student_search', 'student_add', 'class_analyze', 'assignment_create'])
+  check('27 tools listed', names.length === 27, names.length)
+  for (const required of ['quiz_create', 'class_create', 'student_search', 'student_add', 'class_analyze', 'assignment_create', 'attempt_list', 'attempt_get'])
     check(`tool ${required} exists`, names.includes(required))
 
   // ---- quizzes ---------------------------------------------------------------------------
@@ -220,6 +220,21 @@ try {
   ok('class_analyze', await call(tTeacher, 'class_analyze', { classId }), (d) => d.students === 2 && d.assignments.length === 2 && d.needsAttention.some((s: any) => s.userId === STUDENT2) && d.summary.averageBestPercent !== null)
   ok('class_analyze (admin read)', await call(tAdmin, 'class_analyze', { classId }), (d) => d.students === 2)
   denied('class_analyze plain', await call(tPlain, 'class_analyze', { classId }), 'nauczyciela')
+
+  // ---- admin read path: attempts of any quiz, no class membership needed ------------------
+  const listed = await call(tAdmin, 'attempt_list', { quizId })
+  ok('attempt_list by quiz', listed, (d) => d.total === 2 && d.attempts.length === 2 && d.attempts[0].userId === STUDENT && d.attempts[0].source === 'manual' && d.attempts[0].userName === 'Ala Uczennica' && d.hasMore === false)
+  ok('attempt_list paging', await call(tAdmin, 'attempt_list', { quizId, limit: 1 }), (d) => d.total === 2 && d.attempts.length === 1 && d.hasMore === true)
+  ok('attempt_list by user and percent', await call(tAdmin, 'attempt_list', { userId: STUDENT, maxPercent: 10 }), (d) => d.total === 1 && d.attempts[0].percent === 0)
+  ok('attempt_list by title (LIKE wildcards are literal)', await call(tAdmin, 'attempt_list', { title: 'E2E quiz%' }), (d) => d.total === 0)
+  ok('attempt_list by title', await call(tAdmin, 'attempt_list', { title: 'e2e QUIZ' }), (d) => d.total === 2)
+  denied('attempt_list bad date', await call(tAdmin, 'attempt_list', { from: 'yesterday' }))
+  denied('attempt_list as teacher', await call(tTeacher, 'attempt_list', {}), 'admina')
+  denied('attempt_list as plain', await call(tPlain, 'attempt_list', {}), 'admina')
+  const attemptId: string = listed.data.attempts[0].id
+  ok('attempt_get', await call(tAdmin, 'attempt_get', { attemptId }), (d) => d.quiz?.id === quizId && d.user.email === 'ala.uczennica@szkola.pl' && d.questions.length === 4 && d.questions.some((q: any) => q.type === 'text' && q.prompt === 'P1'))
+  denied('attempt_get unknown', await call(tAdmin, 'attempt_get', { attemptId: '00000000-0000-4000-8000-000000000000' }), 'Nie znaleziono')
+  denied('attempt_get as teacher', await call(tTeacher, 'attempt_get', { attemptId }), 'admina')
 
   // ---- removals and archiving --------------------------------------------------------------
   denied('student_remove without confirm', await call(tTeacher, 'student_remove', { classId, userId: STUDENT2, confirm: false }))

@@ -42,3 +42,4 @@ export async function audit(ctx: Ctx, tool: string, target: { id?: string; label
     details: { tool, ...details },
   })
 }
+export const needAdmin = () => failure('Ta operacja wymaga roli admina (uprawnienie manage:users, logowanie OAuth; token osobisty go nie ma).')
