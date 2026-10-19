@@ -66,6 +66,12 @@ const cases: [string, object, boolean][] = [
   ['numeric with a negative tolerance', quiz({ type: 'numeric', options: [], config: { answer: 1, tolerance: { kind: 'absolute', value: -1 } } }), false],
   ['numeric relative tolerance for zero', quiz({ type: 'numeric', options: [], config: { answer: 0, tolerance: { kind: 'relative', value: 0.1 } } }), false],
   ['single without options', quiz({ type: 'single', options: undefined }), false],
+  ['ordering ok', quiz({ type: 'ordering', options: [], config: { items: [{ id: 'a', text: 'A' }, { id: 'b', text: 'B' }] } }), true],
+  ['ordering without config', quiz({ type: 'ordering', options: [] }), false],
+  ['ordering with one item', quiz({ type: 'ordering', options: [], config: { items: [{ id: 'a', text: 'A' }] } }), false],
+  ['ordering with empty text', quiz({ type: 'ordering', options: [], config: { items: [{ id: 'a', text: 'A' }, { id: 'b', text: '' }] } }), false],
+  // duplicate item ids are rejected by the engine, not by JSON Schema (it cannot express unique keys of array items)
+  ['ordering with options', quiz({ type: 'ordering', options: [option('x', true)], config: { items: [{ id: 'a', text: 'A' }, { id: 'b', text: 'B' }] } }), false],
   ['empty prompt', { title: 'T', questions: [{ type: 'text', prompt: '', options: [option('a', true)] }] }, false],
   ['no questions', { title: 'T', questions: [] }, false],
   ['bad sample size', { ...quiz({ type: 'text', options: [option('a', true)] }), sampleSize: 15 }, false],
