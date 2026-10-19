@@ -23,12 +23,12 @@ Mapa treści vaultu. Zacznij tutaj.
 - [[Classes]] — klasy i nauczyciel
 - [[Progress]] — postęp, powtórki, słabe czasowniki
 - [[mcp]] — serwer MCP
+- [[MCP-Admin-Tools]] — projekt narzędzi MCP dla administratora
 - [[mcp-clients]] — rejestracja MCP u klientów
 - [[mcp-grok]] — Grok / xAI
 - [[api-admin]] — panel administracyjny
 - [[sentry]] — Sentry
 - [[vercel]] — deploy na Vercel
-- [[db-sync]] — synchronizacja bazy
 
 ## Plany i zadania
 

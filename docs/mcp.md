@@ -91,6 +91,8 @@ Przepływy:
 
 Dodanie ucznia po id nie wymaga jego zgody – uczeń widzi klasę w „Zadania” i może ją opuścić. Nauczyciel widzi jego imię, e‑mail i wyniki z zadań klasy (patrz informacja przy dołączaniu).
 
+**Administrator** – `quiz_get`/`quiz_list` czytają **każdy** quiz (nie tylko własny), a `quiz_update`/`quiz_delete` wymagają jedynie `write:quizzes`, więc kontrola nad treścią quizów jest pełna. Brakuje natomiast wyników **poza klasą**, statystyki pytań i operacji administracyjnych (użytkownicy, audyt, zgłoszenia, ustawienia) – projekt tych narzędzi: [[MCP-Admin-Tools]].
+
 ## Podłączenie klientów
 
 **Claude Code**
