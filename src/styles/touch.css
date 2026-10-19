@@ -1,0 +1,85 @@
+/* ============================== touch ============================== */
+@media (pointer: coarse) {
+  .swipe-hint {
+    display: block;
+    margin-top: 12px;
+    font-size: 14px;
+    text-align: center;
+  }
+
+  .kbd-hint {
+    display: none;
+  }
+
+  .app-shell a.page-back {
+    min-height: 44px;
+  }
+
+  /* quiz card actions (Graj / Edytuj / Usuń): full-height tap targets */
+  :root .app-shell .ant-card .ant-card-actions > li {
+    margin: 0;
+  }
+
+  :root .app-shell .ant-card .ant-card-actions > li > span a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 48px;
+  }
+
+  :root .ant-popconfirm .ant-popconfirm-buttons .ant-btn {
+    min-height: 40px;
+    padding-inline: 16px;
+  }
+
+  :root .ant-dropdown .ant-dropdown-menu .ant-dropdown-menu-item {
+    min-height: 44px;
+  }
+
+  :root .ant-drawer .ant-menu-vertical .ant-menu-item {
+    height: 48px;
+    line-height: 48px;
+  }
+
+  /* larger hit area around the small switch track */
+  .ant-switch::after {
+    content: '';
+    position: absolute;
+    inset: -11px -6px;
+  }
+
+  :root .ant-typography .ant-typography-copy {
+    min-width: 36px;
+    min-height: 36px;
+    display: inline-grid;
+    place-items: center;
+  }
+
+  /* iOS zooms into fields with text under 16px (antd base size is already 16px; guard the small variants) */
+  :root .ant-input-sm,
+  :root .ant-input-affix-wrapper-sm input,
+  :root .ant-input-number-sm input,
+  :root .ant-select-sm {
+    font-size: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .app-shell .lift-card:hover,
+  .app-shell .lift-card:active,
+  .choice-tile:active,
+  .app-tab:active .app-tab-icon {
+    transform: none;
+  }
+}
+

@@ -1,0 +1,104 @@
+/* --- shell --- */
+.app-shell.app-root {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.app-shell .app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-sizing: border-box;
+  height: calc(var(--app-header-h) + var(--app-safe-top));
+  padding-top: var(--app-safe-top);
+  line-height: normal;
+  backdrop-filter: saturate(180%) blur(14px);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+}
+
+.app-container {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding-left: max(24px, var(--app-safe-left));
+  padding-right: max(24px, var(--app-safe-right));
+  box-sizing: border-box;
+}
+
+.app-shell .app-content {
+  padding-block: 32px 48px;
+}
+
+.app-shell .app-footer {
+  padding: 24px 0 calc(32px + var(--app-safe-bottom));
+}
+
+/* which navigation is visible is pure CSS, so nothing flashes before JS breakpoints resolve */
+.app-nav {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.app-shell .app-menu-btn,
+.app-user-name {
+  display: none;
+}
+
+.app-menu-roles {
+  margin-top: 4px;
+}
+
+@media (min-width: 992px) {
+  .app-nav {
+    display: flex;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 991.98px) {
+  .app-shell .app-menu-btn {
+    display: inline-flex;
+  }
+}
+
+@media (min-width: 1200px) {
+  .app-user-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .app-menu-roles {
+    display: none !important;
+  }
+}
+
+.app-shell a.app-nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  color: var(--app-text-secondary);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  text-decoration: none;
+  transition:
+    color 0.15s,
+    background-color 0.15s;
+}
+
+.app-shell a.app-nav-link:hover {
+  color: var(--app-text);
+  background: var(--app-fill);
+}
+
+.app-shell a.app-nav-link[aria-current='page'] {
+  color: var(--app-primary);
+  background: var(--app-primary-bg);
+}
+

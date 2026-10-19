@@ -1,0 +1,115 @@
+/* --- bottom tab bar (phones) --- */
+.app-tabbar {
+  display: none;
+}
+
+.app-shell a.app-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-radius: 14px;
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.app-tab-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  max-width: 100%;
+  height: 30px;
+  border-radius: 999px;
+  font-size: 20px;
+  transition:
+    background-color 0.2s,
+    transform 0.15s;
+}
+
+.app-tab-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell a.app-tab[aria-current='page'] {
+  color: var(--app-primary);
+  font-weight: 600;
+}
+
+.app-tab[aria-current='page'] .app-tab-icon {
+  background: var(--app-primary-bg);
+}
+
+.app-tab:active .app-tab-icon {
+  transform: scale(0.92);
+}
+
+.app-shell a.app-tab:focus-visible {
+  outline: 2px solid var(--app-primary);
+  outline-offset: -2px;
+}
+
+/* cards get a soft layered shadow instead of a hard 1px frame */
+.app-shell .ant-card:not(.ant-card-type-inner) {
+  box-shadow: var(--app-shadow-sm);
+}
+
+/* rounded cards that still allow position: sticky inside (overflow: hidden would break it) */
+.clip-card {
+  overflow: hidden;
+  overflow: clip;
+}
+
+.lift-card {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.app-shell a.text-link {
+  color: inherit;
+}
+
+.app-shell a.muted-link {
+  color: var(--app-text-secondary);
+}
+
+.app-shell a.text-link:hover,
+.app-shell a.muted-link:hover {
+  color: var(--app-primary);
+}
+
+/* keyboard focus ring for custom interactive elements */
+.app-shell a:focus-visible,
+.app-nav-link:focus-visible,
+.lesson-row:focus-visible {
+  outline: 2px solid var(--app-primary);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.app-shell a.lesson-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  color: inherit;
+  transition: background-color 0.15s;
+}
+
+.app-shell a.lesson-row:active {
+  background: var(--app-fill);
+}
+

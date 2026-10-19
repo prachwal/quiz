@@ -1,0 +1,194 @@
+/* --- page header --- */
+.page-header {
+  margin-bottom: 28px;
+}
+
+.app-shell .page-subtitle {
+  font-size: 17px;
+}
+
+/* random-quiz generator filters: fluid grid, one column on phones */
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+  gap: 12px 16px;
+  align-items: end;
+}
+
+.quiz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
+  gap: 16px;
+}
+
+.app-shell .sort-select {
+  width: 190px;
+}
+
+/* horizontally scrollable strip (segmented filters that may not fit a phone) */
+.scroll-x {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.scroll-x::-webkit-scrollbar {
+  display: none;
+}
+
+/* answer tiles of a quiz question: 2 columns (2x2 for four options), 1 column on narrow screens */
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.choice-tile {
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition:
+    border-color 0.15s,
+    background-color 0.15s,
+    box-shadow 0.15s,
+    transform 0.15s;
+}
+
+.choice-tile:active {
+  transform: scale(0.985);
+}
+
+.choice-tile:focus-visible {
+  outline: 3px solid var(--app-primary, currentColor);
+  outline-offset: 2px;
+}
+
+/* hover effects only where hovering exists (no sticky hover after a tap) */
+@media (hover: hover) {
+  .app-shell .lift-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--app-shadow-md);
+    border-color: var(--app-primary-border);
+  }
+
+  .app-shell a.lesson-row:hover {
+    background: var(--app-fill);
+    color: inherit;
+  }
+
+  .choice-tile:hover {
+    border-color: var(--app-primary-hover) !important;
+    box-shadow: var(--app-shadow-md) !important;
+  }
+}
+
+@media (hover: none) {
+  .app-shell .lift-card:active {
+    transform: scale(0.99);
+  }
+}
+
+/* --- quiz player / lesson: action bar (static in the card on desktop, sticky thumb bar on phones) --- */
+.action-bar {
+  padding: 16px clamp(16px, 4vw, 28px);
+  border-top: 1px solid var(--app-border);
+  background: var(--app-fill-quaternary);
+}
+
+.action-bar.action-bar-flat {
+  margin-top: 20px;
+  padding: 0;
+  border-top: 0;
+  background: transparent;
+}
+
+.kbd-hint {
+  font-size: 14px;
+}
+
+.swipe-hint {
+  display: none;
+}
+
+.swipe-area {
+  touch-action: pan-y pinch-zoom;
+}
+
+/* --- result view --- */
+.result-hero {
+  padding: 32px 24px;
+}
+
+.stat-tile {
+  padding: 12px 16px;
+}
+
+.review-body {
+  padding: 20px 24px;
+}
+
+/* --- lesson slide --- */
+.verb-slide-body {
+  min-height: 360px;
+}
+
+.verb-base {
+  font-size: clamp(44px, 7vw + 16px, 72px);
+  overflow-wrap: break-word;
+  -webkit-hyphens: auto;
+  hyphens: auto;
+}
+
+.verb-form {
+  padding: 16px 20px;
+}
+
+.verb-form-value {
+  font-size: clamp(26px, 3vw + 14px, 34px);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+/* --- sign-in page --- */
+.public-surface {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: max(16px, var(--app-safe-top)) max(16px, var(--app-safe-right)) max(16px, var(--app-safe-bottom))
+    max(16px, var(--app-safe-left));
+}
+
+.app-shell .ant-card.signin-card > .ant-card-body {
+  padding: clamp(28px, 6vw, 44px);
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .app-shell .ant-card.signin-card > .ant-card-body {
+    padding: 20px 28px;
+  }
+
+  .signin-stack {
+    gap: 12px !important;
+  }
+
+  /* short landscape phones: give the content the height instead of a sticky header */
+  .app-shell .app-header {
+    position: relative;
+  }
+}
+
+@media (max-width: 560px) {
+  .choice-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .quiz-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

@@ -1,0 +1,33 @@
+/* Admin users grid: fixed layout so the table never scrolls sideways; cells wrap instead. */
+.app-shell .users-table .ant-table-cell {
+  overflow-wrap: anywhere;
+}
+.app-shell .users-table .ant-checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.app-shell a.student-link {
+  min-width: 0;
+}
+
+/* Shown only by the local login bypass (VITE_DEV_AUTH_TOKEN, development builds). */
+.dev-auth-banner {
+  position: sticky;
+  top: 0;
+  z-index: 2000;
+  padding: 4px 12px;
+  background: #d46b08;
+  color: #fff;
+  font-size: 13px;
+  text-align: center;
+}
+
+.app-shell a.app-footer-link {
+  color: var(--app-text-secondary, inherit);
+  font-size: 14px;
+}
+
+.app-shell a.app-footer-link:hover {
+  color: var(--app-primary, inherit);
+}

@@ -1,0 +1,60 @@
+:root {
+  --app-header-h: 64px;
+  --app-tabbar-h: 64px;
+  --app-actionbar-h: 72px;
+  --app-safe-top: env(safe-area-inset-top, 0px);
+  --app-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --app-safe-left: env(safe-area-inset-left, 0px);
+  --app-safe-right: env(safe-area-inset-right, 0px);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: #f5f6fb;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #0c0d14;
+  }
+}
+
+/* the theme picked in Ustawienia wins over the OS scheme (set by useDocumentTheme) */
+html[data-theme='light'] body {
+  background: #f5f6fb;
+}
+
+html[data-theme='dark'] body {
+  background: #0c0d14;
+}
+
+/* no 300ms double-tap delay on controls */
+a,
+button,
+label,
+summary,
+[role='button'],
+[role='radio'],
+[role='checkbox'],
+[role='tab'],
+.ant-select,
+.ant-segmented-item,
+.ant-switch {
+  touch-action: manipulation;
+}
