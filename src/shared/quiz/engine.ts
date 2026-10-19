@@ -267,9 +267,34 @@ const numericConfig = (config: unknown): NumericConfig | null => {
   return { answer, ...(tolerance === undefined ? {} : { tolerance: { kind: tolerance.kind, value: tolerance.value } }) }
 }
 
-/** Trim, collapse inner whitespace, case-fold; keeps diacritics (they matter in Polish). */
+/**
+ * Typographic punctuation produced by keyboards (iOS "smart punctuation", word processors), folded
+ * to ASCII so that "don’t" and "don't" are the same answer. Diacritics are NOT folded: they change
+ * the meaning in Polish ("szkoły" vs "szkoly").
+ */
+const TYPOGRAPHIC: Record<string, string> = {
+  '\u2018': "'",
+  '\u2019': "'",
+  '\u02BC': "'",
+  '`': "'",
+  '\u201C': '"',
+  '\u201D': '"',
+  '\u201E': '"',
+  '\u2013': '-',
+  '\u2014': '-',
+  '\u2011': '-',
+  '\u2212': '-',
+}
+const TYPOGRAPHIC_PATTERN = new RegExp(`[${Object.keys(TYPOGRAPHIC).join('')}]`, 'g')
+
+/** Trim, collapse inner whitespace, fold typographic punctuation, case-fold; keeps diacritics. */
 export const normalizeText = (value: string) =>
-  value.normalize('NFC').trim().replace(/\s+/g, ' ').toLocaleLowerCase()
+  value
+    .normalize('NFC')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(TYPOGRAPHIC_PATTERN, (ch) => TYPOGRAPHIC[ch] ?? ch)
+    .toLocaleLowerCase()
 
 /** Random, stable id for a config item (kept in `questions.config`, never derived from the position). */
 export const newItemId = () => Math.random().toString(36).slice(2, 10)

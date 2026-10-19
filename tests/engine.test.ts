@@ -4,6 +4,7 @@ import {
   clozeMarkers,
   gradeQuiz,
   isAnswered,
+  normalizeText,
   orderingItems,
   parseNumeric,
   promptText,
@@ -389,6 +390,17 @@ test('cloze validate: only canonical markers count', () => {
   assert.equal(t.validate({ type: 'cloze', prompt: 'He {{1}} and {{2}}.', options: [], config: { gaps: [{ answers: ['x'] }, { answers: ['y'] }] } }), null)
   // promptText leaves a non-canonical marker alone instead of hiding it
   assert.equal(promptText('He {{01}} and {{2}}.'), 'He {{01}} and ___.')
+})
+
+test('normalizeText folds typographic quotes and dashes', () => {
+  assert.equal(normalizeText('don’t'), normalizeText("don't"))
+  assert.equal(normalizeText('don‘t'), normalizeText("don't"))
+  assert.equal(normalizeText('„a”'), normalizeText('"a"'))
+  assert.equal(normalizeText('well–known'), normalizeText('well-known'))
+  assert.equal(normalizeText('well—known'), normalizeText('well-known'))
+  assert.equal(normalizeText('a‑b'), normalizeText('a-b'))
+  // diacritics still matter
+  assert.notEqual(normalizeText('Do szkoły'), normalizeText('do szkoly'))
 })
 
 test('cloze grades proportionally with accepted variants', () => {

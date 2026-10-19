@@ -62371,7 +62371,21 @@ var numericConfig = (config2) => {
   }
   return { answer, ...tolerance === void 0 ? {} : { tolerance: { kind: tolerance.kind, value: tolerance.value } } };
 };
-var normalizeText = (value) => value.normalize("NFC").trim().replace(/\s+/g, " ").toLocaleLowerCase();
+var TYPOGRAPHIC = {
+  "\u2018": "'",
+  "\u2019": "'",
+  "\u02BC": "'",
+  "`": "'",
+  "\u201C": '"',
+  "\u201D": '"',
+  "\u201E": '"',
+  "\u2013": "-",
+  "\u2014": "-",
+  "\u2011": "-",
+  "\u2212": "-"
+};
+var TYPOGRAPHIC_PATTERN = new RegExp(`[${Object.keys(TYPOGRAPHIC).join("")}]`, "g");
+var normalizeText = (value) => value.normalize("NFC").trim().replace(/\s+/g, " ").replace(TYPOGRAPHIC_PATTERN, (ch) => TYPOGRAPHIC[ch] ?? ch).toLocaleLowerCase();
 var newItemId = () => Math.random().toString(36).slice(2, 10);
 var shuffleWith = (items, rng) => {
   for (let i = items.length - 1; i > 0; i--) {
