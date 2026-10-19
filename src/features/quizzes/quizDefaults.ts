@@ -1,14 +1,18 @@
-import { questionTypes } from '../../shared/quiz/engine'
+import { typeDef } from '../../shared/quiz/engine'
 import type { QuestionType } from '../../shared/quiz/engine'
 import type { QuizInput } from '../../shared/quiz/schema'
 
-export const emptyQuestion = (type: QuestionType = 'single'): QuizInput['questions'][number] => ({
-  type,
-  prompt: '',
-  explanation: '',
-  points: 1,
-  options: questionTypes[type].defaultOptions(),
-})
+export const emptyQuestion = (type: QuestionType = 'single'): QuizInput['questions'][number] => {
+  const def = typeDef(type)
+  return {
+    type,
+    prompt: '',
+    explanation: '',
+    points: 1,
+    options: def.defaultOptions(),
+    ...(def.defaultConfig ? { config: def.defaultConfig() } : {}),
+  }
+}
 
 export const emptyQuiz = (): QuizInput => ({
   title: '',

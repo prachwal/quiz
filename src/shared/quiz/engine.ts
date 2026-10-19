@@ -8,7 +8,7 @@
  * questions of one quiz, so old quizzes keep working without a data migration.
  */
 
-export const QUESTION_TYPES = ['single', 'multiple', 'truefalse', 'text'] as const
+export const QUESTION_TYPES = ['single', 'multiple', 'truefalse', 'text', 'numeric'] as const
 export type QuestionType = (typeof QUESTION_TYPES)[number]
 
 export interface DraftOption {
@@ -90,6 +90,44 @@ export interface QuestionTypeDef<TConfig = unknown> {
 }
 
 const countCorrect = (options: DraftOption[]) => options.filter((o) => o.isCorrect).length
+
+/** numeric: the expected value and an optional tolerance (relative = fraction, 0.01 = 1%). */
+export interface NumericConfig {
+  answer: number
+  tolerance?: { kind: 'absolute' | 'relative'; value: number }
+}
+
+/**
+ * Parses a player answer: decimal comma or dot, fractions (1/2), exponent notation (1e3),
+ * Unicode minus. Commas are always decimal separators, so "1,000" is 1. Units and percentages
+ * are rejected (no finite value) - authors put the unit in the prompt.
+ */
+export const parseNumeric = (raw: string): number | null => {
+  const compact = raw.trim().replace(/\u2212/g, '-').replace(/[\s\u00a0\u202f]/g, '')
+  if (!compact) return null
+  const fraction = /^(-?\d+(?:[.,]\d+)?)\/(\d+(?:[.,]\d+)?)$/.exec(compact)
+  if (fraction) {
+    const numerator = Number(fraction[1].replace(',', '.'))
+    const denominator = Number(fraction[2].replace(',', '.'))
+    if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator === 0) return null
+    return numerator / denominator
+  }
+  const value = Number(compact.replace(',', '.'))
+  return Number.isFinite(value) ? value : null
+}
+
+const numericConfig = (config: unknown): NumericConfig | null => {
+  if (!config || typeof config !== 'object') return null
+  const { answer, tolerance } = config as Partial<NumericConfig>
+  if (typeof answer !== 'number' || !Number.isFinite(answer)) return null
+  if (tolerance !== undefined) {
+    if (!tolerance || typeof tolerance !== 'object') return null
+    const { kind, value } = tolerance as { kind?: unknown; value?: unknown }
+    if (kind !== 'absolute' && kind !== 'relative') return null
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return null
+  }
+  return { answer, ...(tolerance === undefined ? {} : { tolerance: { kind: tolerance.kind, value: tolerance.value } }) }
+}
 
 /** Trim, collapse inner whitespace, case-fold; keeps diacritics (they matter in Polish). */
 export const normalizeText = (value: string) =>
@@ -194,6 +232,44 @@ export const questionTypeDefs = {
       answerText: (answer?.text ?? '').trim(),
       correctAnswers: correctOptionTexts(question),
     }),
+  },
+  numeric: {
+    label: 'Odpowiedź liczbowa',
+    usesOptions: false,
+    defaultOptions: () => [],
+    defaultConfig: (): NumericConfig => ({ answer: 0 }),
+    validate: (q) => {
+      const config = numericConfig(q.config)
+      if (!config) return 'Podaj poprawną odpowiedź liczbową'
+      if (config.tolerance?.kind === 'relative' && config.answer === 0) {
+        return 'Dla odpowiedzi 0 użyj tolerancji bezwzględnej'
+      }
+      return null
+    },
+    grade: (question, answer) => {
+      const config = numericConfig(question.config)
+      if (!config) return 0
+      const value = parseNumeric(answer?.text ?? '')
+      if (value === null) return 0
+      const tolerance =
+        config.tolerance === undefined
+          ? 0
+          : config.tolerance.kind === 'absolute'
+            ? config.tolerance.value
+            : Math.abs(config.answer) * config.tolerance.value
+      // guard against floating point artefacts (0.1 + 0.2) when the tolerance is 0
+      const epsilon = 1e-9 * Math.max(1, Math.abs(config.answer))
+      return Math.abs(value - config.answer) <= tolerance + epsilon ? 1 : 0
+    },
+    // the expected value and the tolerance must never reach the player
+    playerView: () => ({ options: [] }),
+    describe: (question, answer) => {
+      const config = numericConfig(question.config)
+      return {
+        answerText: (answer?.text ?? '').trim(),
+        correctAnswers: config ? [String(config.answer)] : [],
+      }
+    },
   },
 } satisfies { [T in QuestionType]: QuestionTypeDef<any> }
 

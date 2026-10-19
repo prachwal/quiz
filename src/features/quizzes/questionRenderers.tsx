@@ -66,12 +66,25 @@ const text = ({ value, onChange }: RendererProps) => (
   />
 )
 
+const numeric = ({ value, onChange }: RendererProps) => (
+  <Input
+    size="large"
+    placeholder="Twoja odpowiedź (np. 3,5 albo 1/2)"
+    inputMode="decimal"
+    autoComplete="off"
+    value={value?.text ?? ''}
+    onChange={(e) => onChange({ text: e.target.value })}
+    style={{ fontSize: 20, paddingBlock: 10, maxWidth: 320 }}
+  />
+)
+
 /** Player-side input for each question type (counterpart of `questionTypes` in the engine). */
 export const questionRenderers: Record<QuestionType, (props: RendererProps) => ReactNode> = {
   single,
   multiple,
   truefalse: single,
   text,
+  numeric,
 }
 
 export const isAnswered = (answer: Answer | undefined) =>

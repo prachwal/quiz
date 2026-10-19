@@ -29,6 +29,8 @@ export default function QuizEdit() {
       explanation: q.explanation ?? '',
       points: q.points,
       options: q.options.map((o) => ({ text: o.text, isCorrect: o.isCorrect ?? false })),
+      // keep the per-type payload, otherwise saving an edited quiz would drop it
+      ...(q.config === undefined ? {} : { config: q.config }),
     })),
   }
 

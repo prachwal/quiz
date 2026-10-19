@@ -413,7 +413,9 @@ export default function ResultView({
           const r = byId.get(question.id)
           if (!r) return null
           const given = answers[question.id]
-          const givenText = question.type === 'text' ? given?.text : optionText(question.id, given?.optionIds)
+          // attempts saved with a readable answer win; older rows keep the previous lookup
+          const givenText =
+            r.answerText ?? (question.type === 'text' ? given?.text : optionText(question.id, given?.optionIds))
           return (
             <QuestionReview
               key={question.id}

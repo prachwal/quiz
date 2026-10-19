@@ -56,8 +56,8 @@
       "required": ["type", "prompt"],
       "properties": {
         "type": {
-          "enum": ["single", "multiple", "truefalse", "text"],
-          "description": "single: jedna poprawna; multiple: co najmniej jedna; truefalse: dwie opcje, jedna poprawna; text: opcje to akceptowane odpowiedzi."
+          "enum": ["single", "multiple", "truefalse", "text", "numeric"],
+          "description": "single: jedna poprawna; multiple: co najmniej jedna; truefalse: dwie opcje, jedna poprawna; text: opcje to akceptowane odpowiedzi; numeric: wynik liczbowy w config (odpowiedź + tolerancja)."
         },
         "prompt": { "type": "string", "minLength": 1, "maxLength": 2000 },
         "explanation": { "type": "string", "maxLength": 2000, "default": "" },
@@ -65,7 +65,7 @@
         "options": { "type": "array", "maxItems": 20, "default": [], "items": { "$ref": "#/$defs/option" } },
         "config": {
           "type": "object",
-          "description": "Dane typu pytania dla typów, które nie używają tabeli options (np. tolerancja liczbowa, elementy do uporządkowania, pary, luki)."
+          "description": "Dane typu pytania dla typów, które nie używają tabeli options (tolerancja liczbowa, elementy do uporządkowania, pary, luki)."
         },
         "verbId": {
           "type": "integer",
@@ -124,6 +124,28 @@
               "options": {
                 "minItems": 1,
                 "items": { "properties": { "isCorrect": { "const": true } } }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "numeric" } }, "required": ["type"] },
+          "then": {
+            "required": ["config"],
+            "properties": {
+              "config": {
+                "required": ["answer"],
+                "properties": {
+                  "answer": { "type": "number" },
+                  "tolerance": {
+                    "type": "object",
+                    "required": ["kind", "value"],
+                    "properties": {
+                      "kind": { "enum": ["absolute", "relative"] },
+                      "value": { "type": "number", "minimum": 0 }
+                    }
+                  }
+                }
               }
             }
           }

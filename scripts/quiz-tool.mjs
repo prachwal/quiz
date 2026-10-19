@@ -176,6 +176,7 @@ async function download(ref, file) {
     title: q.title,
     description: q.description,
     difficulty: q.difficulty,
+    subject: q.subject,
     shuffleQuestions: q.shuffleQuestions,
     shuffleOptions: q.shuffleOptions,
     sampleSize: q.sampleSize,
@@ -185,6 +186,8 @@ async function download(ref, file) {
       explanation: x.explanation ?? '',
       points: x.points,
       options: x.options.map((o) => ({ text: o.text, isCorrect: o.isCorrect ?? false })),
+      // per-type payload must survive a download/upload round-trip
+      ...(x.config === undefined ? {} : { config: x.config }),
     })),
   }
   const target = file ?? `data/quiz-${id}.json`

@@ -1,12 +1,13 @@
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
 import { Button, Card, Form, Input, InputNumber, Segmented, Select, Space, Switch, App as AntdApp } from 'antd'
 import type { FormInstance } from 'antd'
-import { QUESTION_TYPES, questionTypes } from '../../shared/quiz/engine'
+import { QUESTION_TYPES, typeDef, questionTypes } from '../../shared/quiz/engine'
 import type { QuestionType } from '../../shared/quiz/engine'
 import { quizInput } from '../../shared/quiz/schema'
 import type { QuizInput } from '../../shared/quiz/schema'
 import { difficultyOptions, subjectOptions } from '../../components/groupOptions'
 import { emptyQuestion } from './quizDefaults'
+import ConfigEditor from './ConfigEditor'
 import OptionsEditor from './OptionsEditor'
 
 interface Props {
@@ -32,6 +33,8 @@ function QuestionCard({
   canRemove: boolean
 }) {
   const type = (Form.useWatch(['questions', name, 'type'], form) ?? 'single') as QuestionType
+  const def = typeDef(type)
+  const config = Form.useWatch(['questions', name, 'config'], form) as unknown
 
   return (
     <Card
@@ -52,9 +55,12 @@ function QuestionCard({
         <Form.Item label="Typ" name={[name, 'type']} style={{ minWidth: 220 }}>
           <Select
             options={typeOptions}
-            onChange={(next: QuestionType) =>
-              form.setFieldValue(['questions', name, 'options'], questionTypes[next].defaultOptions())
-            }
+            onChange={(next: QuestionType) => {
+              const nextDef = typeDef(next)
+              // switching types replaces both payloads so no stale options/config is saved
+              form.setFieldValue(['questions', name, 'options'], nextDef.defaultOptions())
+              form.setFieldValue(['questions', name, 'config'], nextDef.defaultConfig?.())
+            }}
           />
         </Form.Item>
         <Form.Item label="Punkty" name={[name, 'points']}>
@@ -68,24 +74,42 @@ function QuestionCard({
       >
         <Input.TextArea autoSize={{ minRows: 2 }} maxLength={2000} />
       </Form.Item>
-      <Form.Item
-        label={type === 'text' ? 'Akceptowane odpowiedzi (wielkość liter bez znaczenia)' : 'Odpowiedzi'}
-        name={[name, 'options']}
-        validateTrigger={['onChange']}
-        rules={[
-          {
-            validator: (_rule, options) => {
-              const error = questionTypes[type].validate({ type, options: options ?? [] })
-              if (error) return Promise.reject(new Error(error))
-              return options?.some((o: { text: string }) => !o.text.trim())
-                ? Promise.reject(new Error('Uzupełnij treść wszystkich opcji'))
-                : Promise.resolve()
+      {def.usesOptions ? (
+        <Form.Item
+          label={type === 'text' ? 'Akceptowane odpowiedzi (wielkość liter bez znaczenia)' : 'Odpowiedzi'}
+          name={[name, 'options']}
+          validateTrigger={['onChange']}
+          rules={[
+            {
+              validator: (_rule, options) => {
+                const error = questionTypes[type].validate({ type, options: options ?? [] })
+                if (error) return Promise.reject(new Error(error))
+                return options?.some((o: { text: string }) => !o.text.trim())
+                  ? Promise.reject(new Error('Uzupełnij treść wszystkich opcji'))
+                  : Promise.resolve()
+              },
             },
-          },
-        ]}
-      >
-        <OptionsEditor type={type} />
-      </Form.Item>
+          ]}
+        >
+          <OptionsEditor type={type} />
+        </Form.Item>
+      ) : (
+        <Form.Item
+          label="Odpowiedź"
+          name={[name, 'config']}
+          validateTrigger={['onChange']}
+          rules={[
+            {
+              validator: (_rule, value) => {
+                const error = def.validate({ type, options: [], config: value })
+                return error ? Promise.reject(new Error(error)) : Promise.resolve()
+              },
+            },
+          ]}
+        >
+          <ConfigEditor type={type} value={config} />
+        </Form.Item>
+      )}
       <Form.Item label="Wyjaśnienie (opcjonalne)" name={[name, 'explanation']} style={{ marginBottom: 0 }}>
         <Input.TextArea autoSize={{ minRows: 1 }} maxLength={2000} />
       </Form.Item>
