@@ -20,6 +20,8 @@ flowchart LR
 
 To **jednorazowa kopia w jedną stronę**, nie replikacja: zmiany w Neon nie wracają do Netlify.
 
+Deploy, zmienne środowiskowe i odbudowa całego środowiska od zera: [`docs/vercel.md`](vercel.md).
+
 ## Wymagania
 
 - `netlify` CLI zalogowany do projektu (źródło jest czytane przez `netlify database status` i jest **read-only**),
