@@ -1,6 +1,6 @@
 # Plan: nowe typy pytań i materiały wspólne
 
-Stan: `single`, `multiple`, `truefalse`, `text` - wszystkie opierają się na tabeli `options` (tekst + `isCorrect`). Ocena jest tylko po stronie serwera (`src/shared/quiz/engine.ts`, rejestr `questionTypes`). Ten dokument opisuje rozbudowę o kolejne typy; **nic z tego nie jest jeszcze zrobione**.
+Stan: `single`, `multiple`, `truefalse`, `text` - wszystkie opierają się na tabeli `options` (tekst + `isCorrect`) - oraz **`numeric`** (wynik liczbowy z tolerancją), który trzyma dane w `questions.config` (JSONB). Ocena jest tylko po stronie serwera (`src/shared/quiz/engine.ts`, rejestr `questionTypes`). Pozostałe typy z tabeli poniżej są nadal niezrealizowane.
 
 Plan wykonawczy (decyzje, kolejnosc commitow, kontrakty, kryteria akceptacji): [question-types-plan.md](question-types-plan.md).
 
@@ -8,7 +8,7 @@ Plan wykonawczy (decyzje, kolejnosc commitow, kontrakty, kryteria akceptacji): [
 
 | Typ | Zastosowanie | Ocena |
 | --- | ------------ | ----- |
-| `numeric` | matematyka, fizyka, chemia: wynik liczbowy | tolerancja (bezwzględna/względna), jednostka, przecinek jako separator, ułamki |
+| `numeric` ✅ | matematyka, fizyka, chemia: wynik liczbowy | tolerancja (bezwzględna/względna), jednostka, przecinek jako separator, ułamki |
 | `matching` | języki (słowo-tłumaczenie), historia (wydarzenie-data), biologia (narząd-funkcja) | pary; punkty za całość albo częściowe (do ustalenia) |
 | `ordering` | chronologia, etapy procesów, algorytmy | zgodność kolejności; całość albo częściowo |
 | `cloze` | gramatyka, odmiana czasowników, brakujące pojęcia | każda luka osobno, kilka akceptowanych odpowiedzi na lukę |
