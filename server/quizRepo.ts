@@ -1,4 +1,5 @@
 import { getDatabase } from '@netlify/database'
+import pg from 'pg'
 import type { z } from 'zod'
 import type { Answer, GradableQuizQuestion, QuizResult } from '../src/shared/quiz/engine'
 import type { quizInput } from '../src/shared/quiz/schema'
@@ -29,7 +30,24 @@ interface Pool extends Queryable {
   connect: () => Promise<PoolClient>
 }
 
-export const pool = () => getDatabase().pool as unknown as Pool
+let externalPool: pg.Pool | null = null
+
+/**
+ * Postgres pool. Outside Netlify (Vercel, a standalone Neon project, tests) the connection comes
+ * from DATABASE_URL; on Netlify the platform provisions it and `getDatabase()` is used instead.
+ * The pool is module-scoped so a warm serverless instance reuses its connections.
+ */
+export const pool = (): Pool => {
+  const connectionString = process.env.DATABASE_URL
+  if (!connectionString) return getDatabase().pool as unknown as Pool
+  externalPool ??= new pg.Pool({
+    connectionString,
+    max: Number(process.env.PGPOOL_MAX ?? 5),
+    // Neon and most managed providers terminate TLS with a certificate from a public CA.
+    ssl: process.env.PGSSLMODE === 'disable' ? undefined : { rejectUnauthorized: false },
+  })
+  return externalPool as unknown as Pool
+}
 
 interface QuizRow {
   id: string

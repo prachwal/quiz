@@ -1,5 +1,5 @@
-import { getDatabase } from '@netlify/database'
 import type { IrregularVerb, DifficultyCode, PopularityCode, PatternCode } from '../src/shared/quiz/types'
+import { pool } from './quizRepo'
 import { buildVerbQuiz, randomSample, type GenerateOptions } from './verbQuizBuilder'
 
 type VerbRow = {
@@ -45,7 +45,7 @@ const toVerb = (row: VerbRow): IrregularVerb => ({
 })
 
 const query = async (text: string, values: unknown[] = []) =>
-  (await getDatabase().pool.query(text, values)) as { rows: VerbRow[] }
+  (await pool().query(text, values)) as { rows: VerbRow[] }
 
 export interface VerbFilter {
   level?: string
