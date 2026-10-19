@@ -26,7 +26,8 @@ export const questionInput = z
     if (!def.usesOptions && question.options.length > 0) {
       ctx.addIssue({ code: 'custom', message: 'Ten typ pytania nie używa opcji', path: ['options'] })
     }
-    if (def.usesOptions && question.config !== undefined && question.config !== null) {
+    // a stray `config` on an option-based type would be stored and silently ignored, so reject it
+    if (def.usesOptions && question.config !== undefined) {
       ctx.addIssue({ code: 'custom', message: 'Ten typ pytania nie używa konfiguracji', path: ['config'] })
     }
     if (question.config !== undefined && question.config !== null) {

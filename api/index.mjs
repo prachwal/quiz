@@ -74715,7 +74715,7 @@ var questionInput = external_exports.object({
   if (!def.usesOptions && question.options.length > 0) {
     ctx.addIssue({ code: "custom", message: "Ten typ pytania nie u\u017Cywa opcji", path: ["options"] });
   }
-  if (def.usesOptions && question.config !== void 0 && question.config !== null) {
+  if (def.usesOptions && question.config !== void 0) {
     ctx.addIssue({ code: "custom", message: "Ten typ pytania nie u\u017Cywa konfiguracji", path: ["config"] });
   }
   if (question.config !== void 0 && question.config !== null) {
@@ -75409,6 +75409,7 @@ var quiz_schema_default = {
           then: {
             required: ["options"],
             properties: {
+              config: false,
               options: {
                 minItems: 2,
                 contains: { properties: { isCorrect: { const: true } }, required: ["isCorrect"] },
@@ -75423,6 +75424,7 @@ var quiz_schema_default = {
           then: {
             required: ["options"],
             properties: {
+              config: false,
               options: {
                 minItems: 2,
                 contains: { properties: { isCorrect: { const: true } }, required: ["isCorrect"] },
@@ -75436,6 +75438,7 @@ var quiz_schema_default = {
           then: {
             required: ["options"],
             properties: {
+              config: false,
               options: {
                 minItems: 2,
                 maxItems: 2,
@@ -75451,6 +75454,7 @@ var quiz_schema_default = {
           then: {
             required: ["options"],
             properties: {
+              config: false,
               options: {
                 minItems: 1,
                 items: { properties: { isCorrect: { const: true } } }

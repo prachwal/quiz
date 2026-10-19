@@ -68,6 +68,12 @@ const cases: [string, object, boolean][] = [
   ['numeric with a negative tolerance', quiz({ type: 'numeric', options: [], config: { answer: 1, tolerance: { kind: 'absolute', value: -1 } } }), false],
   ['numeric relative tolerance for zero', quiz({ type: 'numeric', options: [], config: { answer: 0, tolerance: { kind: 'relative', value: 0.1 } } }), false],
   ['single without options', quiz({ type: 'single', options: undefined }), false],
+  // a stray config on an option-based type would be stored and silently ignored
+  ['single with config', quiz({ type: 'single', options: [option('a', true), option('b', false)], config: { answer: 1 } }), false],
+  ['single with a null config', quiz({ type: 'single', options: [option('a', true), option('b', false)], config: null }), false],
+  ['multiple with config', quiz({ type: 'multiple', options: [option('a', true), option('b', false)], config: { gaps: [] } }), false],
+  ['truefalse with config', quiz({ type: 'truefalse', options: [option('Prawda', true), option('Fałsz', false)], config: { answer: 1 } }), false],
+  ['text with config', quiz({ type: 'text', options: [option('went', true)], config: { items: [] } }), false],
   ['ordering ok', quiz({ type: 'ordering', options: [], config: { items: [{ id: 'a', text: 'A' }, { id: 'b', text: 'B' }] } }), true],
   ['ordering without config', quiz({ type: 'ordering', options: [] }), false],
   ['ordering with one item', quiz({ type: 'ordering', options: [], config: { items: [{ id: 'a', text: 'A' }] } }), false],

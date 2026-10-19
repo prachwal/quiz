@@ -79,6 +79,7 @@
           "then": {
             "required": ["options"],
             "properties": {
+              "config": false,
               "options": {
                 "minItems": 2,
                 "contains": { "properties": { "isCorrect": { "const": true } }, "required": ["isCorrect"] },
@@ -93,6 +94,7 @@
           "then": {
             "required": ["options"],
             "properties": {
+              "config": false,
               "options": {
                 "minItems": 2,
                 "contains": { "properties": { "isCorrect": { "const": true } }, "required": ["isCorrect"] },
@@ -106,6 +108,7 @@
           "then": {
             "required": ["options"],
             "properties": {
+              "config": false,
               "options": {
                 "minItems": 2,
                 "maxItems": 2,
@@ -121,6 +124,7 @@
           "then": {
             "required": ["options"],
             "properties": {
+              "config": false,
               "options": {
                 "minItems": 1,
                 "items": { "properties": { "isCorrect": { "const": true } } }
