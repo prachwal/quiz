@@ -13,7 +13,7 @@ import { listMembers } from './classes'
 
 /** Results of one student: the teacher's view of a class member and the admin's view of any account. */
 
-interface AttemptRow {
+export interface AttemptRow {
   id: string
   quiz_id: string | null
   course_id: string | null
@@ -39,7 +39,7 @@ interface AttemptRow {
  * Per-question view of saved attempts: prompt, the student's answer as text and the correct answers.
  * Best effort - questions edited away since the attempt show without a prompt.
  */
-async function questionDetails(rows: AttemptRow[]): Promise<(a: AttemptRow) => StudentAttemptQuestion[]> {
+export async function questionDetails(rows: AttemptRow[]): Promise<(a: AttemptRow) => StudentAttemptQuestion[]> {
   const questionIds = [...new Set(rows.flatMap((a) => (a.results ?? []).map((r) => r.questionId)))]
   const prompts = new Map<string, string>()
   const optionTexts = new Map<string, string>()
