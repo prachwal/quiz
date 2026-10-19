@@ -4,7 +4,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 
-const url = process.argv[2] ?? 'https://fabulous-dieffenbachia.netlify.app/api/mcp'
+const url = process.argv[2] ?? 'https://quiz-vercel-rho.vercel.app/api/mcp'
 const token = process.env.PROD_API
 const client = new Client({ name: 'smoke', version: '1' })
 await client.connect(new StreamableHTTPClientTransport(new URL(url), { requestInit: { headers: { Authorization: `Bearer ${token}` } } }))

@@ -1,6 +1,6 @@
 // Full local test of the MCP server: every tool, permissions, validation and the audit trail.
-// Runs the real Express app in-process against the local Netlify database; use `npm run test:mcp`
-// (scripts/mcp-local-e2e.sh starts `netlify dev`, passes NETLIFY_DB_URL and removes the server afterwards).
+// Runs the real Express app in-process against DATABASE_URL; use `npm run test:mcp`
+// (scripts/mcp-local-e2e.sh starts scripts/dev-server.mjs and removes it afterwards).
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import { createServer } from 'node:http'
@@ -26,8 +26,8 @@ const PLAIN = `plain|${P}`
 const STUDENT = `discord|${P}-student`
 const STUDENT2 = `discord|${P}-student2`
 
-// MCP_E2E_URL=http://localhost:8888/api runs the same checks through a running `netlify dev` (the real function,
-// Lambda adapter and dev proxy) instead of the in-process app; both use the same local database.
+// MCP_E2E_URL=http://localhost:8888/api runs the same checks through a running `npm run dev:full`
+// (the real bundled function and proxy) instead of the in-process app; both use the same database.
 const external = process.env.MCP_E2E_URL?.replace(/\/$/, '')
 const app = external ? null : createServer(createApp()).listen(0)
 const base = external ?? `http://localhost:${(app!.address() as AddressInfo).port}`

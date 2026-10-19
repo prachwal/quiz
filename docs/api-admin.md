@@ -1,9 +1,19 @@
+---
+tags:
+  - docs
+  - backend
+  - admin
+  - api
+created: 2026-10-19
+updated: 2026-10-19
+---
+
 # API – zadania administracyjne
 
 Praktyczny przewodnik: jak z linii poleceń (curl / skrypty) zarządzać quizami, tokenami, uwagami i użytkownikami.
 Pełny opis architektury jest w `CLAUDE.md`; tu są tylko rzeczy potrzebne do pracy.
 
-- **Produkcja:** `https://fabulous-dieffenbachia.netlify.app/api` (lokalnie: `http://localhost:8888/api` z `npx netlify dev`)
+- **Produkcja:** `https://quiz-vercel-rho.vercel.app/api` (lokalnie: `http://localhost:8888/api` z `npm run dev:full`)
 - Całe API jest prywatne – poza `GET /api/health` każde żądanie wymaga nagłówka `Authorization: Bearer <credential>`.
 - Błędy: `{ "error": "..." }`, walidacja (400): `{ "error": "Validation failed", "issues": [{ "path", "message" }] }`.
   Każda odpowiedź ma nagłówek `X-Request-Id` (przydatny przy szukaniu w Sentry/logach).
@@ -29,7 +39,7 @@ Ważne ograniczenia:
 Token z zapisem zapisany lokalnie jako `PROD_API` (plik `.env` jest w `.gitignore`):
 
 ```bash
-export API=https://fabulous-dieffenbachia.netlify.app/api
+export API=https://quiz-vercel-rho.vercel.app/api
 export TOKEN=$(grep '^PROD_API=' .env | cut -d= -f2-)
 alias qz='curl -sS -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json"'
 
@@ -126,7 +136,7 @@ node --env-file=.env scripts/quiz-tool.mjs download <id|tytuł> [plik.json]   # 
 
 - Format pliku opisuje schemat JSON [data/quiz.schema.json](../data/quiz.schema.json) (JSON Schema 2020‑12, reguły dla każdego typu pytania); pliki quizów wskazują go przez `"$schema"`, więc edytor podpowiada i waliduje. `tests/quizSchema.test.ts` pilnuje, żeby schemat zgadzał się z walidacją serwera.
 - `upload` tworzy quiz albo – gdy istnieje quiz o tym samym tytule – zastępuje go (id pytań się zmieniają, ustawienia gry biorą się z pliku).
-- Token to `PROD_API` z `.env`; `API_URL=http://localhost:8888` kieruje skrypt na `netlify dev`.
+- Token to `PROD_API` z `.env`; `API_URL=http://localhost:8888` kieruje skrypt na lokalny serwer deweloperski.
 - Literówka „de-al/de-alt” z listy jest poprawiana na `deal/dealt`. Złe odpowiedzi w `build-choice` to: forma regularna („blowed”), zamienione formy i formy innych czasowników z listy. Plik quizu jest losowany raz przy budowaniu, więc po edycji można go poprawić ręcznie przed `upload`.
 
 ## 4. Quizy generowane i nauka (wszyscy zalogowani)
@@ -212,6 +222,6 @@ adm $API/admin/audit | jq '.[0:5]'
 | 403 na `/admin/*`, `/tokens` | token osobisty – potrzebny JWT admina (`/tokens`: JWT dowolnego użytkownika) |
 | 404 na zasobie, który istnieje | zły format id (wymagany UUID) lub cudza klasa |
 | 500 `Invalid response status code` | handler zwrócił 204/304 (nie powinno się zdarzyć – patrz konwencje w `CLAUDE.md`) |
-| lokalnie 404 zamiast 403 | quirk `netlify dev` – proxy ponawia 403 jako `/index.htm`; na produkcji jest prawdziwe 403 |
+| lokalnie 404 zamiast 403 | sprawdź, czy żądanie trafia na port 8888 (proxy), a nie bezpośrednio na Vite |
 
 Przy błędzie 5xx weź `requestId` z odpowiedzi / `X-Request-Id` i znajdź zdarzenie w Sentry (`docs/sentry.md`).

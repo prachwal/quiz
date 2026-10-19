@@ -19,5 +19,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["server", "netlify/functions", "api-src", "src/shared"]
+  "include": ["server", "api-src", "src/shared"]
 }

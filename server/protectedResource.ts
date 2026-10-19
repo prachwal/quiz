@@ -10,7 +10,7 @@ type Headers = Record<string, string | string[] | undefined>
 
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value)?.split(',')[0]?.trim()
 
-/** Public origin of the request (behind Netlify's proxy: X-Forwarded-*). */
+/** Public origin of the request (behind the Vercel proxy: X-Forwarded-*). */
 export function publicOrigin(headers: Headers): string | null {
   const host = first(headers['x-forwarded-host']) ?? first(headers.host)
   if (!host || !/^[a-z0-9.-]+(?::\d+)?$/i.test(host)) return null

@@ -1,3 +1,12 @@
+---
+tags:
+  - docs
+  - mcp
+  - deploy
+created: 2026-10-19
+updated: 2026-10-19
+---
+
 # Rejestracja serwera MCP u klientów AI (Claude, ChatGPT, OpenAI, Grok, Mistral)
 
 Serwer MCP quizu działa pod `POST /api/mcp` i obsługuje **dwie niezależne metody** dostępu.
@@ -29,7 +38,7 @@ założenia aplikacji Auth0. Token `qz_…` działa natychmiast i nadaje się do
 
 | Pole | Wartość |
 | --- | --- |
-| Adres serwera MCP (produkcja) | `https://fabulous-dieffenbachia.netlify.app/api/mcp` |
+| Adres serwera MCP (produkcja) | `https://quiz-vercel-rho.vercel.app/api/mcp` |
 | Adres serwera MCP (Vercel) | `https://quiz-vercel-rho.vercel.app/api/mcp` |
 | Metadane zasobu (RFC 9728) | `<adres MCP bez /api/mcp>/.well-known/oauth-protected-resource/api/mcp` |
 | Punkt końcowy autoryzacji | `https://dev-4xxb1z18b3z4hc6s.us.auth0.com/authorize` |
@@ -64,7 +73,7 @@ Zapis quizów wymaga roli **admin**, klasy i wyniki — roli **nauczyciel** (`te
 1. **Settings → Connectors → Add custom connector**.
 2. Wpisz:
    - Name: `Quiz`,
-   - Remote MCP server URL: `https://fabulous-dieffenbachia.netlify.app/api/mcp`,
+   - Remote MCP server URL: `https://quiz-vercel-rho.vercel.app/api/mcp`,
    - Client ID: `bH1zf4YpkRYRo4x9gQJdFo4CRrNEPvyq`,
    - Client Secret: **puste** (klient publiczny),
    - jeśli formularz pyta o adresy: Authorization URL i Token URL z tabeli powyżej.
@@ -78,7 +87,7 @@ Narzędzia zapisujące poproszą o zatwierdzenie — zezwól świadomie, każda 
 
 ```bash
 claude mcp add --transport http quiz \
-  https://fabulous-dieffenbachia.netlify.app/api/mcp \
+  https://quiz-vercel-rho.vercel.app/api/mcp \
   --header "Authorization: Bearer qz_…"
 claude mcp list
 ```
@@ -87,7 +96,7 @@ Zmienna zamiast literału (bezpieczniej w powłoce):
 
 ```bash
 export QUIZ_TOKEN=qz_…
-claude mcp add --transport http quiz https://fabulous-dieffenbachia.netlify.app/api/mcp \
+claude mcp add --transport http quiz https://quiz-vercel-rho.vercel.app/api/mcp \
   --header "Authorization: Bearer $QUIZ_TOKEN"
 ```
 
@@ -103,7 +112,7 @@ Claude Desktop nie obsługuje zdalnych serwerów HTTP, więc pośredniczy `mcp-r
       "args": [
         "-y",
         "mcp-remote",
-        "https://fabulous-dieffenbachia.netlify.app/api/mcp",
+        "https://quiz-vercel-rho.vercel.app/api/mcp",
         "--header",
         "Authorization:Bearer ${QUIZ_TOKEN}"
       ],
@@ -122,7 +131,7 @@ Plik: `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) 
 2. **Create** / **Add custom connector**.
 3. Wpisz:
    - Name: `Quiz`,
-   - MCP Server URL: `https://fabulous-dieffenbachia.netlify.app/api/mcp`,
+   - MCP Server URL: `https://quiz-vercel-rho.vercel.app/api/mcp`,
    - Authentication: **OAuth**,
    - Client ID: `sJXSXHmpybLDu3XKi1SsammcaD4FHuhs`,
    - Client Secret: **puste**.
@@ -144,7 +153,7 @@ curl https://api.openai.com/v1/responses \
     "tools": [{
       "type": "mcp",
       "server_label": "quiz",
-      "server_url": "https://fabulous-dieffenbachia.netlify.app/api/mcp",
+      "server_url": "https://quiz-vercel-rho.vercel.app/api/mcp",
       "headers": { "Authorization": "Bearer '"$QUIZ_TOKEN"'" },
       "require_approval": "always"
     }]
@@ -162,7 +171,7 @@ Grok ma dwa tryby; szczegółowy opis: [mcp-grok.md](mcp-grok.md).
 
 | Pole | Wartość |
 | --- | --- |
-| Adres serwera MCP | `https://fabulous-dieffenbachia.netlify.app/api/mcp` |
+| Adres serwera MCP | `https://quiz-vercel-rho.vercel.app/api/mcp` |
 | Identyfikator klienta | `uqhQ3SV4BdKL1cUvyZC735N4ZdaGw6el` |
 | Klucz tajny klienta | **puste** |
 | Punkt końcowy autoryzacji | `https://dev-4xxb1z18b3z4hc6s.us.auth0.com/authorize` |
@@ -175,7 +184,7 @@ Grok ma dwa tryby; szczegółowy opis: [mcp-grok.md](mcp-grok.md).
 ## 7. Mistral (Le Chat)
 
 1. **Connectors → Add connector → Custom MCP**.
-2. Server URL: `https://fabulous-dieffenbachia.netlify.app/api/mcp`,
+2. Server URL: `https://quiz-vercel-rho.vercel.app/api/mcp`,
    Client ID: `KXAj39YXvdtlFGS7pIyVePWq2HWykGp4`, sekret pusty.
 3. Zaloguj się i włącz konektor w rozmowie.
 
@@ -189,7 +198,7 @@ VS Code: `.vscode/mcp.json`, inne klienty: własna ścieżka):
   "mcpServers": {
     "quiz": {
       "type": "http",
-      "url": "https://fabulous-dieffenbachia.netlify.app/api/mcp",
+      "url": "https://quiz-vercel-rho.vercel.app/api/mcp",
       "headers": { "Authorization": "Bearer qz_…" }
     }
   }
@@ -233,7 +242,7 @@ serwera, ale i tak potrzebują **własnej aplikacji Auth0** z ich adresem zwrotn
 5. **Sprawdź discovery:**
 
    ```bash
-   curl -s https://fabulous-dieffenbachia.netlify.app/.well-known/oauth-protected-resource/api/mcp | jq
+   curl -s https://quiz-vercel-rho.vercel.app/.well-known/oauth-protected-resource/api/mcp | jq
    ```
 
 W tenancie są już ustawione (nie zmieniaj): `default_audience` = `https://api.quiz.local`
@@ -265,13 +274,13 @@ oraz `allow_offline_access` w API.
 
 ```bash
 # lista narzędzi
-curl -s -X POST https://fabulous-dieffenbachia.netlify.app/api/mcp \
+curl -s -X POST https://quiz-vercel-rho.vercel.app/api/mcp \
   -H "Authorization: Bearer $QUIZ_TOKEN" -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | jq '.result.tools[].name'
 
 # metadane OAuth
-curl -s https://fabulous-dieffenbachia.netlify.app/.well-known/oauth-protected-resource/api/mcp | jq
+curl -s https://quiz-vercel-rho.vercel.app/.well-known/oauth-protected-resource/api/mcp | jq
 
-# lokalnie, bez Auth0 (tylko netlify dev)
+# lokalnie, bez Auth0 (tylko npm run dev:full)
 npm run test:mcp
 ```

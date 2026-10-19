@@ -1,10 +1,10 @@
 /**
- * Local-only login bypass for `npm run dev` / `netlify dev`: set `VITE_DEV_AUTH_TOKEN` (the same value as the
+ * Local-only login bypass for `npm run dev:full`: set `VITE_DEV_AUTH_TOKEN` (the same value as the
  * server's `DEV_AUTH_TOKEN`, min. 16 characters) and the app skips Auth0, acting as `VITE_DEV_AUTH_USER_ID`
  * (default `dev|local`) with `VITE_DEV_AUTH_ROLES` (default `admin,teacher`).
  *
  * Gated on `import.meta.env.DEV`, so production builds drop it (and the token value) entirely, and the API
- * ignores the token outside `netlify dev` anyway (see server/devAuth.ts).
+ * ignores the token outside the local dev server anyway (see server/devAuth.ts).
  */
 const token = import.meta.env.DEV ? (import.meta.env.VITE_DEV_AUTH_TOKEN as string | undefined) : undefined
 

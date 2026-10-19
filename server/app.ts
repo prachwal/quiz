@@ -19,8 +19,8 @@ import { initSentry, reportServerError } from './sentry'
  * The HTTP app. Route handlers live in `server/routes/` (mounted below in this order); shared request
  * helpers and `HttpError` are in `server/http.ts`.
  *
- * Note: handlers answer `{ ok: true }` instead of `204 No Content` - the Netlify function response
- * adapter rejects status codes that must not carry a body (204/304) when the body is an empty string.
+ * Note: handlers answer `{ ok: true }` instead of `204 No Content` - a status that must not carry a
+ * body is fragile through serverless adapters and proxies.
  */
 export function createApp() {
   initSentry()
@@ -28,13 +28,13 @@ export function createApp() {
   app.disable('x-powered-by')
   // correlate logs, Sentry events, the error screen and feedback reports
   app.use((req, res, next) => {
-    const requestId = String(req.headers['x-nf-request-id'] ?? randomUUID())
+    const requestId = String(req.headers['x-request-id'] ?? req.headers['x-vercel-id'] ?? randomUUID())
     res.locals.requestId = requestId
     res.set('X-Request-Id', requestId)
     next()
   })
-  // Responses are private and per user: no ETag / conditional GET (a 304 breaks the Netlify
-  // function response adapter) and nothing should be cached by browsers or proxies.
+  // Responses are private and per user: no ETag / conditional GET (a 304 would confuse clients) and
+  // nothing should be cached by browsers or proxies.
   app.set('etag', false)
   app.use((_req, res, next) => {
     res.set('Cache-Control', 'no-store')
@@ -42,9 +42,9 @@ export function createApp() {
   })
   app.use(express.json({ limit: '1mb' }))
 
-  // Netlify rewrites /api/* to the function, so strip either prefix before routing.
+  // `vercel.json` rewrites /api/* to the function, so strip the prefix before routing.
   app.use(((req, _res, next) => {
-    req.url = req.url.replace(/^\/(?:\.netlify\/functions\/api|api)(?=\/|\?|$)/, '') || '/'
+    req.url = req.url.replace(/^\/api(?=\/|\?|$)/, '') || '/'
     next()
   }) satisfies RequestHandler)
 

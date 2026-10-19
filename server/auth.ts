@@ -30,8 +30,8 @@ const jwtAuth: RequestHandler | null =
 if (process.env.DEV_AUTH_TOKEN) {
   console.warn(
     devAuthEnabled(process.env)
-      ? '[auth] DEV_AUTH_TOKEN bypass is ACTIVE (netlify dev only)'
-      : '[auth] DEV_AUTH_TOKEN is set but ignored: the bypass only works under `netlify dev`',
+      ? '[auth] DEV_AUTH_TOKEN bypass is ACTIVE (local dev server only)'
+      : '[auth] DEV_AUTH_TOKEN is set but ignored: the bypass only works under `npm run dev:full`',
   )
 }
 
@@ -46,7 +46,7 @@ export const authenticate: RequestHandler = async (req, res, next) => {
   const credential = bearerOf(req)
   if (!credential) return next()
 
-  // local development only (netlify dev + DEV_AUTH_TOKEN), see server/devAuth.ts
+  // local development only (scripts/dev-server.mjs + DEV_AUTH_TOKEN), see server/devAuth.ts
   const local = devIdentity(process.env, credential)
   if (local) {
     identities.set(req, { userId: local.userId, permissions: local.permissions, via: 'jwt', name: local.name, email: local.email })

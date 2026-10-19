@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://fabulous-dieffenbachia.netlify.app/schemas/quiz.schema.json",
+  "$id": "https://quiz-vercel-rho.vercel.app/schemas/quiz.schema.json",
   "title": "Quiz",
   "description": "Plik quizu dla `scripts/quiz-tool.mjs upload/download` i ciała POST/PUT /api/quizzes. Źródłem prawdy jest walidacja w src/shared/quiz/schema.ts i engine.ts; zgodność pilnuje tests/quizSchema.test.ts.",
   "type": "object",

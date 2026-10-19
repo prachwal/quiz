@@ -11,10 +11,10 @@
 // Quiz files follow data/quiz.schema.json (JSON Schema 2020-12).
 //
 // Env: PROD_API = personal API token with write access (admin), API_URL (default: the production site,
-// e.g. http://localhost:8888 for `netlify dev`). Add --dry-run to `upload` to only validate the file.
+// e.g. http://localhost:8888 for `npm run dev:full`). Add --dry-run to `upload` to only validate the file.
 import { readFile, writeFile } from 'node:fs/promises'
 
-const BASE = (process.env.API_URL ?? 'https://fabulous-dieffenbachia.netlify.app').replace(/\/$/, '') + '/api'
+const BASE = (process.env.API_URL ?? 'https://quiz-vercel-rho.vercel.app').replace(/\/$/, '') + '/api'
 const args = process.argv.slice(2).filter((a) => !a.startsWith('--'))
 const dryRun = process.argv.includes('--dry-run')
 const [command, ...rest] = args

@@ -1,12 +1,20 @@
+---
+tags:
+  - docs
+  - observability
+created: 2026-10-19
+updated: 2026-10-19
+---
+
 # Sentry – śledzenie błędów
 
 Stan na 2026-10-18. Integracja jest **włączona**: projekty istnieją w organizacji `prachwal` (region EU,
-`de.sentry.io`), a DSN są ustawione w Netlify (wszystkie konteksty) i lokalnym `.env`.
+`de.sentry.io`), a DSN są ustawione w projekcie Vercel (Production, Preview, Development) i lokalnym `.env.local`.
 
 | Projekt    | Platforma    | Zmienna           | Gdzie działa |
 | ---------- | ------------ | ----------------- | ------------ |
 | `quiz-web` | React        | `VITE_SENTRY_DSN` | przeglądarka (wbudowana w paczkę przy buildzie) |
-| `quiz-api` | Node/Express | `SENTRY_DSN`      | funkcja `api` na Netlify |
+| `quiz-api` | Node/Express | `SENTRY_DSN`      | funkcja `api` na Vercel |
 
 Narzędzia: wtyczka Sentry dla Claude Code (`sentry@anthropic-plugin-directory`, logowanie MCP) oraz `sentry-cli`
 z tokenem organizacyjnym o jedynym uprawnieniu `org:ci` (releasy i source mapy; nie tworzy projektów).
@@ -25,15 +33,15 @@ z tokenem organizacyjnym o jedynym uprawnieniu `org:ci` (releasy i source mapy; 
    | `SENTRY_DSN`      | funkcja `api` (Express)            | DSN projektu Node (lub ten sam)            |
 
    ```bash
-   netlify env:set VITE_SENTRY_DSN "https://…@….ingest.sentry.io/…" --force
-   netlify env:set SENTRY_DSN "https://…@….ingest.sentry.io/…" --force
+   vercel env add VITE_SENTRY_DSN production
+   vercel env add SENTRY_DSN production
    ```
 
    Lokalnie dopisz je także do `.env` (plik jest w `.gitignore`).
-5. Wdróż ponownie (`git push` na `main` uruchamia build na Netlify). Zmienne `VITE_*` są wbudowywane
+5. Wdróż ponownie (`vercel --prod`; zmiana zmiennych środowiskowych wymaga nowego builda). Zmienne `VITE_*` są wbudowywane
    w czasie builda, więc sama zmiana zmiennej bez nowego wdrożenia nic nie da.
 
-Zmienne `SENTRY_DSN` i `VITE_SENTRY_DSN` są dodane do `SECRETS_SCAN_OMIT_KEYS` na Netlify, więc skaner
+Zmienne `SENTRY_DSN` i `VITE_SENTRY_DSN` trzymamy jako sekrety w projekcie Vercel, więc skaner sekretów
 sekretów nie zablokuje builda (DSN znajdzie się w paczce JS).
 
 ## Co jest zintegrowane
@@ -51,7 +59,7 @@ sekretów nie zablokuje builda (DSN znajdzie się w paczce JS).
 Dodatkowo: `beforeSend` obcina adresy URL do ścieżki (bez parametrów), a znane szumy przeglądarki
 (`ResizeObserver…`) są ignorowane.
 
-Wersja aplikacji (`__APP_VERSION__`) pochodzi z `COMMIT_REF` ustawianego przez Netlify przy buildzie
+Wersja aplikacji (`__APP_VERSION__`) pochodzi z `VERCEL_GIT_COMMIT_SHA` ustawianego przez Vercel przy buildzie
 (`vite.config.ts`), lokalnie jest to `dev`.
 
 ### Serwer (`@sentry/node`)
@@ -69,7 +77,7 @@ Odpowiedź przy błędzie 500 zawiera `requestId` i `eventId`, które trafiają 
 
 - **Source mapy.** Stosy z produkcji są zminifikowane. Aby je odczytywać, dodaj wtyczkę Sentry do Vite
   (`@sentry/vite-plugin`) i token `SENTRY_AUTH_TOKEN` (sekret! istniejący token `org:ci` wystarczy) wraz z
-  `SENTRY_ORG=prachwal` i `SENTRY_PROJECT=quiz-web` w Netlify. Nie jest to zrobione.
+  `SENTRY_ORG=prachwal` i `SENTRY_PROJECT=quiz-web` w projekcie Vercel. Nie jest to zrobione.
 - **Monitoring wydajności / tracing** (`tracesSampleRate: 0`) i **Session Replay**.
 - **Alerty** (e-mail, Slack). Skonfiguruj reguły w Sentry: Alerts → Create Alert.
 - **Osobne środowiska.** Środowisko to `production` (build) lub `development`; podglądy wdrożeń (deploy
@@ -83,7 +91,7 @@ Odpowiedź przy błędzie 500 zawiera `requestId` i `eventId`, które trafiają 
 2. Zgłoś uwagę z menu użytkownika („Zgłoś uwagę”) – w Sentry pojawi się wpis User Feedback, a w panelu
    admina (Ustawienia → Uwagi) zgłoszenie z polem `sentry`.
 3. Błąd serwera: wywołaj endpoint, który kończy się wyjątkiem (np. po chwilowej niedostępności bazy) –
-   sprawdź zdarzenie z tagiem `request_id`. Logi funkcji: panel Netlify → Logs → Functions.
+   sprawdź zdarzenie z tagiem `request_id`. Logi funkcji: panel Vercel → Deployment → Logs.
 
 ## Prywatność
 
@@ -97,6 +105,6 @@ Odpowiedź przy błędzie 500 zawiera `requestId` i `eventId`, które trafiają 
 | Objaw | Przyczyna / rozwiązanie |
 | ----- | ----------------------- |
 | Brak zdarzeń z przeglądarki | `VITE_SENTRY_DSN` nie było ustawione **w czasie builda** – wdróż ponownie. Sprawdź kartę Network (żądania do `*.ingest.sentry.io`) i blokery reklam (potrafią blokować Sentry). |
-| Brak zdarzeń z serwera | `SENTRY_DSN` nie jest ustawione w Netlify albo funkcja nie została wdrożona od czasu zmiany zmiennej. |
+| Brak zdarzeń z serwera | `SENTRY_DSN` nie jest ustawione w Vercel albo funkcja nie została wdrożona od czasu zmiany zmiennej. |
 | Build odrzucony przez skaner sekretów | Upewnij się, że `SENTRY_DSN,VITE_SENTRY_DSN` są w `SECRETS_SCAN_OMIT_KEYS` (są). |
 | Stosy nieczytelne | Brak source map – patrz „Czego NIE ma”. |

@@ -15,16 +15,13 @@
     "test:ui:coverage": "vitest run --coverage",
     "test:integration": "esbuild tests/integration/*.test.ts --bundle --platform=node --format=esm --outdir=.test-build --out-extension:.js=.mjs --log-level=warning && node --test .test-build/integration*.mjs",
     "db:migrate": "node scripts/migrate.mjs",
-    "db:sync": "node scripts/sync-db.mjs",
-    "build:api": "esbuild api-src/index.ts --bundle --platform=node --format=esm --target=node22 --outfile=api/index.mjs --external:pg-native --external:@netlify/database --external:@sentry/node --banner:js='import { createRequire as __cr } from \"node:module\"; const require = __cr(import.meta.url);'"
+    "build:api": "esbuild api-src/index.ts --bundle --platform=node --format=esm --target=node22 --outfile=api/index.mjs --external:pg-native --external:@sentry/node --banner:js='import { createRequire as __cr } from \"node:module\"; const require = __cr(import.meta.url);'",
+    "dev:full": "npm run build:api && node scripts/dev-server.mjs"
   },
   "dependencies": {
     "@ant-design/icons": "^6.3.4",
     "@auth0/auth0-react": "^2.28.2",
     "@modelcontextprotocol/sdk": "^1.32.1",
-    "@netlify/aws-lambda-compat": "^2.0.2",
-    "@netlify/database": "^2.0.1",
-    "@netlify/functions": "^6.0.2",
     "@reduxjs/toolkit": "^2.13.0",
     "@sentry/node": "^11.8.0",
     "@sentry/react": "^11.8.0",
@@ -36,7 +33,6 @@
     "react-dom": "^19.3.1",
     "react-redux": "^9.3.0",
     "react-router-dom": "^7.18.4",
-    "serverless-http": "^4.0.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {

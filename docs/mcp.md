@@ -1,12 +1,21 @@
+---
+tags:
+  - docs
+  - mcp
+  - backend
+created: 2026-10-19
+updated: 2026-10-19
+---
+
 # Serwer MCP – quizy w asystentach AI
 
 Aplikacja udostępnia serwer [Model Context Protocol](https://modelcontextprotocol.io) pod adresem
 
 ```
-https://fabulous-dieffenbachia.netlify.app/api/mcp
+https://quiz-vercel-rho.vercel.app/api/mcp
 ```
 
-(lokalnie: `http://localhost:8888/api/mcp` z `npx netlify dev`). To zdalny serwer HTTP (Streamable HTTP, bez sesji, odpowiedzi JSON), więc może z niego korzystać dowolny klient MCP: Claude, OpenAI, Grok, edytory itd.
+(lokalnie: `http://localhost:8888/api/mcp` z `npm run dev:full`). To zdalny serwer HTTP (Streamable HTTP, bez sesji, odpowiedzi JSON), więc może z niego korzystać dowolny klient MCP: Claude, OpenAI, Grok, edytory itd.
 
 ## Uwierzytelnianie i uprawnienia
 
@@ -87,7 +96,7 @@ Dodanie ucznia po id nie wymaga jego zgody – uczeń widzi klasę w „Zadania�
 **Claude Code**
 
 ```bash
-claude mcp add --transport http quiz https://fabulous-dieffenbachia.netlify.app/api/mcp \
+claude mcp add --transport http quiz https://quiz-vercel-rho.vercel.app/api/mcp \
   --header "Authorization: Bearer qz_…"
 ```
 
@@ -96,7 +105,7 @@ claude mcp add --transport http quiz https://fabulous-dieffenbachia.netlify.app/
 ```json
 { "mcpServers": { "quiz": {
   "command": "npx",
-  "args": ["-y", "mcp-remote", "https://fabulous-dieffenbachia.netlify.app/api/mcp",
+  "args": ["-y", "mcp-remote", "https://quiz-vercel-rho.vercel.app/api/mcp",
            "--header", "Authorization:Bearer ${QUIZ_TOKEN}"],
   "env": { "QUIZ_TOKEN": "qz_…" }
 } } }
@@ -106,7 +115,7 @@ claude mcp add --transport http quiz https://fabulous-dieffenbachia.netlify.app/
 
 ```json
 { "type": "mcp", "server_label": "quiz",
-  "server_url": "https://fabulous-dieffenbachia.netlify.app/api/mcp",
+  "server_url": "https://quiz-vercel-rho.vercel.app/api/mcp",
   "headers": { "Authorization": "Bearer qz_…" },
   "require_approval": "always" }
 ```
@@ -117,18 +126,18 @@ claude mcp add --transport http quiz https://fabulous-dieffenbachia.netlify.app/
 
 Krok po kroku dla wszystkich klientów (Claude, Claude Code, Claude Desktop, ChatGPT, OpenAI Responses API, Grok, Mistral, Cursor/VS Code) wraz z gotowymi danymi do formularzy, dodawaniem nowego klienta, odbieraniem dostępu i rozwiązywaniem problemów: **[mcp-clients.md](mcp-clients.md)**.
 
-## Lokalny dostęp bez Auth0 (tylko `netlify dev`)
+## Lokalny dostęp bez Auth0 (tylko `npm run dev:full`)
 
-Do pracy lokalnej (curl, klienty MCP, skrypty) nie potrzebujesz tokenu `qz_…` ani logowania. W `.env` ustaw losowe `DEV_AUTH_TOKEN` (min. 16 znaków) i opcjonalnie `DEV_AUTH_ROLES` (`admin,teacher,student`, domyślnie `admin,teacher`) oraz `DEV_AUTH_USER_ID` (domyślnie `dev|local`), zrestartuj `netlify dev` i używaj go jak tokenu:
+Do pracy lokalnej (curl, klienty MCP, skrypty) nie potrzebujesz tokenu `qz_…` ani logowania. W `.env.local` ustaw losowe `DEV_AUTH_TOKEN` (min. 16 znaków) i opcjonalnie `DEV_AUTH_ROLES` (`admin,teacher,student`, domyślnie `admin,teacher`) oraz `DEV_AUTH_USER_ID` (domyślnie `dev|local`), uruchom `npm run dev:full` i używaj go jak tokenu:
 
 ```bash
 curl -H "Authorization: Bearer $DEV_AUTH_TOKEN" localhost:8888/api/classes?scope=all
 claude mcp add --transport http quiz-local http://localhost:8888/api/mcp --header "Authorization: Bearer $DEV_AUTH_TOKEN"
 ```
 
-Zapytanie działa wtedy jako `dev|local` z uprawnieniami wybranych ról (admin: zapis quizów i podgląd wszystkich klas; teacher: własne klasy – to konto jest właścicielem klas tworzonych w tym trybie). **Nie działa nigdzie poza `netlify dev`**: wymaga `NETLIFY_DEV=true`, braku `NODE_ENV=production` i kontekstu innego niż `dev` (testy w `tests/devAuth.test.ts`); poza lokalnym serwerem zmienna jest ignorowana, a w logu pojawia się ostrzeżenie.
+Zapytanie działa wtedy jako `dev|local` z uprawnieniami wybranych ról (admin: zapis quizów i podgląd wszystkich klas; teacher: własne klasy – to konto jest właścicielem klas tworzonych w tym trybie). **Nie działa nigdzie poza lokalnym serwerem**: wymaga `LOCAL_DEV=true` (ustawia je tylko `scripts/dev-server.mjs`), braku `NODE_ENV=production` i braku znaczników runtime Vercela (`VERCEL=1`, `VERCEL_ENV`) – testy w `tests/devAuth.test.ts`; poza lokalnym serwerem zmienna jest ignorowana, a w logu pojawia się ostrzeżenie. Wdrożenie na Vercel nigdy nie ustawia `LOCAL_DEV`, więc bypass nie może się włączyć.
 
-Ten sam mechanizm w przeglądarce: `VITE_DEV_AUTH_TOKEN` (ta sama wartość) pomija logowanie Auth0 w `npm run dev`/`netlify dev`, pokazuje pomarańczowy pasek „Tryb deweloperski” i działa jako `VITE_DEV_AUTH_USER_ID` z rolami `VITE_DEV_AUTH_ROLES`. Wartości `VITE_*` są wycinane z buildów produkcyjnych (sprawdzone: token nie trafia do bundla). Domyślnie jest wyłączone, bo zmienia konto, na którym pracujesz lokalnie.
+Ten sam mechanizm w przeglądarce: `VITE_DEV_AUTH_TOKEN` (ta sama wartość) pomija logowanie Auth0 w `npm run dev:full`, pokazuje pomarańczowy pasek „Tryb deweloperski” i działa jako `VITE_DEV_AUTH_USER_ID` z rolami `VITE_DEV_AUTH_ROLES`. Wartości `VITE_*` są wycinane z buildów produkcyjnych (sprawdzone: token nie trafia do bundla). Domyślnie jest wyłączone, bo zmienia konto, na którym pracujesz lokalnie.
 
 ## Pełny test lokalny
 
@@ -136,9 +145,9 @@ Ten sam mechanizm w przeglądarce: `VITE_DEV_AUTH_TOKEN` (ta sama wartość) pom
 npm run test:mcp
 ```
 
-`MCP_E2E_VIA_DEV=1 npm run test:mcp` powtarza te same sprawdzenia przez prawdziwą funkcję za `netlify dev` (adapter Lambda i proxy), a nie tylko na aplikacji w procesie.
+`MCP_E2E_VIA_DEV=1 npm run test:mcp` powtarza te same sprawdzenia przez zbundlowaną funkcję za proxy `npm run dev:full`, a nie tylko na aplikacji w procesie.
 
-Skrypt uruchamia `netlify dev` (lokalna baza), a gdy port 8888 jest już zajęty, używa działającego serwera i niczego nie zatrzymuje. Oficjalnym klientem MCP wywołuje **wszystkie 25 narzędzi** na prawdziwej aplikacji i bazie: poprawne scenariusze, walidację, odmowy dla innego nauczyciela, admina (tylko podgląd), tokenu bez uprawnień i bez potwierdzenia oraz wpisy w audycie. Dane testowe mają prefiks `mcp-e2e` i są usuwane przed i po teście; kod wyjścia ≠ 0 przy błędzie. Test produkcji (tylko quizy, tymczasowy quiz): `node --env-file=.env scripts/mcp-smoke.mjs`.
+Skrypt uruchamia `scripts/dev-server.mjs`, a gdy port 8888 jest już zajęty, używa działającego serwera i niczego nie zatrzymuje. Oficjalnym klientem MCP wywołuje **wszystkie 25 narzędzi** na prawdziwej aplikacji i bazie: poprawne scenariusze, walidację, odmowy dla innego nauczyciela, admina (tylko podgląd), tokenu bez uprawnień i bez potwierdzenia oraz wpisy w audycie. Dane testowe mają prefiks `mcp-e2e` i są usuwane przed i po teście; kod wyjścia ≠ 0 przy błędzie. Test produkcji (tylko quizy, tymczasowy quiz): `node scripts/mcp-smoke.mjs`.
 
 ## Szybki test z linii poleceń
 
@@ -153,7 +162,7 @@ curl -s -X POST $API/mcp -H "Authorization: Bearer $TOKEN" -H "Content-Type: app
 
 Konektory w aplikacjach AI (claude.ai, ChatGPT, Le Chat, Grok…) logują użytkownika przez Auth0, a nie tokenem `qz_…`. Auth0 w tym tenancie **nie ma dynamicznej rejestracji klientów** (brak `registration_endpoint`), więc dla każdego klienta tworzymy osobną aplikację z jego adresem zwrotnym i podajemy jej Client ID w formularzu konektora.
 
-Jak klient znajduje Auth0: odpowiedź 401 z `/api/mcp` ma w `WWW-Authenticate` parametr `resource_metadata`, który wskazuje `/.well-known/oauth-protected-resource/api/mcp` (RFC 9728, `server/protectedResource.ts`). Metadane zawierają adres tenanta Auth0 jako serwer autoryzacji. Funkcja `netlify/functions/api.mts` obsługuje te ścieżki `/.well-known/…` obok `/api/*`.
+Jak klient znajduje Auth0: odpowiedź 401 z `/api/mcp` ma w `WWW-Authenticate` parametr `resource_metadata`, który wskazuje `/.well-known/oauth-protected-resource/api/mcp` (RFC 9728, `server/protectedResource.ts`). Metadane zawierają adres tenanta Auth0 jako serwer autoryzacji. Funkcja `api-src/index.ts` obsługuje te ścieżki `/.well-known/…` obok `/api/*`.
 
 Istniejące aplikacje:
 
@@ -178,7 +187,7 @@ Istniejące aplikacje:
 
    Z odpowiedzi zapisz `client_id`. `token_endpoint_auth_method` ma być `none`.
 3. **Wpisz w konektorze klienta:**
-   - adres serwera: `https://fabulous-dieffenbachia.netlify.app/api/mcp`,
+   - adres serwera: `https://quiz-vercel-rho.vercel.app/api/mcp`,
    - Client ID z kroku 2, **sekret pusty**,
    - jeśli formularz pyta o adresy (zamiast je wykrywać): Authorization URL `https://dev-4xxb1z18b3z4hc6s.us.auth0.com/authorize`, Token URL `https://dev-4xxb1z18b3z4hc6s.us.auth0.com/oauth/token`, scope `openid profile email offline_access`.
 4. **Dopisz klienta do tabeli powyżej.**
@@ -191,7 +200,7 @@ Co jest już ustawione w tenancie i nie wymaga zmian dla kolejnych klientów: `d
 | ----- | ----------------------- |
 | „Callback URL mismatch” | w logu zobacz `client_name` – najczęściej w konektorze jest Client ID innej aplikacji (np. Grok). Usuń konektor i dodaj go od nowa z właściwym ID. Jeśli ID jest dobre, dopisz adres z logu do `--callbacks` (`auth0 apps update <client_id> --callbacks "…"`, podaj wszystkie adresy) |
 | konektor dodany, ale lista narzędzi pusta, „auth: unavailable” | token bez `audience` (sprawdź `default_audience`) albo użytkownik bez dostępu do narzędzi (uprawnienia zależą od roli) |
-| klient nie znajduje logowania i pyta o `/authorize` lub `/register` na naszej domenie | sprawdź `curl https://fabulous-dieffenbachia.netlify.app/.well-known/oauth-protected-resource/api/mcp` – ma zwrócić JSON, nie stronę aplikacji |
+| klient nie znajduje logowania i pyta o `/authorize` lub `/register` na naszej domenie | sprawdź `curl https://quiz-vercel-rho.vercel.app/.well-known/oauth-protected-resource/api/mcp` – ma zwrócić JSON, nie stronę aplikacji |
 | błąd CORS / origin | dopisz domenę klienta do `--origins` i `--web-origins` aplikacji |
 | odebranie dostępu klientowi | usuń jego aplikację: `auth0 apps delete <client_id>` oraz konektor po stronie klienta |
 

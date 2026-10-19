@@ -1,3 +1,13 @@
+---
+tags:
+  - docs
+  - quiz
+  - frontend
+  - backend
+created: 2026-10-19
+updated: 2026-10-19
+---
+
 # Plan: nowe typy pytań i materiały wspólne
 
 Stan: `single`, `multiple`, `truefalse`, `text` - wszystkie opierają się na tabeli `options` (tekst + `isCorrect`) - oraz **`numeric`** (wynik liczbowy z tolerancją), **`ordering`** (elementy do ułożenia), **`matching`** (pary) i **`cloze`** (luki w treści), które trzymają dane w `questions.config` (JSONB). Ocena jest tylko po stronie serwera (`src/shared/quiz/engine.ts`, rejestr `questionTypes`). Pozostałe typy z tabeli poniżej są nadal niezrealizowane.
@@ -78,5 +88,5 @@ Fundament plus cztery pierwsze typy: ok. tygodnia. Największe ryzyko to zgodno�
 
 - ~~punktacja częściowa dla `matching`, `ordering`, `cloze` (całość czy proporcjonalnie)?~~ → `ordering` 0/1 za całą sekwencję, `matching` i `cloze` proporcjonalnie.
 - ~~czy `numeric` ma akceptować jednostki i które notacje (`1e3`, ułamki zwykłe)?~~ → przecinek/kropka, ułamki i `1e3` tak; jednostki i `%` nie (jednostka w treści pytania).
-- skąd brać obrazy/nagrania (upload do Netlify Blobs, adres zewnętrzny)?
+- skąd brać obrazy/nagrania (obiektowy storage, adres zewnętrzny)?
 - czy `open` ma w ogóle trafić do aplikacji (zmiana zasady „ocena tylko automatyczna")?

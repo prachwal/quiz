@@ -1,18 +1,27 @@
+---
+tags:
+  - docs
+  - deploy
+  - runbook
+created: 2026-10-19
+updated: 2026-10-19
+---
+
 # Deploy na Vercel (Neon)
 
-Drugi hosting obok Netlify: frontend z `dist/` + Express w jednej funkcji, baza Postgres w Neon.
-Netlify pozostaje źródłem prawdy dla danych (z niego robi się kopię), a Vercel jest środowiskiem
-testowym — dlatego można je bez żalu odtworzyć od zera.
+Jedyne środowisko produkcyjne: frontend z `dist/` + Express w jednej funkcji, baza Postgres w Neon.
+Projekt jest nieprodukcyjny pod względem danych, więc zamiast łatać dryf schematu można odtworzyć
+całość od zera (patrz runbook niżej).
 
 ## Co jest w repo
 
 | Plik | Rola |
 | --- | --- |
 | `vercel.json` | build `npm run build && npm run build:api`, output `dist`, `rewrites`, limit 30 s dla funkcji |
-| `api-src/index.ts` | punkt wejścia funkcji: `serverless-http` + `server/app.ts` |
+| `api-src/index.ts` | punkt wejścia funkcji: `server/app.ts` obsługiwany jako handler Node |
 | `api/index.mjs` | **skompilowany i zacommitowany** bundle (`npm run build:api`) |
-| `scripts/migrate.mjs` | aplikuje `netlify/database/migrations/*.sql` na dowolny `DATABASE_URL` |
-| `scripts/sync-db.mjs` | kopiuje dane z Netlify DB do Neon (`docs/db-sync.md`) |
+| `scripts/migrate.mjs` | aplikuje `db/migrations/*.sql` na dany `DATABASE_URL` |
+| `scripts/dev-server.mjs` | lokalny odpowiednik: API + proxy do Vite na `:8888` (`npm run dev:full`) |
 
 Dlaczego bundle jest w repo: Vercel nie rozwija catch-all `[...path]`, nie wykrywa `.cjs` i uruchamia
 funkcję dopiero po buildzie — plik `api/index.mjs` musi więc istnieć przed deployem.
@@ -60,17 +69,15 @@ await c.query('DROP SCHEMA public CASCADE')
 await c.query('CREATE SCHEMA public')
 await c.end()"
 
-# 2. wszystkie migracje od początku
+# 2. wszystkie migracje od początku (wstawiają katalog czasowników i kursy)
 env -u DATABASE_URL node --env-file=.env.local scripts/migrate.mjs
 
-# 3. dane z Netlify (--replace, bo migracje wstawiają dane słownikowe)
-env -u DATABASE_URL node --env-file=.env.local scripts/sync-db.mjs --replace
-
-# 4. deploy
+# 3. deploy
 vercel --prod --yes
 ```
 
-Sprawdzone: 19 migracji od zera i 4308 wierszy w 27 tabelach.
+Migracje zakładają 19 plików schematu i wypełniają dane słownikowe: 136 czasowników, 4 kursy,
+26 lekcji. Quizy użytkowników i próby trzeba wtedy odtworzyć z kopii zapasowej.
 
 ## Weryfikacja
 

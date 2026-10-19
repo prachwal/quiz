@@ -1,12 +1,11 @@
-// Applies netlify/database/migrations/*.sql to the database from DATABASE_URL.
-// Netlify applies these files automatically; Vercel (and a standalone Neon project) does not,
-// so a deploy there needs one explicit run: `DATABASE_URL=... npm run db:migrate`.
+// Applies db/migrations/*.sql to the database from DATABASE_URL.
+// Run it after pulling a deploy or when the schema changes: `npm run db:migrate`.
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import process from 'node:process'
 import pg from 'pg'
 
-const dir = path.resolve('netlify/database/migrations')
+const dir = path.resolve('db/migrations')
 const connectionString = process.env.DATABASE_URL
 if (!connectionString) {
   console.error('DATABASE_URL is not set')

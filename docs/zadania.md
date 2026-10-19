@@ -1,3 +1,11 @@
+---
+tags:
+  - plan
+  - architecture
+created: 2026-10-19
+updated: 2026-10-19
+---
+
 # Plan rozwoju – 5 zadań
 
 Plan na podstawie stanu aplikacji z 2026-10-17 (commit `dab9fcc`). Zadania są ponumerowane; numeracja nie
@@ -26,8 +34,8 @@ Zalecana kolejność: **3 → 2 → 1 → 4 → 5**.
 
 ## Zasady wspólne dla wszystkich zadań
 
-- **Migracje:** tylko nowe pliki w `netlify/database/migrations/` (zastosowanych migracji się nie edytuje).
-  Lokalnie `npx netlify database migrations apply`; na produkcji stosuje je Netlify przy wdrożeniu.
+- **Migracje:** tylko nowe pliki w `db/migrations/` (zastosowanych migracji się nie edytuje).
+  `npm run db:migrate` stosuje je na `DATABASE_URL`; Vercel tego nie robi sam, więc po deployu ze zmianą schematu uruchom je ręcznie.
 - **Dane użytkownika:** klucz `user_id` = `sub` z Auth0 (TEXT), zgodnie z `quiz_attempts`. Cały API jest
   prywatny, więc użytkownik zawsze jest znany (`currentUserId`).
 - **Uprawnienia:** nowe operacje administracyjne za uprawnieniem Auth0 (jak `manage:users`); osobiste tokeny API
@@ -39,8 +47,7 @@ Zalecana kolejność: **3 → 2 → 1 → 4 → 5**.
   zależności od bazy. Reszta: ręczna weryfikacja opisana w kryteriach akceptacji.
 - **Dokumentacja:** po każdym zadaniu zaktualizować `CLAUDE.md` (architektura) i, jeśli zmieniły się zmienne
   środowiskowe, `.env.example`.
-- **Wdrożenie:** `git push` na `main` buduje i wdraża Netlify; po zadaniach z migracją sprawdzić
-  `netlify database status --branch production`.
+- **Wdrożenie:** `vercel --prod`; po zadaniach z migracją sprawdzić `npm run db:migrate` i `GET /api/health`.
 
 ---
 

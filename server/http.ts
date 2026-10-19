@@ -5,8 +5,8 @@ import { currentUserId } from './auth'
 /**
  * Shared request/response helpers for the route modules.
  *
- * Note: handlers answer `{ ok: true }` instead of `204 No Content` - the Netlify function response
- * adapter rejects status codes that must not carry a body (204/304) when the body is an empty string.
+ * Note: handlers answer `{ ok: true }` instead of `204 No Content` - a status that must not carry a
+ * body is fragile through serverless adapters and proxies.
  */
 export class HttpError extends Error {
   status: number

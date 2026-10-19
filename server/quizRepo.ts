@@ -1,4 +1,3 @@
-import { getDatabase } from '@netlify/database'
 import pg from 'pg'
 import type { z } from 'zod'
 import { typeDef } from '../src/shared/quiz/engine'
@@ -34,13 +33,14 @@ interface Pool extends Queryable {
 let externalPool: pg.Pool | null = null
 
 /**
- * Postgres pool. Outside Netlify (Vercel, a standalone Neon project, tests) the connection comes
- * from DATABASE_URL; on Netlify the platform provisions it and `getDatabase()` is used instead.
+ * Postgres pool from `DATABASE_URL` (Neon on Vercel, a local database for `npm run dev:full`).
  * The pool is module-scoped so a warm serverless instance reuses its connections.
  */
 export const pool = (): Pool => {
   const connectionString = process.env.DATABASE_URL
-  if (!connectionString) return getDatabase().pool as unknown as Pool
+  if (!connectionString) {
+    throw new Error('DATABASE_URL is not set - see .env.example and docs/vercel.md')
+  }
   externalPool ??= new pg.Pool({
     connectionString,
     max: Number(process.env.PGPOOL_MAX ?? 5),

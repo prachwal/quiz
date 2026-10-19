@@ -2,20 +2,20 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { devAuthEnabled, devIdentity, parseDevRoles } from '../server/devAuth.ts'
 
-const dev = { NETLIFY_DEV: 'true', DEV_AUTH_TOKEN: 'local-secret-token-123' }
+const dev = { LOCAL_DEV: 'true', DEV_AUTH_TOKEN: 'local-secret-token-123' }
 
-test('the bypass is only on under `netlify dev` with a long enough token', () => {
+test('the bypass is only on under the local dev server with a long enough token', () => {
   assert.equal(devAuthEnabled(dev), true)
-  assert.equal(devAuthEnabled({ ...dev, CONTEXT: 'dev' }), true)
-  assert.equal(devAuthEnabled({ ...dev, NETLIFY_DEV: undefined }), false)
-  assert.equal(devAuthEnabled({ ...dev, NETLIFY_DEV: 'false' }), false)
+  assert.equal(devAuthEnabled({ ...dev, LOCAL_DEV: undefined }), false)
+  assert.equal(devAuthEnabled({ ...dev, LOCAL_DEV: 'false' }), false)
   assert.equal(devAuthEnabled({ ...dev, DEV_AUTH_TOKEN: 'short' }), false)
   assert.equal(devAuthEnabled({ ...dev, DEV_AUTH_TOKEN: undefined }), false)
 })
 
 test('the bypass is off in every deployed context, even when the variables leak into it', () => {
-  for (const CONTEXT of ['production', 'deploy-preview', 'branch-deploy']) {
-    assert.equal(devAuthEnabled({ ...dev, CONTEXT }), false, CONTEXT)
+  assert.equal(devAuthEnabled({ ...dev, VERCEL: '1' }), false)
+  for (const VERCEL_ENV of ['production', 'preview', 'development']) {
+    assert.equal(devAuthEnabled({ ...dev, VERCEL_ENV }), false, VERCEL_ENV)
   }
   assert.equal(devAuthEnabled({ ...dev, NODE_ENV: 'production' }), false)
   assert.equal(devIdentity({ DEV_AUTH_TOKEN: dev.DEV_AUTH_TOKEN }, dev.DEV_AUTH_TOKEN), null)

@@ -20,7 +20,7 @@ export default function About() {
           <Descriptions.Item label="Frontend">React 19, Vite, TypeScript, React Router</Descriptions.Item>
           <Descriptions.Item label="UI">Ant Design 6</Descriptions.Item>
           <Descriptions.Item label="Stan i dane">Redux Toolkit, RTK Query</Descriptions.Item>
-          <Descriptions.Item label="Backend">Express (Netlify Function), Netlify Database (Postgres)</Descriptions.Item>
+          <Descriptions.Item label="Backend">Express (funkcja serverless Vercel), Postgres (Neon)</Descriptions.Item>
         </Descriptions>
       </Card>
     </>

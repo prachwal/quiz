@@ -1,18 +1,19 @@
 /**
  * Local-only authentication bypass for development (curl, MCP clients, scripts, tests) without Auth0.
  *
- * Set `DEV_AUTH_TOKEN` (min. 16 characters) in `.env` and send `Authorization: Bearer <that value>`; the
- * request then acts as `DEV_AUTH_USER_ID` (default `dev|local`) with the permissions of `DEV_AUTH_ROLES`
- * (comma separated, default `admin,teacher`).
+ * Set `DEV_AUTH_TOKEN` (min. 16 characters) in `.env.local` and send `Authorization: Bearer <that
+ * value>`; the request then acts as `DEV_AUTH_USER_ID` (default `dev|local`) with the permissions of
+ * `DEV_AUTH_ROLES` (comma separated, default `admin,teacher`).
  *
- * It can never switch on in a deployment: it needs `NETLIFY_DEV=true` (set only by `netlify dev`), a
- * non-production `NODE_ENV` and no deploy `CONTEXT` other than `dev`. Import-free so that it can be tested.
+ * It can never switch on in a deployment: it needs `LOCAL_DEV=true` (set by `scripts/dev-server.mjs`),
+ * a non-production `NODE_ENV` and no Vercel runtime markers. Import-free so that it can be tested.
  */
 
 export interface DevAuthEnv {
-  NETLIFY_DEV?: string
+  LOCAL_DEV?: string
+  VERCEL?: string
+  VERCEL_ENV?: string
   NODE_ENV?: string
-  CONTEXT?: string
   DEV_AUTH_TOKEN?: string
   DEV_AUTH_ROLES?: string
   DEV_AUTH_USER_ID?: string
@@ -36,9 +37,11 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
 }
 
 export const devAuthEnabled = (env: DevAuthEnv): boolean =>
-  env.NETLIFY_DEV === 'true' &&
+  env.LOCAL_DEV === 'true' &&
   env.NODE_ENV !== 'production' &&
-  (env.CONTEXT === undefined || env.CONTEXT === '' || env.CONTEXT === 'dev') &&
+  // a Vercel runtime always sets VERCEL=1, so the bypass can never survive a deploy
+  env.VERCEL !== '1' &&
+  (env.VERCEL_ENV === undefined || env.VERCEL_ENV === '') &&
   (env.DEV_AUTH_TOKEN?.length ?? 0) >= MIN_DEV_TOKEN_LENGTH
 
 export const parseDevRoles = (value: string | undefined): string[] => {

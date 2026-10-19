@@ -3,7 +3,7 @@ import { createApp } from '../server/app'
 
 // Vercel does not expand a catch-all `[...path]` function, so every /api/* request is rewritten
 // to the bundled `api/index.js` and the original path travels in `__original`. Restore it before
-// Express sees it (the app strips the /api prefix itself, exactly like on Netlify).
+// Express sees it (the app strips the /api prefix itself).
 //
 // This file is bundled by esbuild (`npm run build:api`) because the server sources use extensionless
 // ESM imports, which Node on Vercel would not resolve.

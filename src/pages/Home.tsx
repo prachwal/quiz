@@ -265,7 +265,7 @@ export default function Home() {
           type="error"
           showIcon
           title="Nie udało się pobrać quizów"
-          description={`${errorMessage(error)}. Sprawdź, czy działa \`netlify dev\` i czy migracje zostały zastosowane.`}
+          description={`${errorMessage(error)}. Sprawdź, czy działa \`npm run dev:full\` i czy migracje zostały zastosowane.`}
           action={<Button onClick={refetch}>Spróbuj ponownie</Button>}
         />
       ) : isLoading || !data ? (

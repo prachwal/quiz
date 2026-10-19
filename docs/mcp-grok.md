@@ -1,3 +1,11 @@
+---
+tags:
+  - docs
+  - mcp
+created: 2026-10-19
+updated: 2026-10-19
+---
+
 # Dodanie serwera MCP quizu do Grok (OAuth przez Auth0)
 
 Grok łączy się ze zdalnymi serwerami MCP przez OAuth, więc zamiast tokenu `qz_…` używa logowania Auth0 – jak w aplikacji.
@@ -11,7 +19,7 @@ Ogólny opis serwera i narzędzi: [mcp.md](mcp.md).
 
 | Pole | Wartość |
 | ---- | ------- |
-| Adres serwera MCP | `https://fabulous-dieffenbachia.netlify.app/api/mcp` |
+| Adres serwera MCP | `https://quiz-vercel-rho.vercel.app/api/mcp` |
 | Identyfikator klienta | `uqhQ3SV4BdKL1cUvyZC735N4ZdaGw6el` (aplikacja Auth0 „Quiz MCP (Grok)”) |
 | Klucz tajny klienta | **puste** – klient publiczny, tylko PKCE |
 | Punkt końcowy autoryzacji | `https://dev-4xxb1z18b3z4hc6s.us.auth0.com/authorize` |
