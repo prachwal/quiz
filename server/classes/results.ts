@@ -1,3 +1,4 @@
+import { promptText } from '../../src/shared/quiz/engine'
 import { isWeak } from '../../src/shared/quiz/weak'
 import type {
   AdminStudentAttempt,
@@ -22,7 +23,16 @@ interface AttemptRow {
   passed: boolean | null
   created_at: Date
   answers: Record<string, { optionIds?: string[]; text?: string }> | null
-  results: { questionId: string; correct: boolean; earned: number; points: number; correctAnswers: string[] }[] | null
+  results:
+    | {
+        questionId: string
+        correct: boolean
+        earned: number
+        points: number
+        correctAnswers: string[]
+        answerText?: string
+      }[]
+    | null
 }
 
 /**
@@ -42,12 +52,16 @@ async function questionDetails(rows: AttemptRow[]): Promise<(a: AttemptRow) => S
   return (a) =>
     (a.results ?? []).map((r) => {
       const given = a.answers?.[r.questionId]
-      const answer = given?.optionIds?.length
-        ? given.optionIds.map((id) => optionTexts.get(id) ?? '?').join(', ')
-        : (given?.text ?? '')
+      // attempts saved after the config work carry the readable answer; older rows fall back
+      const answer =
+        r.answerText ??
+        (given?.optionIds?.length
+          ? given.optionIds.map((id) => optionTexts.get(id) ?? '?').join(', ')
+          : (given?.text ?? ''))
+      const prompt = prompts.get(r.questionId)
       return {
         questionId: r.questionId,
-        prompt: prompts.get(r.questionId) ?? null,
+        prompt: prompt === undefined ? null : promptText(prompt),
         correct: r.correct,
         earned: r.earned,
         points: r.points,

@@ -1,6 +1,6 @@
 import type { Router } from 'express'
 import { z } from 'zod'
-import { gradeQuiz } from '../../src/shared/quiz/engine'
+import { gradeQuiz, isAnswered } from '../../src/shared/quiz/engine'
 import { resolveGradedIds } from '../../src/shared/quiz/sampling'
 import { DIFFICULTIES, generateInput, gradeInput, quizInput, retryWrongInput } from '../../src/shared/quiz/schema'
 import { SUBJECTS } from '../../src/shared/quiz/types'
@@ -164,7 +164,7 @@ export function registerQuizRoutes(router: Router) {
       }),
     )
     await progress.recordActivity(userOf(req), {
-      answered: Object.values(answers).filter((a) => a?.optionIds?.length || a?.text?.trim()).length,
+      answered: Object.values(answers).filter((a) => isAnswered(a)).length,
       correct: result.results.filter((r) => r.correct).length,
     })
     res.json({
