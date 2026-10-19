@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run lint` — Oxlint (config in `.oxlintrc.json`; not ESLint)
 - `npm run preview` — serve the production build
 - **Local login bypass** (`server/devAuth.ts`, `src/features/auth/devAuth.ts`): `DEV_AUTH_TOKEN` in `.env.local` is accepted as a Bearer credential acting as `DEV_AUTH_USER_ID` with `DEV_AUTH_ROLES`, but only under `npm run dev:full` (`LOCAL_DEV=true`, no production `NODE_ENV`, no Vercel runtime markers); `VITE_DEV_AUTH_TOKEN` skips the Auth0 login in dev builds (stripped from production bundles). Details in `docs/mcp.md`.
-- `npm run test:mcp` — full local MCP test (`scripts/mcp-local-e2e.sh/.ts`): starts `scripts/dev-server.mjs` (or reuses a running one) and exercises all 27 tools, permissions and the audit trail with the official MCP client; test rows use the `mcp-e2e` prefix and are removed.
+- `npm run test:mcp` — full local MCP test (`scripts/mcp-local-e2e.sh/.ts`; refuses a non-localhost `DATABASE_URL` unless `MCP_E2E_ALLOW_REMOTE_DB=1`): starts `scripts/dev-server.mjs` (or reuses a running one) and exercises all 27 tools, permissions and the audit trail with the official MCP client; test rows use the `mcp-e2e` prefix and are removed.
 - `npm test` — unit tests in `tests/*.test.ts` (node:test; esbuild bundles them into `.test-build/` because this Node build cannot run TypeScript). Only pure logic is tested (no DB, no browser); keep such logic in import-free modules so tests can load it.
 
 ## Architecture
