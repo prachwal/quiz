@@ -77,6 +77,12 @@ const cases: [string, object, boolean][] = [
   ['matching with one pair', quiz({ type: 'matching', options: [], config: { pairs: [{ id: '1', rightId: 'r1', left: 'kot', right: 'cat' }] } }), false],
   ['matching with an empty side', quiz({ type: 'matching', options: [], config: { pairs: [{ id: '1', rightId: 'r1', left: 'kot', right: '' }, { id: '2', rightId: 'r2', left: 'pies', right: 'dog' }] } }), false],
   ['matching without rightId', quiz({ type: 'matching', options: [], config: { pairs: [{ id: '1', left: 'kot', right: 'cat' }, { id: '2', rightId: 'r2', left: 'pies', right: 'dog' }] } }), false],
+  ['cloze ok', quiz({ type: 'cloze', prompt: 'He {{1}} home.', options: [], config: { gaps: [{ answers: ['went'] }] } }), true],
+  ['cloze with variants', quiz({ type: 'cloze', prompt: 'He {{1}} and {{2}}.', options: [], config: { gaps: [{ answers: ['learnt', 'learned'] }, { answers: ['it'] }] } }), true],
+  ['cloze without config', quiz({ type: 'cloze', prompt: 'He {{1}} home.', options: [] }), false],
+  ['cloze with an empty gap list', quiz({ type: 'cloze', prompt: 'He {{1}} home.', options: [], config: { gaps: [] } }), false],
+  ['cloze with empty answers', quiz({ type: 'cloze', prompt: 'He {{1}} home.', options: [], config: { gaps: [{ answers: [] }] } }), false],
+  // marker/gap agreement is engine-only (JSON Schema cannot compare the prompt with the gap list)
   ['empty prompt', { title: 'T', questions: [{ type: 'text', prompt: '', options: [option('a', true)] }] }, false],
   ['no questions', { title: 'T', questions: [] }, false],
   ['bad sample size', { ...quiz({ type: 'text', options: [option('a', true)] }), sampleSize: 15 }, false],
