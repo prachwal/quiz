@@ -90,6 +90,13 @@ const cases: [string, object, boolean][] = [
   ['cloze without config', quiz({ type: 'cloze', prompt: 'He {{1}} home.', options: [] }), false],
   ['cloze with an empty gap list', quiz({ type: 'cloze', prompt: 'He {{1}} home.', options: [], config: { gaps: [] } }), false],
   ['cloze with empty answers', quiz({ type: 'cloze', prompt: 'He {{1}} home.', options: [], config: { gaps: [{ answers: [] }] } }), false],
+  ['cloze with 10 variants', quiz({ type: 'cloze', prompt: 'He {{1}} home.', options: [], config: { gaps: [{ answers: Array.from({ length: 10 }, (_, i) => `v${i}`) }] } }), true],
+  ['cloze with 11 variants', quiz({ type: 'cloze', prompt: 'He {{1}} home.', options: [], config: { gaps: [{ answers: Array.from({ length: 11 }, (_, i) => `v${i}`) }] } }), false],
+  ['cloze with a 200 character answer', quiz({ type: 'cloze', prompt: 'He {{1}} home.', options: [], config: { gaps: [{ answers: ['x'.repeat(200)] }] } }), true],
+  ['cloze with a 201 character answer', quiz({ type: 'cloze', prompt: 'He {{1}} home.', options: [], config: { gaps: [{ answers: ['x'.repeat(201)] }] } }), false],
+  ['cloze with one blank variant', quiz({ type: 'cloze', prompt: 'He {{1}} home.', options: [], config: { gaps: [{ answers: ['went', '   '] }] } }), false],
+  // marker/gap agreement (including zero-padded markers) is engine-only: JSON Schema cannot compare
+  // the prompt with the gap list, so tests/engine.test.ts covers it
   // marker/gap agreement is engine-only (JSON Schema cannot compare the prompt with the gap list)
   ['empty prompt', { title: 'T', questions: [{ type: 'text', prompt: '', options: [option('a', true)] }] }, false],
   ['no questions', { title: 'T', questions: [] }, false],

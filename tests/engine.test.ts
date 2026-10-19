@@ -392,6 +392,19 @@ test('cloze validate: only canonical markers count', () => {
   assert.equal(promptText('He {{01}} and {{2}}.'), 'He {{01}} and ___.')
 })
 
+test('cloze validate: answer count and length limits', () => {
+  const t = questionTypes.cloze
+  const gap = (answers: string[]) => ({ type: 'cloze' as const, prompt: 'He {{1}}.', options: [], config: { gaps: [{ answers }] } })
+  assert.equal(t.validate(gap(['a'])), null)
+  assert.equal(t.validate(gap(Array.from({ length: 10 }, (_, i) => `v${i}`))), null)
+  assert.ok(t.validate(gap(Array.from({ length: 11 }, (_, i) => `v${i}`))))
+  assert.equal(t.validate(gap(['x'.repeat(200)])), null)
+  assert.ok(t.validate(gap(['x'.repeat(201)])))
+  // a single blank variant is rejected even when other variants are fine
+  assert.ok(t.validate(gap(['went', '   '])))
+  assert.ok(t.validate(gap(['went', ''])))
+})
+
 test('normalizeText folds typographic quotes and dashes', () => {
   assert.equal(normalizeText('don’t'), normalizeText("don't"))
   assert.equal(normalizeText('don‘t'), normalizeText("don't"))

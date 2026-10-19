@@ -62328,6 +62328,8 @@ var matchingConfig = (config2) => {
   return { pairs: parsed };
 };
 var CLOZE_MAX_GAPS = 8;
+var CLOZE_MAX_VARIANTS = 10;
+var CLOZE_MAX_ANSWER_LENGTH = 200;
 var CLOZE_NUMBER = String.raw`[1-9]\d*`;
 var CLOZE_MARKER = new RegExp(String.raw`\{\{(${CLOZE_NUMBER})\}\}`);
 var CLOZE_MARKER_PLAIN = String.raw`\{\{${CLOZE_NUMBER}\}\}`;
@@ -62639,8 +62641,14 @@ var questionTypeDefs = {
     validate: (q) => {
       const config2 = clozeConfig(q.config);
       if (!config2) return "Dodaj co najmniej jedn\u0105 luk\u0119";
-      if (config2.gaps.some((gap) => gap.answers.every((answer) => !answer.trim()))) {
-        return "Uzupe\u0142nij akceptowane odpowiedzi w ka\u017Cdej luce";
+      if (config2.gaps.some((gap) => gap.answers.length > CLOZE_MAX_VARIANTS)) {
+        return `Luka mo\u017Ce mie\u0107 najwy\u017Cej ${CLOZE_MAX_VARIANTS} akceptowanych odpowiedzi`;
+      }
+      if (config2.gaps.some((gap) => gap.answers.some((answer) => !answer.trim()))) {
+        return "Usu\u0144 puste akceptowane odpowiedzi";
+      }
+      if (config2.gaps.some((gap) => gap.answers.some((answer) => answer.length > CLOZE_MAX_ANSWER_LENGTH))) {
+        return `Akceptowana odpowied\u017A mo\u017Ce mie\u0107 najwy\u017Cej ${CLOZE_MAX_ANSWER_LENGTH} znak\xF3w`;
       }
       const markers = clozeMarkers(q.prompt ?? "");
       const expected = config2.gaps.map((_, i) => i + 1);
@@ -75706,7 +75714,7 @@ var quiz_schema_default = {
                           type: "array",
                           minItems: 1,
                           maxItems: 10,
-                          items: { type: "string", minLength: 1, maxLength: 200 }
+                          items: { type: "string", minLength: 1, maxLength: 200, pattern: "\\S" }
                         }
                       }
                     }

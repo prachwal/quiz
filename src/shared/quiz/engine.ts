@@ -190,6 +190,8 @@ export interface ClozeConfig {
 }
 
 const CLOZE_MAX_GAPS = 8
+export const CLOZE_MAX_VARIANTS = 10
+export const CLOZE_MAX_ANSWER_LENGTH = 200
 
 /**
  * One definition of a cloze marker: `{{n}}` with n >= 1 and no leading zeros. Parsing, the review
@@ -596,8 +598,15 @@ export const questionTypeDefs = {
     validate: (q) => {
       const config = clozeConfig(q.config)
       if (!config) return 'Dodaj co najmniej jedną lukę'
-      if (config.gaps.some((gap) => gap.answers.every((answer) => !answer.trim()))) {
-        return 'Uzupełnij akceptowane odpowiedzi w każdej luce'
+      if (config.gaps.some((gap) => gap.answers.length > CLOZE_MAX_VARIANTS)) {
+        return `Luka może mieć najwyżej ${CLOZE_MAX_VARIANTS} akceptowanych odpowiedzi`
+      }
+      // limits mirror data/quiz.schema.json exactly: one non-space character, at most 200 raw characters
+      if (config.gaps.some((gap) => gap.answers.some((answer) => !answer.trim()))) {
+        return 'Usuń puste akceptowane odpowiedzi'
+      }
+      if (config.gaps.some((gap) => gap.answers.some((answer) => answer.length > CLOZE_MAX_ANSWER_LENGTH))) {
+        return `Akceptowana odpowiedź może mieć najwyżej ${CLOZE_MAX_ANSWER_LENGTH} znaków`
       }
       const markers = clozeMarkers(q.prompt ?? '')
       const expected = config.gaps.map((_, i) => i + 1)
