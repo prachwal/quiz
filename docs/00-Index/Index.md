@@ -37,6 +37,7 @@ Mapa treści vaultu. Zacznij tutaj.
 - [[question-types]] — typy pytań
 - [[question-types-plan]] — plan wdrożenia nowych typów
 - [[Learning-Slice-Plan]] — oddzielenie modułu nauki od quizów (pionowe slice'y) i moduł media (S3)
+- [[Cloze-Fixes-Plan]] — poprawki typu cloze (znacznik, apostrofy, limity, przecinek)
 - [[test-coverage-tasks]] — zadania pokrycia testami
 - [[Documentation-Plan]] — plan uzupełnienia dokumentacji
 
