@@ -1,5 +1,7 @@
-import { Form, InputNumber, Segmented, Space, Typography } from 'antd'
-import type { QuestionType } from '../../shared/quiz/engine'
+import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons'
+import { Button, Flex, Form, Input, InputNumber, Segmented, Space, Typography } from 'antd'
+import { newItemId } from '../../shared/quiz/engine'
+import type { OrderingConfig, OrderingItem, QuestionType } from '../../shared/quiz/engine'
 
 export interface NumericConfigValue {
   answer: number
@@ -20,12 +22,17 @@ const asNumeric = (value: unknown): NumericConfigValue => {
   }
 }
 
-/**
- * Editor for question types that do not use the options table. Only `numeric` exists for now;
- * new types add their own branch here (counterpart of `defaultConfig` in the engine).
- */
-export default function ConfigEditor({ type, value, onChange }: Props) {
-  if (type !== 'numeric') return null
+const asOrdering = (value: unknown): OrderingConfig => {
+  const config = (value ?? {}) as Partial<OrderingConfig>
+  const items = Array.isArray(config.items) ? config.items : []
+  return {
+    items: items
+      .filter((item): item is OrderingItem => Boolean(item) && typeof item === 'object')
+      .map((item) => ({ id: item.id || newItemId(), text: typeof item.text === 'string' ? item.text : '' })),
+  }
+}
+
+function NumericEditor({ value, onChange }: Omit<Props, 'type'>) {
   const config = asNumeric(value)
   const patch = (next: Partial<NumericConfigValue>) => onChange?.({ ...config, ...next })
 
@@ -45,11 +52,17 @@ export default function ConfigEditor({ type, value, onChange }: Props) {
               style={{ width: 120 }}
               min={0}
               value={config.tolerance?.value ?? 0}
-              onChange={(next) => patch({ tolerance: { kind: config.tolerance?.kind ?? 'absolute', value: typeof next === 'number' ? next : 0 } })}
+              onChange={(next) =>
+                patch({
+                  tolerance: { kind: config.tolerance?.kind ?? 'absolute', value: typeof next === 'number' ? next : 0 },
+                })
+              }
             />
             <Segmented
               value={config.tolerance?.kind ?? 'absolute'}
-              onChange={(kind) => patch({ tolerance: { kind: kind as 'absolute' | 'relative', value: config.tolerance?.value ?? 0 } })}
+              onChange={(kind) =>
+                patch({ tolerance: { kind: kind as 'absolute' | 'relative', value: config.tolerance?.value ?? 0 } })
+              }
               options={[
                 { value: 'absolute', label: 'bezwzględna' },
                 { value: 'relative', label: 'względna' },
@@ -64,4 +77,74 @@ export default function ConfigEditor({ type, value, onChange }: Props) {
       </Typography.Text>
     </Space>
   )
+}
+
+function OrderingEditor({ value, onChange }: Omit<Props, 'type'>) {
+  const { items } = asOrdering(value)
+  const emit = (next: OrderingItem[]) => onChange?.({ items: next })
+  const patch = (index: number, text: string) => emit(items.map((item, i) => (i === index ? { ...item, text } : item)))
+  const move = (from: number, to: number) => {
+    if (to < 0 || to >= items.length) return
+    const next = [...items]
+    const [moved] = next.splice(from, 1)
+    next.splice(to, 0, moved)
+    emit(next)
+  }
+
+  return (
+    <Space orientation="vertical" style={{ width: '100%' }}>
+      <Typography.Text type="secondary" style={{ fontSize: 14 }}>
+        Wpisz elementy w kolejności poprawnej odpowiedzi. Gracz zobaczy je potasowane i ułoży sam.
+      </Typography.Text>
+      <Flex vertical gap={8}>
+        {items.map((item, i) => (
+          <Flex key={item.id} align="center" gap={8}>
+            <Typography.Text strong style={{ minWidth: 24 }}>
+              {i + 1}.
+            </Typography.Text>
+            <Input
+              value={item.text}
+              maxLength={500}
+              placeholder="Treść elementu"
+              onChange={(e) => patch(i, e.target.value)}
+              style={{ flex: 1 }}
+            />
+            <Button
+              icon={<ArrowUpOutlined />}
+              disabled={i === 0}
+              aria-label={`Przenieś wyżej: ${item.text || i + 1}`}
+              onClick={() => move(i, i - 1)}
+            />
+            <Button
+              icon={<ArrowDownOutlined />}
+              disabled={i === items.length - 1}
+              aria-label={`Przenieś niżej: ${item.text || i + 1}`}
+              onClick={() => move(i, i + 1)}
+            />
+            <Button
+              danger
+              type="text"
+              icon={<DeleteOutlined />}
+              disabled={items.length <= 2}
+              aria-label={`Usuń element ${i + 1}`}
+              onClick={() => emit(items.filter((_, index) => index !== i))}
+            />
+          </Flex>
+        ))}
+      </Flex>
+      <Button icon={<PlusOutlined />} disabled={items.length >= 50} onClick={() => emit([...items, { id: newItemId(), text: '' }])}>
+        Dodaj element
+      </Button>
+    </Space>
+  )
+}
+
+/**
+ * Editor for question types that do not use the options table (counterpart of `defaultConfig`
+ * in the engine). New types add their own branch here.
+ */
+export default function ConfigEditor({ type, value, onChange }: Props) {
+  if (type === 'numeric') return <NumericEditor value={value} onChange={onChange} />
+  if (type === 'ordering') return <OrderingEditor value={value} onChange={onChange} />
+  return null
 }

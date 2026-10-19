@@ -25,6 +25,15 @@ describe('quizDefaults', () => {
     expect(question.options).toEqual([])
     expect(question.config).toEqual({ answer: 0 })
   })
+
+  it('gives ordering two empty items with distinct ids', () => {
+    const question = emptyQuestion('ordering')
+    const items = (question.config as { items: { id: string; text: string }[] }).items
+    expect(question.options).toEqual([])
+    expect(items).toHaveLength(2)
+    expect(items[0].text).toBe('')
+    expect(items[0].id).not.toBe(items[1].id)
+  })
 })
 
 describe('QuizEditor config handling', () => {
@@ -52,6 +61,34 @@ describe('QuizEditor config handling', () => {
     renderEditor()
     expect(screen.getByText('Dodaj opcję')).toBeInTheDocument()
     expect(screen.queryByText('Poprawna odpowiedź')).not.toBeInTheDocument()
+  })
+
+  it('renders the ordering item editor and adds a row', () => {
+    renderEditor({ ...emptyQuiz(), questions: [emptyQuestion('ordering')] })
+    expect(screen.getByText('Dodaj element')).toBeInTheDocument()
+    expect(screen.getAllByPlaceholderText('Treść elementu')).toHaveLength(2)
+    fireEvent.click(screen.getByText('Dodaj element'))
+    expect(screen.getAllByPlaceholderText('Treść elementu')).toHaveLength(3)
+  })
+
+  it('shows the loaded ordering items in the author order', () => {
+    renderEditor({
+      ...emptyQuiz(),
+      questions: [
+        {
+          ...emptyQuestion('ordering'),
+          config: {
+            items: [
+              { id: 'a', text: 'Pierwszy' },
+              { id: 'b', text: 'Drugi' },
+              { id: 'c', text: 'Trzeci' },
+            ],
+          },
+        },
+      ],
+    })
+    const inputs = screen.getAllByPlaceholderText('Treść elementu') as HTMLInputElement[]
+    expect(inputs.map((input) => input.value)).toEqual(['Pierwszy', 'Drugi', 'Trzeci'])
   })
 
   it('switching the type swaps the payload editors', async () => {
