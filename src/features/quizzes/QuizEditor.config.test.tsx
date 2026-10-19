@@ -16,7 +16,7 @@ const renderEditor = (initialValues = emptyQuiz()) =>
 describe('quizDefaults', () => {
   it('gives option-based types options and no config', () => {
     const question = emptyQuestion('single')
-    expect(question.options.length).toBeGreaterThan(0)
+    expect(question.options?.length ?? 0).toBeGreaterThan(0)
     expect(question.config).toBeUndefined()
   })
 
