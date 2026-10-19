@@ -34,6 +34,14 @@ describe('quizDefaults', () => {
     expect(items[0].text).toBe('')
     expect(items[0].id).not.toBe(items[1].id)
   })
+
+  it('gives matching two empty pairs with their own ids', () => {
+    const question = emptyQuestion('matching')
+    const pairs = (question.config as { pairs: { id: string; rightId: string }[] }).pairs
+    expect(question.options).toEqual([])
+    expect(pairs).toHaveLength(2)
+    expect(new Set([pairs[0].id, pairs[1].id, pairs[0].rightId, pairs[1].rightId]).size).toBe(4)
+  })
 })
 
 describe('QuizEditor config handling', () => {
@@ -89,6 +97,35 @@ describe('QuizEditor config handling', () => {
     })
     const inputs = screen.getAllByPlaceholderText('Treść elementu') as HTMLInputElement[]
     expect(inputs.map((input) => input.value)).toEqual(['Pierwszy', 'Drugi', 'Trzeci'])
+  })
+
+  it('renders the matching pair editor and adds a pair', () => {
+    renderEditor({ ...emptyQuiz(), questions: [emptyQuestion('matching')] })
+    expect(screen.getAllByPlaceholderText('Lewa strona')).toHaveLength(2)
+    expect(screen.getAllByPlaceholderText('Prawa strona')).toHaveLength(2)
+    fireEvent.click(screen.getByText('Dodaj parę'))
+    expect(screen.getAllByPlaceholderText('Lewa strona')).toHaveLength(3)
+  })
+
+  it('shows the loaded pairs', () => {
+    renderEditor({
+      ...emptyQuiz(),
+      questions: [
+        {
+          ...emptyQuestion('matching'),
+          config: {
+            pairs: [
+              { id: 'p1', rightId: 'r1', left: 'kot', right: 'cat' },
+              { id: 'p2', rightId: 'r2', left: 'pies', right: 'dog' },
+            ],
+          },
+        },
+      ],
+    })
+    const lefts = screen.getAllByPlaceholderText('Lewa strona') as HTMLInputElement[]
+    const rights = screen.getAllByPlaceholderText('Prawa strona') as HTMLInputElement[]
+    expect(lefts.map((input) => input.value)).toEqual(['kot', 'pies'])
+    expect(rights.map((input) => input.value)).toEqual(['cat', 'dog'])
   })
 
   it('switching the type swaps the payload editors', async () => {
