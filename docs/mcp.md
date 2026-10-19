@@ -115,6 +115,8 @@ claude mcp add --transport http quiz https://fabulous-dieffenbachia.netlify.app/
 
 **Konektory z logowaniem OAuth (Claude, ChatGPT, Mistral, Grok):** zamiast tokenu `qz_…` klient loguje użytkownika przez Auth0. Każdy klient ma własną aplikację Auth0 – patrz [Nowy klient OAuth](#nowy-klient-oauth-nowa-aplikacja-auth0). Szczegóły dla Grok: [mcp-grok.md](mcp-grok.md).
 
+Krok po kroku dla wszystkich klientów (Claude, Claude Code, Claude Desktop, ChatGPT, OpenAI Responses API, Grok, Mistral, Cursor/VS Code) wraz z gotowymi danymi do formularzy, dodawaniem nowego klienta, odbieraniem dostępu i rozwiązywaniem problemów: **[mcp-clients.md](mcp-clients.md)**.
+
 ## Lokalny dostęp bez Auth0 (tylko `netlify dev`)
 
 Do pracy lokalnej (curl, klienty MCP, skrypty) nie potrzebujesz tokenu `qz_…` ani logowania. W `.env` ustaw losowe `DEV_AUTH_TOKEN` (min. 16 znaków) i opcjonalnie `DEV_AUTH_ROLES` (`admin,teacher,student`, domyślnie `admin,teacher`) oraz `DEV_AUTH_USER_ID` (domyślnie `dev|local`), zrestartuj `netlify dev` i używaj go jak tokenu:

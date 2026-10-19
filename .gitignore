@@ -29,6 +29,9 @@ dist-ssr
 # Local env (see .env.example)
 .env
 
+# Ad-hoc scripts (e.g. one-off verification helpers)
+*.tmp.mjs
+
 # compiled tests
 .test-build
 coverage/*
