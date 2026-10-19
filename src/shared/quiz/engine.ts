@@ -191,9 +191,27 @@ export interface ClozeConfig {
 
 const CLOZE_MAX_GAPS = 8
 
+/**
+ * One definition of a cloze marker: `{{n}}` with n >= 1 and no leading zeros. Parsing, the review
+ * view and the player all build their regexes from these constants, so they cannot drift.
+ * `{{01}}` is deliberately not a marker - the player would submit it under "01" while grading
+ * reads "1", which makes the question unanswerable.
+ */
+const CLOZE_NUMBER = String.raw`[1-9]\d*`
+/** Canonical marker with one capture group (the gap number). */
+export const CLOZE_MARKER = new RegExp(String.raw`\{\{(${CLOZE_NUMBER})\}\}`)
+/** The same marker without a capture group, for `split`/`replace`. */
+const CLOZE_MARKER_PLAIN = String.raw`\{\{${CLOZE_NUMBER}\}\}`
+
 /** Marker numbers in the prompt, in the order they appear (duplicates kept). */
 export const clozeMarkers = (prompt: string): number[] =>
-  [...prompt.matchAll(/\{\{(\d+)\}\}/g)].map((match) => Number(match[1]))
+  [...prompt.matchAll(new RegExp(CLOZE_MARKER_PLAIN, 'g'))].map((match) => Number(match[0].slice(2, -2)))
+
+/**
+ * Splits the prompt into alternating text and marker parts (text at even indexes), keeping each
+ * marker whole. Non-canonical markers stay in the text part.
+ */
+export const clozeParts = (prompt: string): string[] => prompt.split(new RegExp(`(${CLOZE_MARKER_PLAIN})`, 'g'))
 
 const clozeConfig = (config: unknown): ClozeConfig | null => {
   if (!config || typeof config !== 'object') return null
@@ -559,7 +577,7 @@ export const questionTypeDefs = {
       const markers = clozeMarkers(q.prompt ?? '')
       const expected = config.gaps.map((_, i) => i + 1)
       if (markers.length !== expected.length || markers.some((marker, i) => marker !== expected[i])) {
-        return `Treść musi zawierać znaczniki ${expected.map((n) => `{{${n}}}`).join(', ')} - każdy dokładnie raz`
+        return `Treść musi zawierać znaczniki ${expected.map((n) => `{{${n}}}`).join(', ')} - każdy dokładnie raz, bez zer wiodących`
       }
       return null
     },
@@ -643,7 +661,7 @@ export const isAnswered = (answer: Answer | undefined): boolean =>
   )
 
 /** Question prompt without cloze markers (for text-only views: attempt lists, analysis). */
-export const promptText = (prompt: string): string => prompt.replace(/\{\{\d+\}\}/g, '___')
+export const promptText = (prompt: string): string => prompt.replace(new RegExp(CLOZE_MARKER_PLAIN, 'g'), '___')
 
 export function gradeQuiz(
   questions: GradableQuizQuestion[],

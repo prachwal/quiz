@@ -378,6 +378,19 @@ test('cloze validates markers against the gap list', () => {
   assert.ok(t.validate({ type: 'cloze', prompt: 'He {{1}}.', options: [], config: { gaps: [{ answers: [' '] }] } }))
 })
 
+test('cloze validate: only canonical markers count', () => {
+  const t = questionTypes.cloze
+  // {{01}} must not be treated as gap 1: the player would submit under "01" while grading reads "1"
+  assert.deepEqual(clozeMarkers('a {{01}} b'), [])
+  assert.deepEqual(clozeMarkers('a {{1}} b {{2}}'), [1, 2])
+  assert.ok(t.validate({ type: 'cloze', prompt: 'He {{01}}.', options: [], config: { gaps: [{ answers: ['x'] }] } }))
+  // {{01}} does not count as gap 1, so a prompt that mixes it with a real marker is also rejected
+  assert.ok(t.validate({ type: 'cloze', prompt: 'He {{01}} and {{2}}.', options: [], config: { gaps: [{ answers: ['x'] }, { answers: ['y'] }] } }))
+  assert.equal(t.validate({ type: 'cloze', prompt: 'He {{1}} and {{2}}.', options: [], config: { gaps: [{ answers: ['x'] }, { answers: ['y'] }] } }), null)
+  // promptText leaves a non-canonical marker alone instead of hiding it
+  assert.equal(promptText('He {{01}} and {{2}}.'), 'He {{01}} and ___.')
+})
+
 test('cloze grades proportionally with accepted variants', () => {
   assert.equal(gradeQuiz(clozeQuestion(), { c1: { gaps: { 1: 'went', 2: 'learnt' } } }).percent, 100)
   assert.equal(gradeQuiz(clozeQuestion(), { c1: { gaps: { 1: 'went', 2: 'learned' } } }).percent, 100)

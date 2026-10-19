@@ -5,7 +5,7 @@ import { ArrowDownOutlined, ArrowUpOutlined } from '@ant-design/icons'
 import { Button, Flex, Input, Tag, Typography } from 'antd'
 import { useState } from 'react'
 import type { ComponentType } from 'react'
-import { matchingLefts, matchingRights, orderingItems, clozeGapCount } from '../../shared/quiz/engine'
+import { matchingLefts, matchingRights, orderingItems, clozeGapCount, clozeParts, CLOZE_MARKER } from '../../shared/quiz/engine'
 import type { Answer, QuestionType } from '../../shared/quiz/engine'
 import type { QuizQuestion } from '../../shared/quiz/types'
 import ChoiceTile, { LETTERS } from './ChoiceTile'
@@ -250,9 +250,8 @@ const Cloze = ({ question, value, onChange }: RendererProps) => {
   const answerFor = (gap: string) => value?.gaps?.[gap] ?? ''
   const setGap = (gap: string) => (text: string) => onChange({ gaps: { ...(value?.gaps ?? {}), [gap]: text } })
   const gaps = clozeGapCount(question.config)
-  // one capture group: split keeps each marker as its own part (['He ', '{{1}}', ' to school', '{{2}}', '.']);
-  // a second group would also return the bare number and render it as text
-  const parts = question.prompt.split(/(\{\{\d+\}\})/g)
+  // one canonical marker definition, shared with validation and the review view
+  const parts = clozeParts(question.prompt)
 
   return (
     <>
@@ -261,7 +260,7 @@ const Cloze = ({ question, value, onChange }: RendererProps) => {
       </Typography.Paragraph>
       <div style={{ fontSize: 'clamp(20px, 2vw + 10px, 26px)', lineHeight: 2.2 }}>
         {parts.map((part, i) => {
-          const marker = /^\{\{(\d+)\}\}$/.exec(part)
+          const marker = CLOZE_MARKER.exec(part)
           if (!marker) return <span key={i}>{part}</span>
           const gap = marker[1]
           return (

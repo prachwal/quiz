@@ -62328,7 +62328,10 @@ var matchingConfig = (config2) => {
   return { pairs: parsed };
 };
 var CLOZE_MAX_GAPS = 8;
-var clozeMarkers = (prompt) => [...prompt.matchAll(/\{\{(\d+)\}\}/g)].map((match) => Number(match[1]));
+var CLOZE_NUMBER = String.raw`[1-9]\d*`;
+var CLOZE_MARKER = new RegExp(String.raw`\{\{(${CLOZE_NUMBER})\}\}`);
+var CLOZE_MARKER_PLAIN = String.raw`\{\{${CLOZE_NUMBER}\}\}`;
+var clozeMarkers = (prompt) => [...prompt.matchAll(new RegExp(CLOZE_MARKER_PLAIN, "g"))].map((match) => Number(match[0].slice(2, -2)));
 var clozeConfig = (config2) => {
   if (!config2 || typeof config2 !== "object") return null;
   const { gaps } = config2;
@@ -62628,7 +62631,7 @@ var questionTypeDefs = {
       const markers = clozeMarkers(q.prompt ?? "");
       const expected = config2.gaps.map((_, i) => i + 1);
       if (markers.length !== expected.length || markers.some((marker, i) => marker !== expected[i])) {
-        return `Tre\u015B\u0107 musi zawiera\u0107 znaczniki ${expected.map((n) => `{{${n}}}`).join(", ")} - ka\u017Cdy dok\u0142adnie raz`;
+        return `Tre\u015B\u0107 musi zawiera\u0107 znaczniki ${expected.map((n) => `{{${n}}}`).join(", ")} - ka\u017Cdy dok\u0142adnie raz, bez zer wiod\u0105cych`;
       }
       return null;
     },
@@ -62668,7 +62671,7 @@ var typeDef = (type) => questionTypeDefs[type];
 var isAnswered = (answer) => Boolean(
   answer?.optionIds?.length || answer?.text?.trim() || answer?.order?.length || Object.keys(answer?.pairs ?? {}).length || Object.values(answer?.gaps ?? {}).some((value) => value.trim())
 );
-var promptText = (prompt) => prompt.replace(/\{\{\d+\}\}/g, "___");
+var promptText = (prompt) => prompt.replace(new RegExp(CLOZE_MARKER_PLAIN, "g"), "___");
 function gradeQuiz(questions, answers) {
   const results = questions.map((question) => {
     const def = typeDef(question.type);
