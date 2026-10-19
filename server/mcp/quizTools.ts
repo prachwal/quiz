@@ -47,7 +47,8 @@ export function registerQuizTools(server: McpServer, ctx: Ctx) {
     'quiz_schema',
     {
       title: 'Schemat quizu',
-      description: 'JSON Schema (2020-12) obiektu quizu przyjmowanego przez quiz_create i quiz_update, z regułami dla każdego typu pytania.',
+      description:
+        'JSON Schema (2020-12) obiektu quizu przyjmowanego przez quiz_create i quiz_update, z regułami i limitami dla każdego typu pytania. Zawsze aktualny (czytany przy każdym wywołaniu) - przed tworzeniem lub zmianą quizu traktuj go jako źródło prawdy, a nie opisy innych narzędzi.',
       inputSchema: {},
       annotations: { readOnlyHint: true },
     },
@@ -75,7 +76,7 @@ export function registerQuizTools(server: McpServer, ctx: Ctx) {
     {
       title: 'Utwórz quiz',
       description:
-        'Tworzy quiz. Typy pytań: single (jedna poprawna), multiple, truefalse, text (opcje to akceptowane odpowiedzi), numeric (wynik liczbowy: config {answer, tolerance?}), ordering (kolejność: config {items: [{id, text}]}), matching (pary: config {pairs: [{id, rightId, left, right}]}), cloze (luki: treść ze znacznikami {{1}}…{{n}} i config {gaps: [{answers: []}]}). Typy numeric/ordering/matching/cloze nie używają options. Pole subject grupuje quiz według przedmiotu (math, physics, chemistry, biology, geography, history, polish, english, it, other). Ustawienia: shuffleQuestions (null=ustawienie gracza), shuffleOptions, sampleSize (10/20/30 pytań losowanych z puli lub null). Schemat: quiz_schema.',
+        'Tworzy quiz. NAJPIERW wywołaj quiz_schema: tylko ono jest aktualnym źródłem reguł i limitów, a ten opis jest skrócony i po zmianach serwera może być nieaktualny (klient często buforuje listę narzędzi). Typy pytań: single, multiple, truefalse, text (opcje to akceptowane odpowiedzi), numeric (config {answer, tolerance?}), ordering (config {items: [{id, text}]}), matching (config {pairs: [{id, rightId, left, right}]}), cloze (treść ze znacznikami {{1}}…{{n}} i config {gaps: [{answers: []}]}). Typy numeric/ordering/matching/cloze nie używają options. Pole subject grupuje quiz według przedmiotu, a ustawienia (shuffleQuestions, shuffleOptions, sampleSize) opisuje schemat.',
       inputSchema: { quiz: quizInput },
     },
     async ({ quiz }) => {
@@ -91,7 +92,7 @@ export function registerQuizTools(server: McpServer, ctx: Ctx) {
     {
       title: 'Zastąp quiz',
       description:
-        'Zastępuje całą zawartość quizu i jego ustawienia (id pytań i opcji się zmieniają). Pobierz najpierw quiz_get z withAnswers=true i zmodyfikuj wynik.',
+        'Zastępuje całą zawartość quizu i jego ustawienia (id pytań i opcji się zmieniają). Pobierz najpierw quiz_get z withAnswers=true i zmodyfikuj wynik; reguły i limity pól sprawdź w quiz_schema (aktualne przy każdym wywołaniu, w odróżnieniu od tego opisu).',
       inputSchema: { id: uuid, quiz: quizInput },
       annotations: { idempotentHint: true, destructiveHint: true },
     },

@@ -277,6 +277,17 @@ oraz `allow_offline_access` w API.
 | token `qz_…` | Ustawienia → Tokeny API → unieważnij (natychmiast) |
 | cały serwer MCP | zostaw tylko tokeny; konektory przestaną dostawać tokeny po usunięciu aplikacji Auth0 |
 
+## Po zmianie narzędzi lub schematu
+
+Serwer jest bezsesyjny i odpowiada czystym JSON-em, więc **nie wysyła** `notifications/tools/list_changed`. Klient pobiera listę narzędzi (nazwy, opisy, `inputSchema`) przy dodaniu konektora lub starcie rozmowy i zwykle ją buforuje.
+
+| Co się zmieniło | Kiedy model to zobaczy |
+| --- | --- |
+| wynik `quiz_schema` (reguły i limity pól, nowe typy pytań) | od razu, przy następnym wywołaniu `quiz_schema` |
+| opisy narzędzi, `inputSchema`, nowe lub usunięte narzędzia | dopiero po odświeżeniu konektora w kliencie i w **nowej** rozmowie (trwająca zwykle zachowuje starą listę) |
+
+Zasady po naszej stronie: opisy `quiz_create` i `quiz_update` kierują do `quiz_schema` jako źródła prawdy i nie powtarzają limitów liczbowych; przy zmianie kontraktu narzędzi podbijamy `version` w `server/mcp/index.ts`. Po wdrożeniu zmiany w narzędziach: odśwież konektor (ChatGPT, Claude) albo usuń go i dodaj ponownie, potem zacznij nową rozmowę. Weryfikacja bez klienta: `tools/list` z sekcji poniżej pokazuje to, co serwer zwraca teraz.
+
 ## Rozwiązywanie problemów
 
 | Objaw | Przyczyna i działanie |

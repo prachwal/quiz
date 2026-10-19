@@ -75793,7 +75793,7 @@ function registerQuizTools(server, ctx) {
     "quiz_schema",
     {
       title: "Schemat quizu",
-      description: "JSON Schema (2020-12) obiektu quizu przyjmowanego przez quiz_create i quiz_update, z regu\u0142ami dla ka\u017Cdego typu pytania.",
+      description: "JSON Schema (2020-12) obiektu quizu przyjmowanego przez quiz_create i quiz_update, z regu\u0142ami i limitami dla ka\u017Cdego typu pytania. Zawsze aktualny (czytany przy ka\u017Cdym wywo\u0142aniu) - przed tworzeniem lub zmian\u0105 quizu traktuj go jako \u017Ar\xF3d\u0142o prawdy, a nie opisy innych narz\u0119dzi.",
       inputSchema: {},
       annotations: { readOnlyHint: true }
     },
@@ -75818,7 +75818,7 @@ function registerQuizTools(server, ctx) {
     "quiz_create",
     {
       title: "Utw\xF3rz quiz",
-      description: "Tworzy quiz. Typy pyta\u0144: single (jedna poprawna), multiple, truefalse, text (opcje to akceptowane odpowiedzi), numeric (wynik liczbowy: config {answer, tolerance?}), ordering (kolejno\u015B\u0107: config {items: [{id, text}]}), matching (pary: config {pairs: [{id, rightId, left, right}]}), cloze (luki: tre\u015B\u0107 ze znacznikami {{1}}\u2026{{n}} i config {gaps: [{answers: []}]}). Typy numeric/ordering/matching/cloze nie u\u017Cywaj\u0105 options. Pole subject grupuje quiz wed\u0142ug przedmiotu (math, physics, chemistry, biology, geography, history, polish, english, it, other). Ustawienia: shuffleQuestions (null=ustawienie gracza), shuffleOptions, sampleSize (10/20/30 pyta\u0144 losowanych z puli lub null). Schemat: quiz_schema.",
+      description: "Tworzy quiz. NAJPIERW wywo\u0142aj quiz_schema: tylko ono jest aktualnym \u017Ar\xF3d\u0142em regu\u0142 i limit\xF3w, a ten opis jest skr\xF3cony i po zmianach serwera mo\u017Ce by\u0107 nieaktualny (klient cz\u0119sto buforuje list\u0119 narz\u0119dzi). Typy pyta\u0144: single, multiple, truefalse, text (opcje to akceptowane odpowiedzi), numeric (config {answer, tolerance?}), ordering (config {items: [{id, text}]}), matching (config {pairs: [{id, rightId, left, right}]}), cloze (tre\u015B\u0107 ze znacznikami {{1}}\u2026{{n}} i config {gaps: [{answers: []}]}). Typy numeric/ordering/matching/cloze nie u\u017Cywaj\u0105 options. Pole subject grupuje quiz wed\u0142ug przedmiotu, a ustawienia (shuffleQuestions, shuffleOptions, sampleSize) opisuje schemat.",
       inputSchema: { quiz: quizInput }
     },
     async ({ quiz }) => {
@@ -75832,7 +75832,7 @@ function registerQuizTools(server, ctx) {
     "quiz_update",
     {
       title: "Zast\u0105p quiz",
-      description: "Zast\u0119puje ca\u0142\u0105 zawarto\u015B\u0107 quizu i jego ustawienia (id pyta\u0144 i opcji si\u0119 zmieniaj\u0105). Pobierz najpierw quiz_get z withAnswers=true i zmodyfikuj wynik.",
+      description: "Zast\u0119puje ca\u0142\u0105 zawarto\u015B\u0107 quizu i jego ustawienia (id pyta\u0144 i opcji si\u0119 zmieniaj\u0105). Pobierz najpierw quiz_get z withAnswers=true i zmodyfikuj wynik; regu\u0142y i limity p\xF3l sprawd\u017A w quiz_schema (aktualne przy ka\u017Cdym wywo\u0142aniu, w odr\xF3\u017Cnieniu od tego opisu).",
       inputSchema: { id: uuid3, quiz: quizInput },
       annotations: { idempotentHint: true, destructiveHint: true }
     },
@@ -75866,7 +75866,7 @@ function buildServer(req) {
   const server = new McpServer({
     name: "quiz",
     title: "Quiz",
-    version: "2.0.0",
+    version: "2.0.1",
     icons: [{ src: "https://quiz-vercel-rho.vercel.app/mcp-icon.png", mimeType: "image/png", sizes: ["1254x1254"] }]
   });
   registerQuizTools(server, ctx);
