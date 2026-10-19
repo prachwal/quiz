@@ -49,8 +49,14 @@ export interface Answer {
   gaps?: Record<string, string>
 }
 
+/** Options as the player sees them: no correctness flags at all. */
+export interface PlayerOption {
+  id: string
+  text: string
+}
+
 export interface PlayerView {
-  options: GradableOption[]
+  options: PlayerOption[]
   config?: unknown
 }
 
@@ -98,8 +104,8 @@ const gradeChoice = (question: GradableQuestion, answer: Answer | undefined) => 
 }
 
 /** Options as the player sees them: correct answers never leave the server. */
-const publicOptions = (question: GradableQuestion): GradableOption[] =>
-  question.options.map((o) => ({ id: o.id, text: o.text, isCorrect: false }))
+const publicOptions = (question: GradableQuestion): PlayerOption[] =>
+  question.options.map((o) => ({ id: o.id, text: o.text }))
 
 const choiceAnswerText = (question: GradableQuestion, answer: Answer | undefined) =>
   (answer?.optionIds ?? [])

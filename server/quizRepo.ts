@@ -1,6 +1,7 @@
 import { getDatabase } from '@netlify/database'
 import pg from 'pg'
 import type { z } from 'zod'
+import { typeDef } from '../src/shared/quiz/engine'
 import type { Answer, GradableQuizQuestion, QuizResult } from '../src/shared/quiz/engine'
 import type { quizInput } from '../src/shared/quiz/schema'
 import type {
@@ -72,6 +73,7 @@ interface QuestionRow {
   prompt: string
   explanation: string
   points: number
+  config: unknown
 }
 
 interface OptionRow {
@@ -157,7 +159,7 @@ export async function getQuiz(
   if (!quiz) return null
 
   const questions = await db.query<QuestionRow>(
-    'SELECT id, type, prompt, explanation, points FROM questions WHERE quiz_id = $1 ORDER BY position',
+    'SELECT id, type, prompt, explanation, points, config FROM questions WHERE quiz_id = $1 ORDER BY position',
     [id],
   )
   const options = await db.query<OptionRow>(
@@ -184,20 +186,24 @@ export async function getQuiz(
     updatedAt: quiz.updated_at.toISOString(),
     questions: questions.rows.map((question): QuizQuestion => {
       const own = options.rows.filter((o) => o.question_id === question.id)
+      const full = {
+        type: question.type,
+        // the accepted answers of `text` questions never reach the player
+        options: own.map((o) => ({ id: o.id, text: o.text, isCorrect: o.is_correct })),
+        config: question.config ?? undefined,
+      }
+      // the editor view (`?include=answers`) keeps correctness flags, explanations and the author's order
+      const view = withAnswers
+        ? full
+        : typeDef(question.type).playerView(full, Math.random, false)
       return {
         id: question.id,
         type: question.type,
         prompt: question.prompt,
         points: question.points,
         ...(withAnswers ? { explanation: question.explanation } : {}),
-        options:
-          !withAnswers && question.type === 'text'
-            ? []
-            : own.map((o) => ({
-                id: o.id,
-                text: o.text,
-                ...(withAnswers ? { isCorrect: o.is_correct } : {}),
-              })),
+        options: view.options,
+        ...(view.config === undefined ? {} : { config: view.config }),
       }
     }),
   }
@@ -211,15 +217,25 @@ export function toGradable(quiz: QuizDetail): GradableQuizQuestion[] {
     points: q.points,
     explanation: q.explanation ?? '',
     options: q.options.map((o) => ({ id: o.id, text: o.text, isCorrect: o.isCorrect ?? false })),
+    config: q.config,
   }))
 }
 
 async function insertQuestions(client: PoolClient, quizId: string, questions: ParsedQuiz['questions']) {
   for (const [qi, question] of questions.entries()) {
     const inserted = await client.query<{ id: string }>(
-      `INSERT INTO questions (quiz_id, position, type, prompt, explanation, points, verb_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-      [quizId, qi, question.type, question.prompt, question.explanation, question.points, question.verbId ?? null],
+      `INSERT INTO questions (quiz_id, position, type, prompt, explanation, points, verb_id, config)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+      [
+        quizId,
+        qi,
+        question.type,
+        question.prompt,
+        question.explanation,
+        question.points,
+        question.verbId ?? null,
+        question.config === undefined || question.config === null ? null : JSON.stringify(question.config),
+      ],
     )
     const questionId = inserted.rows[0].id
     for (const [oi, option] of question.options.entries()) {

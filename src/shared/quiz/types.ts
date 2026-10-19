@@ -70,6 +70,11 @@ export interface QuizQuestion {
   explanation?: string
   /** Empty for `text` questions in the player view, so accepted answers don't leak. */
   options: QuizOption[]
+  /**
+   * Per-type payload for types that do not use `options`. The player view carries only what the
+   * type's `playerView` allows (never the answer, tolerance, correct order or accepted gaps).
+   */
+  config?: unknown
 }
 
 export interface QuizDetail {
