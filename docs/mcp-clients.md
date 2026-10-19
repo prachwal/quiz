@@ -47,12 +47,16 @@ założenia aplikacji Auth0. Token `qz_…` działa natychmiast i nadaje się do
 | Metoda uwierzytelniania tokena | `none` (klient publiczny, tylko PKCE, **bez sekretu**) |
 | Audience | `https://api.quiz.local` (ustawiony jako `default_audience` tenanta) |
 
-Narzędzia (25): `quiz_list`, `quiz_get`, `quiz_schema`, `quiz_create`, `quiz_update`,
+Narzędzia (27): `quiz_list`, `quiz_get`, `quiz_schema`, `quiz_create`, `quiz_update`,
 `quiz_delete`, `verbs_list`, `class_list`, `class_get`, `class_create`, `class_update`,
 `class_regenerate_code`, `class_archive`, `class_report`, `class_analyze`, `student_list`,
 `student_search`, `student_add`, `student_remove`, `student_results`, `student_analyze`,
-`course_list`, `assignment_create`, `assignment_update_due`, `assignment_delete`.
+`course_list`, `assignment_create`, `assignment_update_due`, `assignment_delete`,
+`attempt_list`, `attempt_get`.
 Zapis quizów wymaga roli **admin**, klasy i wyniki — roli **nauczyciel** (`teacher`).
+`attempt_*` wymaga `manage:users`, czyli **tylko konektora OAuth** (token `qz_…` tego
+uprawnienia nie dostaje): administrator je wywoła, nauczyciel i uczeń nie.
+Opis narzędzi do wklejenia w claude.ai: [[Claude-Web]].
 
 ### Aplikacje Auth0 dla konektorów
 
@@ -69,6 +73,8 @@ Zapis quizów wymaga roli **admin**, klasy i wyniki — roli **nauczyciel** (`te
 ---
 
 ## 1. Claude (claude.ai) — konektor OAuth
+
+Gotowe opisy do wklejenia (formularz, „description”, instrukcje projektu): [[Claude-Web]].
 
 1. **Settings → Connectors → Add custom connector**.
 2. Wpisz:

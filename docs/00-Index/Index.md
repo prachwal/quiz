@@ -24,6 +24,7 @@ Mapa treści vaultu. Zacznij tutaj.
 - [[Progress]] — postęp, powtórki, słabe czasowniki
 - [[mcp]] — serwer MCP
 - [[MCP-Admin-Tools]] — projekt narzędzi MCP dla administratora
+- [[Claude-Web]] — konektor Claude web i opis narzędzi do wklejenia
 - [[mcp-clients]] — rejestracja MCP u klientów
 - [[mcp-grok]] — Grok / xAI
 - [[api-admin]] — panel administracyjny
