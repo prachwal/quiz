@@ -23,6 +23,7 @@ Pełna lista tagów używanych w tym vault. Każdy dokument powinien mieć co na
 - `#progress` — streak, cel dzienny, powtórki (spaced repetition)
 - `#classes` — klasy, nauczyciel, zadania
 - `#learning` — kursy, lekcje, czasowniki
+- `#media` — obrazki i pliki (S3, wysyłanie, wyświetlanie)
 
 ## Typ dokumentu
 

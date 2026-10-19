@@ -36,7 +36,7 @@ Mapa treści vaultu. Zacznij tutaj.
 - [[zadania]] — plan rozwoju (5 zadań)
 - [[question-types]] — typy pytań
 - [[question-types-plan]] — plan wdrożenia nowych typów
-- [[Learning-Slice-Plan]] — oddzielenie modułu nauki od quizów (pionowe slice'y)
+- [[Learning-Slice-Plan]] — oddzielenie modułu nauki od quizów (pionowe slice'y) i moduł media (S3)
 - [[test-coverage-tasks]] — zadania pokrycia testami
 - [[Documentation-Plan]] — plan uzupełnienia dokumentacji
 
