@@ -21,7 +21,7 @@ Plan wykonawczy (decyzje, kolejnosc commitow, kontrakty, kryteria akceptacji): [
 | `numeric` ✅ | matematyka, fizyka, chemia: wynik liczbowy | tolerancja (bezwzględna/względna), jednostka, przecinek jako separator, ułamki |
 | `matching` ✅ | języki (słowo-tłumaczenie), historia (wydarzenie-data), biologia (narząd-funkcja) | proporcjonalnie po parach; prawa kolumna tasowana przez serwer, kafelek należy do jednej pary |
 | `ordering` ✅ | chronologia, etapy procesów, algorytmy | 0/1 za całą sekwencję; serwer tasuje elementy, gracz układa przyciskami w górę/w dół |
-| `cloze` ✅ | gramatyka, odmiana czasowników, brakujące pojęcia | proporcjonalnie po lukach; kilka akceptowanych wariantów na lukę, znaczniki `{{n}}` tylko w treści |
+| `cloze` ✅ | gramatyka, odmiana czasowników, brakujące pojęcia | proporcjonalnie po lukach; 1–10 wariantów na lukę (każdy 1–200 znaków), znaczniki `{{n}}` bez zer wiodących tylko w treści |
 | `categorization` | klasyfikacja organizmów, części mowy, związków | element -> grupa; jak `matching` z grupami |
 | `expression` | równania, równoważne zapisy (`1/2` = `0,5`) | porównanie symboliczne (biblioteka CAS), dużo przypadków brzegowych |
 | `hotspot` | mapa, anatomia, geometria | punkt w obszarze; wymaga przechowywania obrazów |

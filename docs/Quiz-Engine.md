@@ -13,10 +13,36 @@ updated: 2026-10-19
 ## Typy pytań
 
 Rejestr w `src/shared/quiz/engine.ts`: `single`, `multiple`, `truefalse`, `text`,
-`numeric`, `ordering`, `matching`.
+`numeric`, `ordering`, `matching`, `cloze`.
 
 Każdy typ definiuje: `usesOptions`, `defaultOptions`/`defaultConfig`, `validate`,
 `grade`, `playerView`, `describe`.
+
+## Normalizacja odpowiedzi
+
+Porównania tekstowe idą przez `normalizeText`: NFC, trim, zwinięcie spacji,
+złożenie typograficznych znaków interpunkcyjnych i `toLocaleLowerCase`.
+
+- Składane: `’ ‘ ʼ \`` → `'`, `“ ” „` → `"`, `– — ‑ −` → `-`.
+- **Nietknięte:** polskie diakrytyki (`szkoły` ≠ `szkoly`) i kolejność znaków.
+
+Powód: klawiatura telefonu (iOS „smart punctuation”) zamienia apostrof i myślnik
+na znaki typograficzne, więc `don’t` musi być tym samym co `don't`. Dotyczy to
+wszystkich typów porównywanych po tekście (`text`, `cloze`, `ordering`,
+`matching`) — jednej definicji, więc nie da się ich rozjechać.
+
+## `cloze` — znaczniki i limity
+
+- Znacznik ma jedną definicję (`CLOZE_MARKER` / `clozeParts` w `engine.ts`):
+  `{{n}}`, gdzie `n ≥ 1` **bez zer wiodących**. `{{01}}` nie jest znacznikiem,
+  bo gracz wysłałby odpowiedź pod kluczem `"01"`, a ocena czyta `"1"` — pytanie
+  byłoby nie do rozwiązania. Walidacja odrzuca taką treść.
+- Ograniczenia luki (te same w `validate` i w `data/quiz.schema.json`): 1–10
+  akceptowanych odpowiedzi, każda 1–200 znaków i co najmniej jeden znak inny
+  niż spacja.
+- Limity są egzekwowane tylko przy zapisie (`validate`), nie przy odczycie:
+  `clozeConfig` służy też ocenie i widokowi gracza, więc zaostrzenie go
+  sprawiłoby, że starsze pytania dawałyby 0 punktów.
 
 ## Grading
 
