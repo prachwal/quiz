@@ -7,6 +7,7 @@ import PageHeader from '../../components/PageHeader'
 import { useFocusMode } from '../../components/useFocusMode'
 import { useAppSelector } from '../../app/hooks'
 import type { Answer } from '../../shared/quiz/engine'
+import { orderingItems } from '../../shared/quiz/engine'
 import { effectiveShuffle, sampleFromPool, shuffle } from '../../shared/quiz/sampling'
 import type { QuizDetail } from '../../shared/quiz/types'
 import { isAnswered, questionRenderers } from './questionRenderers'
@@ -21,6 +22,19 @@ const prepareQuestions = (quiz: QuizDetail, playerShuffles: boolean) => {
   return quiz.shuffleOptions
     ? ordered.map((q) => (q.type === 'single' || q.type === 'multiple' ? { ...q, options: shuffle(q.options) } : q))
     : ordered
+}
+
+/**
+ * An ordering question is answered by the arrangement already on screen: the server shuffled it,
+ * so the visible order is what the player submits when they do not move anything.
+ */
+const withShownOrders = (questions: QuizDetail['questions'], answers: Record<string, Answer>) => {
+  const next = { ...answers }
+  for (const question of questions) {
+    if (question.type !== 'ordering' || next[question.id]) continue
+    next[question.id] = { order: orderingItems(question.config).map((item) => item.id) }
+  }
+  return next
 }
 
 function Runner({ quiz, onRestart }: { quiz: QuizDetail; onRestart: () => void }) {
@@ -42,12 +56,14 @@ function Runner({ quiz, onRestart }: { quiz: QuizDetail; onRestart: () => void }
     el.scrollIntoView({ block: 'start', behavior: reduced ? 'auto' : 'smooth' })
   }, [index])
 
+  // ordering: the server already shuffled the items, so the visible order is the submitted answer
+
   if (result) {
     return (
       <ResultView
         quiz={quiz}
         questions={questions}
-        answers={answers}
+        answers={withShownOrders(questions, answers)}
         result={result}
         showExplanations={showExplanations}
         onRestart={onRestart}
@@ -58,6 +74,7 @@ function Runner({ quiz, onRestart }: { quiz: QuizDetail; onRestart: () => void }
   const question = questions[index]
   const isLast = index === questions.length - 1
   const answer = answers[question.id]
+  const shownAnswer = withShownOrders([question], answers)[question.id]
 
   return (
     <div ref={cardRef} className="quiz-card-anchor">
@@ -113,20 +130,26 @@ function Runner({ quiz, onRestart }: { quiz: QuizDetail; onRestart: () => void }
               iconPlacement="end"
               className="action-primary"
               loading={isLoading}
-              onClick={() => void grade({ id: quiz.id, answers, questionIds: questions.map((q) => q.id) })}
+              onClick={() =>
+                void grade({
+                  id: quiz.id,
+                  answers: withShownOrders(questions, answers),
+                  questionIds: questions.map((q) => q.id),
+                })
+              }
             >
               Zakończ i sprawdź
             </Button>
           ) : (
             <Button
-              type={isAnswered(answer) ? 'primary' : 'default'}
+              type={isAnswered(shownAnswer) ? 'primary' : 'default'}
               size="large"
               icon={<ArrowRightOutlined />}
               iconPlacement="end"
               className="action-primary"
               onClick={() => setIndex(index + 1)}
             >
-              {isAnswered(answer) ? 'Dalej' : 'Pomiń'}
+              {isAnswered(shownAnswer) ? 'Dalej' : 'Pomiń'}
             </Button>
           )}
         </Flex>
