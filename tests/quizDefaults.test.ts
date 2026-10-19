@@ -4,7 +4,7 @@ import { emptyQuestion, emptyQuiz } from '../src/features/quizzes/quizDefaults.t
 
 test('emptyQuestion defaults to single', () => {
   assert.equal(emptyQuestion().type, 'single')
-  assert.ok(emptyQuestion().options.length >= 2)
+  assert.ok((emptyQuestion().options?.length ?? 0) >= 2)
 })
 
 test('emptyQuiz has one question', () => {

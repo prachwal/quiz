@@ -7,7 +7,9 @@ import { quizInput } from '../src/shared/quiz/schema.ts'
 
 const read = (file: string) => JSON.parse(readFileSync(new URL(`../data/${file}`, import.meta.url), 'utf8'))
 const schema = read('quiz.schema.json')
-const validate = new (Ajv2020 as unknown as typeof Ajv2020.default)({ strict: false }).compile(schema)
+/** `ajv/dist/2020.js` is CommonJS; the typings expose only the constructor, so type the compiled check locally. */
+type Validate = ((data: unknown) => boolean) & { errors?: unknown }
+const validate = new Ajv2020({ strict: false }).compile(schema) as unknown as Validate
 
 const option = (text: string, isCorrect: boolean) => ({ text, isCorrect })
 const quiz = (question: object) => ({ title: 'T', questions: [{ prompt: 'P', ...question }] })
