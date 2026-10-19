@@ -97,19 +97,21 @@ function Runner({ quiz, onRestart }: { quiz: QuizDetail; onRestart: () => void }
           />
         </div>
         <div style={{ padding: `24px ${PAD}` }}>
-          <h2
-            style={{
-              margin: 0,
-              fontSize: 'clamp(22px, 2.6vw + 12px, 30px)',
-              fontWeight: 650,
-              lineHeight: 1.35,
-              letterSpacing: -0.3,
-              color: token.colorText,
-              wordBreak: 'break-word',
-            }}
-          >
-            {question.prompt}
-          </h2>
+          {question.type === 'cloze' ? null : (
+            <h2
+              style={{
+                margin: 0,
+                fontSize: 'clamp(22px, 2.6vw + 12px, 30px)',
+                fontWeight: 650,
+                lineHeight: 1.35,
+                letterSpacing: -0.3,
+                color: token.colorText,
+                wordBreak: 'break-word',
+              }}
+            >
+              {question.prompt}
+            </h2>
+          )}
           <div style={{ margin: '28px 0 8px' }}>
             <Renderer
               question={question}

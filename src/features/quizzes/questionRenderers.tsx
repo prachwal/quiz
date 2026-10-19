@@ -5,7 +5,7 @@ import { ArrowDownOutlined, ArrowUpOutlined } from '@ant-design/icons'
 import { Button, Flex, Input, Tag, Typography } from 'antd'
 import { useState } from 'react'
 import type { ComponentType } from 'react'
-import { matchingLefts, matchingRights, orderingItems } from '../../shared/quiz/engine'
+import { matchingLefts, matchingRights, orderingItems, clozeGapCount } from '../../shared/quiz/engine'
 import type { Answer, QuestionType } from '../../shared/quiz/engine'
 import type { QuizQuestion } from '../../shared/quiz/types'
 import ChoiceTile, { LETTERS } from './ChoiceTile'
@@ -245,6 +245,45 @@ const Matching = ({ question, value, onChange }: RendererProps) => {
   )
 }
 
+/** Fills the `{{n}}` markers of the prompt with inputs; no HTML injection. */
+const Cloze = ({ question, value, onChange }: RendererProps) => {
+  const answerFor = (gap: string) => value?.gaps?.[gap] ?? ''
+  const setGap = (gap: string) => (text: string) => onChange({ gaps: { ...(value?.gaps ?? {}), [gap]: text } })
+  const gaps = clozeGapCount(question.config)
+  // split keeps the captured numbers: ['He ', '1', ' to school', '2', '.']
+  const parts = question.prompt.split(/(\{\{(\d+)\}\})/g)
+
+  return (
+    <>
+      <Typography.Paragraph type="secondary" style={{ marginBottom: 12, fontSize: 15 }}>
+        Uzupełnij {gaps === 1 ? 'lukę' : `${gaps} luki`}.
+      </Typography.Paragraph>
+      <div style={{ fontSize: 'clamp(20px, 2vw + 10px, 26px)', lineHeight: 2.2 }}>
+        {parts.map((part, i) => {
+          const marker = /^\{\{(\d+)\}\}$/.exec(part)
+          if (!marker) return <span key={i}>{part}</span>
+          const gap = marker[1]
+          return (
+            <Input
+              key={i}
+              size="small"
+              value={answerFor(gap)}
+              placeholder={`${gap}`}
+              aria-label={`Luka ${gap}`}
+              autoCapitalize="none"
+              autoCorrect="off"
+              autoComplete="off"
+              spellCheck={false}
+              onChange={(e) => setGap(gap)(e.target.value)}
+              style={{ width: 150, margin: '0 6px', fontSize: 17 }}
+            />
+          )
+        })}
+      </div>
+    </>
+  )
+}
+
 /** Player-side input for each question type (counterpart of `questionTypes` in the engine). */
 export const questionRenderers: Record<QuestionType, ComponentType<RendererProps>> = {
   single: Single,
@@ -254,6 +293,7 @@ export const questionRenderers: Record<QuestionType, ComponentType<RendererProps
   numeric: Numeric,
   ordering: Ordering,
   matching: Matching,
+  cloze: Cloze,
 }
 
 // the rule lives in the engine, so every answer shape (order, pairs, gaps) counts as answered
