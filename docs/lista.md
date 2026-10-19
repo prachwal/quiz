@@ -1,3 +1,12 @@
+---
+tags:
+  - reference
+  - learning
+  - verbs
+created: 2026-10-19
+updated: 2026-10-19
+---
+
 Wiać — blow, blew, blown.
 Uciekać — flee, fled, fled.
 Hodować — breed, bred, bred.

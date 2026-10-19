@@ -1,0 +1,27 @@
+{
+  "collapse-filter": false,
+  "search": "",
+  "showTags": true,
+  "showAttachments": false,
+  "hideUnresolved": false,
+  "showOrphans": true,
+  "collapse-color-groups": false,
+  "colorGroups": [
+    { "query": "tag:#quiz", "color": { "a": 1, "rgb": 5934335 } },
+    { "query": "tag:#docs", "color": { "a": 1, "rgb": 10169978 } },
+    { "query": "tag:#mcp", "color": { "a": 1, "rgb": 16744192 } },
+    { "query": "tag:#architecture", "color": { "a": 1, "rgb": 7631988 } }
+  ],
+  "collapse-display": false,
+  "showArrow": false,
+  "textFadeMultiplier": 0,
+  "nodeSizeMultiplier": 1,
+  "lineSizeMultiplier": 1,
+  "collapse-forces": false,
+  "centerStrength": 0.5187,
+  "repelStrength": 10,
+  "linkStrength": 1,
+  "linkDistance": 250,
+  "scale": 1,
+  "close": false
+}

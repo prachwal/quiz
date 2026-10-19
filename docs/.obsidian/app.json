@@ -1,0 +1,13 @@
+{
+  "alwaysUpdateLinks": true,
+  "newFileLocation": "folder",
+  "newFileFolderPath": "Notes",
+  "attachmentFolderPath": "Attachments",
+  "showFrontmatter": true,
+  "livePreview": true,
+  "defaultViewMode": "source",
+  "readableLineLength": true,
+  "showLineNumber": false,
+  "strictLineBreaks": false,
+  "propertiesInDocument": "visible"
+}

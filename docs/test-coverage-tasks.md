@@ -1,3 +1,11 @@
+---
+tags:
+  - plan
+  - testing
+created: 2026-10-19
+updated: 2026-10-19
+---
+
 # Tasklist: pokrycie testami frontendu
 
 Statusy: `[ ]` do zrobienia, `[x]` pokryte.

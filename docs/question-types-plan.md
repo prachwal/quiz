@@ -1,3 +1,13 @@
+---
+tags:
+  - plan
+  - quiz
+  - frontend
+  - backend
+created: 2026-10-19
+updated: 2026-10-19
+---
+
 # Plan wdrożenia: nowe typy pytań (fundament + `numeric` → `ordering` → `matching` → `cloze`)
 
 Dokument wykonawczy do [question-types.md](question-types.md). Tam jest uzasadnienie biznesowe i lista pomysłów;
