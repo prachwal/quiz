@@ -12,7 +12,7 @@ import {
 } from '../src/shared/quiz/engine.ts'
 
 test('QUESTION_TYPES lists every supported type', () => {
-  assert.deepEqual([...QUESTION_TYPES], ['single', 'multiple', 'truefalse', 'text', 'numeric', 'ordering'])
+  assert.deepEqual([...QUESTION_TYPES], ['single', 'multiple', 'truefalse', 'text', 'numeric', 'ordering', 'matching'])
 })
 
 test('every type defines playerView and describe', () => {
@@ -310,4 +310,50 @@ test('orderingItems reads the player payload and ignores broken config', () => {
   assert.deepEqual(orderingItems({ items }), items)
   assert.deepEqual(orderingItems({ items: 42 }), [])
   assert.deepEqual(orderingItems(undefined), [])
+})
+
+// ---- matching ----------------------------------------------------------------------------
+
+const pairs = [
+  { id: 'p1', rightId: 'r1', left: 'kot', right: 'cat' },
+  { id: 'p2', rightId: 'r2', left: 'pies', right: 'dog' },
+]
+
+const matchingQuestion = (list = pairs) => [
+  { id: 'm1', type: 'matching' as const, points: 1, explanation: '', options: [], config: { pairs: list } },
+]
+
+test('matching validates pair count, both sides and distinct ids', () => {
+  const t = questionTypes.matching
+  assert.equal(t.validate({ type: 'matching', options: [], config: { pairs } }), null)
+  assert.ok(t.validate({ type: 'matching', options: [], config: { pairs: [pairs[0]] } }))
+  assert.ok(t.validate({ type: 'matching', options: [], config: { pairs: [pairs[0], { ...pairs[1], right: ' ' }] } }))
+  assert.ok(t.validate({ type: 'matching', options: [], config: { pairs: [pairs[0], { ...pairs[1], id: 'p1' }] } }))
+  assert.ok(t.validate({ type: 'matching', options: [], config: { pairs: [pairs[0], { ...pairs[1], rightId: 'r1' }] } }))
+  assert.ok(t.validate({ type: 'matching', options: [], config: undefined }))
+})
+
+test('matching grades proportionally', () => {
+  assert.equal(gradeQuiz(matchingQuestion(), { m1: { pairs: { p1: 'r1', p2: 'r2' } } }).percent, 100)
+  assert.equal(gradeQuiz(matchingQuestion(), { m1: { pairs: { p1: 'r1', p2: 'r1' } } }).percent, 50)
+  assert.equal(gradeQuiz(matchingQuestion(), { m1: { pairs: { p1: 'r1' } } }).percent, 50)
+  assert.equal(gradeQuiz(matchingQuestion(), { m1: { pairs: {} } }).percent, 0)
+  assert.equal(gradeQuiz(matchingQuestion(), {}).percent, 0)
+})
+
+test('matching scores a crossed mistake as 0 for both pairs', () => {
+  assert.equal(gradeQuiz(matchingQuestion(), { m1: { pairs: { p1: 'r2', p2: 'r1' } } }).percent, 0)
+})
+
+test('matching ignores a right tile used twice and unknown keys', () => {
+  // the same tile cannot answer two pairs, even when its text would match
+  const same = [
+    { id: 'p1', rightId: 'r1', left: 'być', right: 'be' },
+    { id: 'p2', rightId: 'r2', left: 'istnieć', right: 'be' },
+  ]
+  assert.equal(gradeQuiz(matchingQuestion(same), { m1: { pairs: { p1: 'r1', p2: 'r1' } } }).percent, 50)
+  // two distinct tiles with the same text are both correct, in either arrangement
+  assert.equal(gradeQuiz(matchingQuestion(same), { m1: { pairs: { p1: 'r1', p2: 'r2' } } }).percent, 100)
+  assert.equal(gradeQuiz(matchingQuestion(same), { m1: { pairs: { p1: 'r2', p2: 'r1' } } }).percent, 100)
+  assert.equal(gradeQuiz(matchingQuestion(), { m1: { pairs: { p1: 'zzz', p2: 'r2' } } }).percent, 50)
 })

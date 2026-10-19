@@ -8,7 +8,7 @@
  * questions of one quiz, so old quizzes keep working without a data migration.
  */
 
-export const QUESTION_TYPES = ['single', 'multiple', 'truefalse', 'text', 'numeric', 'ordering'] as const
+export const QUESTION_TYPES = ['single', 'multiple', 'truefalse', 'text', 'numeric', 'ordering', 'matching'] as const
 export type QuestionType = (typeof QUESTION_TYPES)[number]
 
 export interface DraftOption {
@@ -130,6 +130,52 @@ const orderingConfig = (config: unknown): OrderingConfig | null => {
 export const orderingItems = (config: unknown): OrderingItem[] => orderingConfig(config)?.items ?? []
 
 /**
+ * matching: each pair has its own left and right id, so the player payload never links them.
+ * Pairs may share the same right text ("być"/"istnieć" → "be"); the editor gives every pair a
+ * distinct rightId, i.e. one tile per pair.
+ */
+export interface MatchingPair {
+  id: string
+  rightId: string
+  left: string
+  right: string
+}
+
+export interface MatchingConfig {
+  pairs: MatchingPair[]
+}
+
+const MATCHING_MAX_PAIRS = 20
+
+const matchingConfig = (config: unknown): MatchingConfig | null => {
+  if (!config || typeof config !== 'object') return null
+  const { pairs } = config as Partial<MatchingConfig>
+  if (!Array.isArray(pairs) || pairs.length < 2 || pairs.length > MATCHING_MAX_PAIRS) return null
+  const parsed: MatchingPair[] = []
+  for (const pair of pairs) {
+    if (!pair || typeof pair !== 'object') return null
+    const { id, rightId, left, right } = pair as Partial<MatchingPair>
+    if (typeof id !== 'string' || !id) return null
+    if (typeof rightId !== 'string' || !rightId) return null
+    if (typeof left !== 'string' || typeof right !== 'string') return null
+    parsed.push({ id, rightId, left, right })
+  }
+  return { pairs: parsed }
+}
+
+/** Tiles of a matching question as the player received them (server-shuffled on the right). */
+const readTiles = (config: unknown, key: 'lefts' | 'rights'): { id: string; text: string }[] => {
+  const value = (config as Record<string, unknown> | undefined)?.[key]
+  if (!Array.isArray(value)) return []
+  return value
+    .filter((item): item is { id: string; text: string } => Boolean(item) && typeof item === 'object')
+    .map((item) => ({ id: String(item.id), text: String(item.text) }))
+}
+
+export const matchingLefts = (config: unknown) => readTiles(config, 'lefts')
+export const matchingRights = (config: unknown) => readTiles(config, 'rights')
+
+/**
  * Parses a player answer: decimal comma or dot, fractions (1/2), exponent notation (1e3),
  * Unicode minus. Commas are always decimal separators, so "1,000" is 1. Units and percentages
  * are rejected (no finite value) - authors put the unit in the prompt.
@@ -176,6 +222,18 @@ const shuffleWith = <T>(items: T[], rng: () => number): T[] => {
     items[i] = items[j]
     items[j] = swap
   }
+  return items
+}
+
+/**
+ * Shuffles in place until the result is not the author order: a player who never touches the
+ * list must not get the correct arrangement for free. Indistinguishable items make every
+ * arrangement correct, so retrying is pointless; the rotation is a guaranteed fallback for a
+ * degenerate `rng`.
+ */
+const shuffleAwayFrom = <T>(items: T[], isAuthorOrder: () => boolean, rng: () => number): T[] => {
+  for (let attempt = 0; attempt < 8 && isAuthorOrder(); attempt += 1) shuffleWith(items, rng)
+  if (items.length >= 2 && isAuthorOrder()) items.push(items.shift() as T)
   return items
 }
 
@@ -353,11 +411,10 @@ export const questionTypeDefs = {
       if (!config) return { options: [] }
       if (withAnswers) return { options: [], config }
       const items = [...config.items]
-      const inCorrectOrder = () => items.every((item, i) => item.id === config.items[i].id)
+      const inAuthorOrder = () => items.every((item, i) => item.id === config.items[i].id)
       // indistinguishable items make every arrangement correct, so retrying is pointless
       const indistinguishable = items.every((item) => normalizeText(item.text) === normalizeText(items[0].text))
-      for (let attempt = 0; attempt < 8 && !indistinguishable && inCorrectOrder(); attempt += 1) shuffleWith(items, rng)
-      if (!indistinguishable && items.length >= 2 && inCorrectOrder()) items.push(items.shift() as OrderingItem)
+      if (!indistinguishable) shuffleAwayFrom(items, inAuthorOrder, rng)
       return { options: [], config: { items: items.map(({ id, text }) => ({ id, text })) } }
     },
     describe: (question, answer) => {
@@ -368,6 +425,80 @@ export const questionTypeDefs = {
       return {
         answerText: given.map((text, i) => `${i + 1}. ${text}`).join(', '),
         correctAnswers: [config.items.map((item) => item.text).join(' → ')],
+      }
+    },
+  },
+  matching: {
+    label: 'Dopasowanie par',
+    usesOptions: false,
+    defaultOptions: () => [],
+    defaultConfig: (): MatchingConfig => ({
+      pairs: [
+        { id: newItemId(), rightId: newItemId(), left: '', right: '' },
+        { id: newItemId(), rightId: newItemId(), left: '', right: '' },
+      ],
+    }),
+    validate: (q) => {
+      const config = matchingConfig(q.config)
+      if (!config) return 'Dodaj co najmniej dwie pary'
+      if (config.pairs.some((pair) => !pair.left.trim() || !pair.right.trim())) {
+        return 'Uzupełnij obie strony każdej pary'
+      }
+      if (new Set(config.pairs.map((pair) => pair.id)).size !== config.pairs.length) {
+        return 'Pary muszą mieć unikalne identyfikatory'
+      }
+      if (new Set(config.pairs.map((pair) => pair.rightId)).size !== config.pairs.length) {
+        return 'Każda para musi mieć własny kafelek po prawej stronie'
+      }
+      return null
+    },
+    // proportional: one point per pair, a right tile can be used by a single pair
+    grade: (question, answer) => {
+      const config = matchingConfig(question.config)
+      const submitted = answer?.pairs
+      if (!config || !submitted) return 0
+      const textOfRight = new Map(config.pairs.map((pair) => [pair.rightId, normalizeText(pair.right)]))
+      const used = new Set<string>()
+      let correct = 0
+      for (const pair of config.pairs) {
+        const chosen = submitted[pair.id]
+        if (!chosen || used.has(chosen)) continue
+        const chosenText = textOfRight.get(chosen)
+        if (chosenText === undefined) continue
+        used.add(chosen)
+        if (chosenText === normalizeText(pair.right)) correct += 1
+      }
+      return correct / config.pairs.length
+    },
+    // lefts keep the author order; rights are shuffled and nothing links them to their left
+    playerView: (question, rng, withAnswers) => {
+      const config = matchingConfig(question.config)
+      if (!config) return { options: [] }
+      if (withAnswers) return { options: [], config }
+      const rights = config.pairs.map((pair) => ({ id: pair.rightId, text: pair.right }))
+      const inAuthorOrder = () => rights.every((right, i) => right.id === config.pairs[i].rightId)
+      const indistinguishable = rights.every((right) => normalizeText(right.text) === normalizeText(rights[0].text))
+      if (!indistinguishable) shuffleAwayFrom(rights, inAuthorOrder, rng)
+      return {
+        options: [],
+        config: { lefts: config.pairs.map((pair) => ({ id: pair.id, text: pair.left })), rights },
+      }
+    },
+    // one correct answer per pair: the review lists cut/join the array (`slice(0, 3)`, `join(' / ')`)
+    describe: (question, answer) => {
+      const config = matchingConfig(question.config)
+      if (!config) return { answerText: '', correctAnswers: [] }
+      const textOfRight = new Map(config.pairs.map((pair) => [pair.rightId, pair.right]))
+      const given = config.pairs
+        .map((pair) => {
+          const chosen = answer?.pairs?.[pair.id]
+          const text = chosen ? textOfRight.get(chosen) : undefined
+          return text === undefined ? null : `${pair.left} → ${text}`
+        })
+        .filter((entry): entry is string => entry !== null)
+      return {
+        answerText: given.join('; '),
+        correctAnswers: config.pairs.map((pair) => `${pair.left} → ${pair.right}`),
       }
     },
   },
