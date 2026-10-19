@@ -133,6 +133,7 @@
           "then": {
             "required": ["config"],
             "properties": {
+              "options": { "maxItems": 0 },
               "config": {
                 "required": ["answer"],
                 "properties": {
@@ -145,7 +146,18 @@
                       "value": { "type": "number", "minimum": 0 }
                     }
                   }
-                }
+                },
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": { "answer": { "const": 0 } },
+                      "required": ["answer"]
+                    },
+                    "then": {
+                      "properties": { "tolerance": { "properties": { "kind": { "const": "absolute" } } } }
+                    }
+                  }
+                ]
               }
             }
           }
