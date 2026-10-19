@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
+  clozeMarkers,
   gradeQuiz,
   isAnswered,
   orderingItems,
@@ -12,7 +13,7 @@ import {
 } from '../src/shared/quiz/engine.ts'
 
 test('QUESTION_TYPES lists every supported type', () => {
-  assert.deepEqual([...QUESTION_TYPES], ['single', 'multiple', 'truefalse', 'text', 'numeric', 'ordering', 'matching'])
+  assert.deepEqual([...QUESTION_TYPES], ['single', 'multiple', 'truefalse', 'text', 'numeric', 'ordering', 'matching', 'cloze'])
 })
 
 test('every type defines playerView and describe', () => {
@@ -356,4 +357,67 @@ test('matching ignores a right tile used twice and unknown keys', () => {
   assert.equal(gradeQuiz(matchingQuestion(same), { m1: { pairs: { p1: 'r1', p2: 'r2' } } }).percent, 100)
   assert.equal(gradeQuiz(matchingQuestion(same), { m1: { pairs: { p1: 'r2', p2: 'r1' } } }).percent, 100)
   assert.equal(gradeQuiz(matchingQuestion(), { m1: { pairs: { p1: 'zzz', p2: 'r2' } } }).percent, 50)
+})
+
+// ---- cloze -------------------------------------------------------------------------------
+
+const clozeQuestion = (prompt = 'He {{1}} to school and {{2}} it.', gaps = [{ answers: ['went'] }, { answers: ['learnt', 'learned'] }]) => [
+  { id: 'c1', type: 'cloze' as const, points: 4, explanation: '', options: [], config: { gaps } },
+]
+
+test('cloze validates markers against the gap list', () => {
+  const t = questionTypes.cloze
+  assert.equal(t.validate({ type: 'cloze', prompt: 'He {{1}} and {{2}}.', options: [], config: { gaps: [{ answers: ['a'] }, { answers: ['b'] }] } }), null)
+  // marker without a gap, gap without a marker, wrong order, duplicate marker
+  assert.ok(t.validate({ type: 'cloze', prompt: 'He {{1}} and {{2}}.', options: [], config: { gaps: [{ answers: ['a'] }] } }))
+  assert.ok(t.validate({ type: 'cloze', prompt: 'He {{1}}.', options: [], config: { gaps: [{ answers: ['a'] }, { answers: ['b'] }] } }))
+  assert.ok(t.validate({ type: 'cloze', prompt: 'He {{2}} and {{1}}.', options: [], config: { gaps: [{ answers: ['a'] }, { answers: ['b'] }] } }))
+  assert.ok(t.validate({ type: 'cloze', prompt: 'He {{1}} and {{1}}.', options: [], config: { gaps: [{ answers: ['a'] }, { answers: ['b'] }] } }))
+  assert.ok(t.validate({ type: 'cloze', prompt: 'Bez znaczników.', options: [], config: { gaps: [{ answers: ['a'] }] } }))
+  // empty accepted answers
+  assert.ok(t.validate({ type: 'cloze', prompt: 'He {{1}}.', options: [], config: { gaps: [{ answers: [' '] }] } }))
+})
+
+test('cloze grades proportionally with accepted variants', () => {
+  assert.equal(gradeQuiz(clozeQuestion(), { c1: { gaps: { 1: 'went', 2: 'learnt' } } }).percent, 100)
+  assert.equal(gradeQuiz(clozeQuestion(), { c1: { gaps: { 1: 'went', 2: 'learned' } } }).percent, 100)
+  assert.equal(gradeQuiz(clozeQuestion(), { c1: { gaps: { 1: 'went', 2: 'learn' } } }).percent, 50)
+  assert.equal(gradeQuiz(clozeQuestion(), { c1: { gaps: { 1: 'went' } } }).percent, 50)
+  assert.equal(gradeQuiz(clozeQuestion(), { c1: { gaps: { 1: '', 2: '' } } }).percent, 0)
+  assert.equal(gradeQuiz(clozeQuestion(), {}).percent, 0)
+})
+
+test('cloze is case, whitespace and diacritic sensitive', () => {
+  const q = clozeQuestion('Idzie {{1}}.', [{ answers: ['do szkoły'] }])
+  assert.equal(gradeQuiz(q, { c1: { gaps: { 1: '  Do   SZKOŁY ' } } }).percent, 100)
+  assert.equal(gradeQuiz(q, { c1: { gaps: { 1: 'do szkoly' } } }).percent, 0)
+})
+
+test('cloze playerView exposes only the gap count', () => {
+  const view = typeDef('cloze').playerView(
+    { type: 'cloze', options: [], config: { gaps: [{ answers: ['went'] }] } },
+    rngFrom([0.5]),
+    false,
+  ) as { config: unknown }
+  assert.deepEqual(view.config, { gaps: 1 })
+  const editorView = typeDef('cloze').playerView(
+    { type: 'cloze', options: [], config: { gaps: [{ answers: ['went'] }] } },
+    rngFrom([0.5]),
+    true,
+  ) as { config: unknown }
+  assert.deepEqual(editorView.config, { gaps: [{ answers: ['went'] }] })
+})
+
+test('cloze describe numbers the answers and joins the variants', () => {
+  const described = typeDef('cloze').describe(
+    { type: 'cloze', options: [], config: { gaps: [{ answers: ['went'] }, { answers: ['learnt', 'learned'] }] } },
+    { gaps: { 2: 'learned' } },
+  )
+  assert.equal(described.answerText, '2: learned')
+  assert.deepEqual(described.correctAnswers, ['1: went', '2: learnt / learned'])
+})
+
+test('clozeMarkers extracts the marker numbers in order', () => {
+  assert.deepEqual(clozeMarkers('a {{2}} b {{1}}'), [2, 1])
+  assert.deepEqual(clozeMarkers('brak'), [])
 })

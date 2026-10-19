@@ -8,7 +8,7 @@
  * questions of one quiz, so old quizzes keep working without a data migration.
  */
 
-export const QUESTION_TYPES = ['single', 'multiple', 'truefalse', 'text', 'numeric', 'ordering', 'matching'] as const
+export const QUESTION_TYPES = ['single', 'multiple', 'truefalse', 'text', 'numeric', 'ordering', 'matching', 'cloze'] as const
 export type QuestionType = (typeof QUESTION_TYPES)[number]
 
 export interface DraftOption {
@@ -18,6 +18,8 @@ export interface DraftOption {
 
 export interface DraftQuestion {
   type: QuestionType
+  /** Present when the definition needs to cross-check the config (cloze markers). */
+  prompt?: string
   options: DraftOption[]
   /** Per-type payload for types that do not use `options`. */
   config?: unknown
@@ -174,6 +176,46 @@ const readTiles = (config: unknown, key: 'lefts' | 'rights'): { id: string; text
 
 export const matchingLefts = (config: unknown) => readTiles(config, 'lefts')
 export const matchingRights = (config: unknown) => readTiles(config, 'rights')
+
+/**
+ * cloze: the prompt carries `{{1}}…{{n}}` markers and every marker has a gap with the accepted
+ * answers (variants are separate entries, e.g. learnt / learned).
+ */
+export interface ClozeGap {
+  answers: string[]
+}
+
+export interface ClozeConfig {
+  gaps: ClozeGap[]
+}
+
+const CLOZE_MAX_GAPS = 8
+
+/** Marker numbers in the prompt, in the order they appear (duplicates kept). */
+export const clozeMarkers = (prompt: string): number[] =>
+  [...prompt.matchAll(/\{\{(\d+)\}\}/g)].map((match) => Number(match[1]))
+
+const clozeConfig = (config: unknown): ClozeConfig | null => {
+  if (!config || typeof config !== 'object') return null
+  const { gaps } = config as Partial<ClozeConfig>
+  if (!Array.isArray(gaps) || gaps.length < 1 || gaps.length > CLOZE_MAX_GAPS) return null
+  const parsed: ClozeGap[] = []
+  for (const gap of gaps) {
+    if (!gap || typeof gap !== 'object') return null
+    const { answers } = gap as Partial<ClozeGap>
+    if (!Array.isArray(answers) || answers.length < 1) return null
+    if (answers.some((answer) => typeof answer !== 'string')) return null
+    parsed.push({ answers })
+  }
+  return { gaps: parsed }
+}
+
+/** How many gaps the player has to fill in. */
+export const clozeGapCount = (config: unknown): number => {
+  const view = (config as { gaps?: unknown } | undefined)?.gaps
+  if (typeof view === 'number') return view
+  return clozeConfig(config)?.gaps.length ?? 0
+}
 
 /**
  * Parses a player answer: decimal comma or dot, fractions (1/2), exponent notation (1e3),
@@ -499,6 +541,57 @@ export const questionTypeDefs = {
       return {
         answerText: given.join('; '),
         correctAnswers: config.pairs.map((pair) => `${pair.left} → ${pair.right}`),
+      }
+    },
+  },
+  cloze: {
+    label: 'Uzupełnianie luk',
+    usesOptions: false,
+    defaultOptions: () => [],
+    defaultConfig: (): ClozeConfig => ({ gaps: [{ answers: [] }] }),
+    // the markers in the prompt and the gap list must describe the same thing
+    validate: (q) => {
+      const config = clozeConfig(q.config)
+      if (!config) return 'Dodaj co najmniej jedną lukę'
+      if (config.gaps.some((gap) => gap.answers.every((answer) => !answer.trim()))) {
+        return 'Uzupełnij akceptowane odpowiedzi w każdej luce'
+      }
+      const markers = clozeMarkers(q.prompt ?? '')
+      const expected = config.gaps.map((_, i) => i + 1)
+      if (markers.length !== expected.length || markers.some((marker, i) => marker !== expected[i])) {
+        return `Treść musi zawierać znaczniki ${expected.map((n) => `{{${n}}}`).join(', ')} - każdy dokładnie raz`
+      }
+      return null
+    },
+    // proportional: every gap is worth the same, any accepted variant counts
+    grade: (question, answer) => {
+      const config = clozeConfig(question.config)
+      if (!config) return 0
+      const given = answer?.gaps ?? {}
+      let correct = 0
+      config.gaps.forEach((gap, i) => {
+        const value = normalizeText(given[String(i + 1)] ?? '')
+        if (!value) return
+        if (gap.answers.some((accepted) => normalizeText(accepted) === value)) correct += 1
+      })
+      return correct / config.gaps.length
+    },
+    // the accepted answers never reach the player: the view carries only how many gaps there are
+    playerView: (question, _rng, withAnswers) => {
+      const config = clozeConfig(question.config)
+      if (!config) return { options: [] }
+      return { options: [], config: withAnswers ? config : { gaps: config.gaps.length } }
+    },
+    // one correct answer per gap: the review lists cut/join the array
+    describe: (question, answer) => {
+      const config = clozeConfig(question.config)
+      if (!config) return { answerText: '', correctAnswers: [] }
+      const given = config.gaps
+        .map((_, i) => ({ number: i + 1, text: (answer?.gaps?.[String(i + 1)] ?? '').trim() }))
+        .filter((gap) => gap.text)
+      return {
+        answerText: given.map((gap) => `${gap.number}: ${gap.text}`).join('; '),
+        correctAnswers: config.gaps.map((gap, i) => `${i + 1}: ${gap.answers.join(' / ')}`),
       }
     },
   },
