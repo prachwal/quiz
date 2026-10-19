@@ -62697,12 +62697,17 @@ var pool = () => {
   if (!connectionString) {
     throw new Error("DATABASE_URL is not set - see .env.example and docs/vercel.md");
   }
-  externalPool ??= new esm_default.Pool({
-    connectionString,
-    max: Number(process.env.PGPOOL_MAX ?? 5),
-    // Neon and most managed providers terminate TLS with a certificate from a public CA.
-    ssl: process.env.PGSSLMODE === "disable" ? void 0 : { rejectUnauthorized: false }
-  });
+  if (!externalPool) {
+    externalPool = new esm_default.Pool({
+      connectionString,
+      max: Number(process.env.PGPOOL_MAX ?? 5),
+      // Neon and most managed providers terminate TLS with a certificate from a public CA, so the certificate is
+      // verified. A `sslmode` in the connection string decides on its own; without one TLS is on unless
+      // PGSSLMODE=disable (a local Postgres without TLS).
+      ssl: process.env.PGSSLMODE === "disable" || /[?&]sslmode=/.test(connectionString) ? void 0 : true
+    });
+    externalPool.on("error", (error62) => console.error(JSON.stringify({ level: "error", msg: "idle pg client error", error: error62.message })));
+  }
   return externalPool;
 };
 async function listQuizzes(filter = {}, canEdit = false, userId = null) {

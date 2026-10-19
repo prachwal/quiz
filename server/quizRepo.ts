@@ -41,12 +41,19 @@ export const pool = (): Pool => {
   if (!connectionString) {
     throw new Error('DATABASE_URL is not set - see .env.example and docs/vercel.md')
   }
-  externalPool ??= new pg.Pool({
-    connectionString,
-    max: Number(process.env.PGPOOL_MAX ?? 5),
-    // Neon and most managed providers terminate TLS with a certificate from a public CA.
-    ssl: process.env.PGSSLMODE === 'disable' ? undefined : { rejectUnauthorized: false },
-  })
+  if (!externalPool) {
+    externalPool = new pg.Pool({
+      connectionString,
+      max: Number(process.env.PGPOOL_MAX ?? 5),
+      // Neon and most managed providers terminate TLS with a certificate from a public CA, so the certificate is
+      // verified. A `sslmode` in the connection string decides on its own; without one TLS is on unless
+      // PGSSLMODE=disable (a local Postgres without TLS).
+      ssl: process.env.PGSSLMODE === 'disable' || /[?&]sslmode=/.test(connectionString) ? undefined : true,
+    })
+    // an idle connection dropped by the server (Neon scales to zero) is emitted as 'error' on the pool; without a
+    // listener Node would treat it as an uncaught exception and kill the process
+    externalPool.on('error', (error) => console.error(JSON.stringify({ level: 'error', msg: 'idle pg client error', error: error.message })))
+  }
   return externalPool as unknown as Pool
 }
 
