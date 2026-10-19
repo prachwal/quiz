@@ -83,6 +83,15 @@ Nazwy mają postać `obiekt_czynność`. Operacje nieodwracalne wymagają `confi
 
 Identyfikator Auth0 ucznia widać w `student_list` i `class_get` oraz w Ustawieniach → Użytkownicy (kolumna użytkownika, pod nazwą).
 
+**Administrator** – `manage:users`, czyli **tylko logowanie OAuth** (token osobisty tego uprawnienia nigdy nie dostaje). Odczytywanie podejść **bez klasy i bez przydziału** – to uzupełnia `student_results`, które wymaga członkostwa w klasie.
+
+| Narzędzie | Opis |
+| --------- | ---- |
+| `attempt_list` | podejścia wszystkich użytkowników, od najnowszego, z `total` i `hasMore`; filtry: `quizId`, `userId`, `courseId`, `title` (fragment tytułu zapisanego przy podejściu, więc działa też po usunięciu quizu), `source`, `minPercent`/`maxPercent`, `from`/`to`, `limit`/`offset` |
+| `attempt_get` | jedno podejście: `score`/`maxScore`/`percent`, autor (z e-mailem), quiz i odpowiedź na **każde pytanie** (`type`, `points`, `earned`, `correct`, `answer`, `correctAnswers`); `prompt`/`type` = null, gdy pytanie zniknęło przy edycji quizu |
+
+`attempt_list` zwraca `score` i `maxScore` wprost, więc „procent” nie wymaga zgadywania liczby punktów; `attempt_get` pokazuje, które pytania zawiodły. Statystyka pytań (`quiz_stats`) i pozostałe narzędzia administracyjne są zaprojektowane w [[MCP-Admin-Tools]].
+
 Przepływy:
 
 - **Nowa klasa:** `class_create` → `student_add` (po id Auth0) → `quiz_list`/`course_list` → `assignment_create`.
@@ -91,7 +100,7 @@ Przepływy:
 
 Dodanie ucznia po id nie wymaga jego zgody – uczeń widzi klasę w „Zadania” i może ją opuścić. Nauczyciel widzi jego imię, e‑mail i wyniki z zadań klasy (patrz informacja przy dołączaniu).
 
-**Administrator** – `quiz_get`/`quiz_list` czytają **każdy** quiz (nie tylko własny), a `quiz_update`/`quiz_delete` wymagają jedynie `write:quizzes`, więc kontrola nad treścią quizów jest pełna. Brakuje natomiast wyników **poza klasą**, statystyki pytań i operacji administracyjnych (użytkownicy, audyt, zgłoszenia, ustawienia) – projekt tych narzędzi: [[MCP-Admin-Tools]].
+**Administrator** – `quiz_get`/`quiz_list` czytają **każdy** quiz (nie tylko własny), a `quiz_update`/`quiz_delete` wymagają jedynie `write:quizzes`, więc kontrola nad treścią quizów jest pełna. Wyniki poza klasą dają `attempt_list`/`attempt_get`; brakuje jeszcze statystyki pytań i operacji administracyjnych (użytkownicy, audyt, zgłoszenia, ustawienia) – projekt: [[MCP-Admin-Tools]].
 
 ## Podłączenie klientów
 
@@ -149,7 +158,7 @@ npm run test:mcp
 
 `MCP_E2E_VIA_DEV=1 npm run test:mcp` powtarza te same sprawdzenia przez zbundlowaną funkcję za proxy `npm run dev:full`, a nie tylko na aplikacji w procesie.
 
-Skrypt uruchamia `scripts/dev-server.mjs`, a gdy port 8888 jest już zajęty, używa działającego serwera i niczego nie zatrzymuje. Oficjalnym klientem MCP wywołuje **wszystkie 25 narzędzi** na prawdziwej aplikacji i bazie: poprawne scenariusze, walidację, odmowy dla innego nauczyciela, admina (tylko podgląd), tokenu bez uprawnień i bez potwierdzenia oraz wpisy w audycie. Dane testowe mają prefiks `mcp-e2e` i są usuwane przed i po teście; kod wyjścia ≠ 0 przy błędzie. Test produkcji (tylko quizy, tymczasowy quiz): `node scripts/mcp-smoke.mjs`.
+Skrypt uruchamia `scripts/dev-server.mjs`, a gdy port 8888 jest już zajęty, używa działającego serwera i niczego nie zatrzymuje. Oficjalnym klientem MCP wywołuje **wszystkie 27 narzędzi** na prawdziwej aplikacji i bazie: poprawne scenariusze, walidację, odmowy dla innego nauczyciela, admina (tylko podgląd), tokenu bez uprawnień i bez potwierdzenia oraz wpisy w audycie. Dane testowe mają prefiks `mcp-e2e` i są usuwane przed i po teście; kod wyjścia ≠ 0 przy błędzie. Test produkcji (tylko quizy, tymczasowy quiz): `node scripts/mcp-smoke.mjs`.
 
 ## Szybki test z linii poleceń
 

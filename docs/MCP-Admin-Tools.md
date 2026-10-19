@@ -35,7 +35,7 @@ pytania**. Reszta (quizy, klasy, uczniowie) jest już pokryta.
 
 ## 2. Co już istnieje
 
-25 narzędzi w trzech modułach:
+27 narzędzi w czterech modułach (stan po commitach `46ac144`…`df65f98`):
 
 | Moduł | Narzędzia |
 | --- | --- |
@@ -43,6 +43,7 @@ pytania**. Reszta (quizy, klasy, uczniowie) jest już pokryta.
 | `server/mcp/classTools.ts` → `tools/classes.ts` | `class_list`, `class_get`, `class_create`, `class_update`, `class_archive`, `class_regenerate_code`, `class_report`, `class_analyze` |
 | `server/mcp/tools/students.ts` | `student_list`, `student_search`, `student_add`, `student_remove`, `student_results`, `student_analyze` |
 | `server/mcp/tools/assignments.ts` | `assignment_create`, `assignment_update_due`, `assignment_delete`, `course_list` |
+| `server/mcp/tools/admin.ts` ✅ | `attempt_list`, `attempt_get` |
 
 ### Co administrator może już teraz
 
@@ -56,14 +57,14 @@ pytania**. Reszta (quizy, klasy, uczniowie) jest już pokryta.
 
 ### Czego nie ma
 
-| Luka | Skutek |
-| --- | --- |
-| podejścia **poza klasą** | brak odpowiedzi na „kto i jak rozwiązał ten quiz” |
-| pojedyncze podejście z odpowiedziami | brak danych do oceny pytań |
-| statystyka pytań | brak podstaw do oceny trudności |
-| użytkownicy (lista, role, blokada) | tylko panel WWW (`/api/admin/*`) |
-| audyt, zgłoszenia, ustawienia | tylko panel WWW |
-| stan systemu | brak |
+| Luka | Skutek | Stan |
+| --- | --- | --- |
+| podejścia **poza klasą** | brak odpowiedzi na „kto i jak rozwiązał ten quiz” | ✅ `attempt_list` |
+| pojedyncze podejście z odpowiedziami | brak danych do oceny pytań | ✅ `attempt_get` |
+| statystyka pytań | brak podstaw do oceny trudności | ⬜ `quiz_stats` |
+| użytkownicy (lista, role, blokada) | tylko panel WWW (`/api/admin/*`) | ⬜ |
+| audyt, zgłoszenia, ustawienia | tylko panel WWW | ⬜ |
+| stan systemu | brak | ⬜ |
 
 ## 3. Zasady wspólne dla nowych narzędzi
 
@@ -390,16 +391,19 @@ Cel: jedno wywołanie odpowiada „czy system żyje i jak wygląda”, zamiast p
 
 Każdy commit: zielone `npm run build`, `npm run lint`, `npm test`, `npm run test:ui`.
 
-| # | Commit | Zakres |
-| --- | --- | --- |
-| 1 | `feat(shared): item analysis helpers` | `src/shared/quiz/itemStats.ts` + `tests/itemStats.test.ts` (czysta logika, progi z §5.1) |
-| 2 | `feat(api): attempt queries for admins` | `server/attemptsRepo.ts` (`listAttemptsFiltered`, `getAttempt`, `attemptsOfQuiz`), bez MCP |
-| 3 | `feat(mcp): attempt_list and attempt_get` | moduł `tools/admin.ts`, straż `adminOnly`, rejestracja w `index.ts` |
-| 4 | `feat(mcp): quiz_stats` | użycie `itemStats` + zapytania z commita 2 |
-| 5 | `feat(mcp): user_* tools` | lista, get, search, role, blokada + zabezpieczenia z REST |
-| 6 | `feat(mcp): audit, feedback, settings, system_stats` | grupa E |
-| 7 | `docs(mcp): admin tools` | [[mcp]], [[api-admin]], `CLAUDE.md`, opis w `docs/mcp-clients.md` |
-| (opc.) | `feat(db): attempt question snapshot` | tylko przy D2-A: migracja + `saveAttempt` + backfill |
+| # | Commit | Zakres | Stan |
+| --- | --- | --- | --- |
+| 1 | `feat(shared): item analysis helpers` | `src/shared/quiz/itemStats.ts` + `tests/itemStats.test.ts` (czysta logika, progi z §5.1) | ✅ `46ac144` |
+| 2 | `feat(api): attempt queries for admins` | `server/attemptsRepo.ts` (`listAttemptsFiltered`, `getAttempt`, `attemptsOfQuiz`), bez MCP | ✅ `ebea56a` |
+| 3 | `feat(mcp): attempt_list and attempt_get` | moduł `tools/admin.ts`, straż `adminOnly`, rejestracja w `index.ts` | ✅ `df65f98` |
+| 4 | `feat(mcp): quiz_stats` | użycie `itemStats` + `attemptsOfQuiz` z commita 2 | ⬜ |
+| 5 | `feat(mcp): user_* tools` | lista, get, search, role, blokada + zabezpieczenia z REST | ⬜ |
+| 6 | `feat(mcp): audit, feedback, settings, system_stats` | grupa E | ⬜ |
+| 7 | `docs(mcp): admin tools` | [[mcp]], [[api-admin]], `CLAUDE.md`, opis w `docs/mcp-clients.md` | 🟡 częściowo (2 narzędzia) |
+| (opc.) | `feat(db): attempt question snapshot` | tylko przy D2-A: migracja + `saveAttempt` + backfill | ⬜ |
+
+Uwaga do commita 2: `attemptsOfQuiz` nie ma jeszcze konsumenta — czeka na
+`quiz_stats` (commit 4). To świadomy groundwork, nie martwy kod przypadkowy.
 
 Razem ok. **3–4 dni** dla grupy A+B+E bez D2-A; +0,5 dnia na migrację snapshotu.
 

@@ -17,7 +17,7 @@ updated: 2026-10-19
 ## MCP e2e
 
 - `npm run test:mcp` — `scripts/mcp-local-e2e.sh/.ts`: startuje `scripts/dev-server.mjs`
-  (lub używa działającego), ćwiczy wszystkie 25 narzędzi, uprawnienia i audyt.
+  (lub używa działającego), ćwiczy wszystkie 27 narzędzi, uprawnienia i audyt.
 - Wiersze testowe mają prefix `mcp-e2e` i są usuwane.
 
 ## Konwencje
