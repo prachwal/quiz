@@ -75,7 +75,7 @@ export function registerQuizTools(server: McpServer, ctx: Ctx) {
     {
       title: 'Utwórz quiz',
       description:
-        'Tworzy quiz. Typy pytań: single (jedna poprawna), multiple, truefalse, text (opcje to akceptowane odpowiedzi), numeric (wynik liczbowy: config {answer, tolerance?} zamiast options). Pole subject grupuje quiz według przedmiotu (math, physics, chemistry, biology, geography, history, polish, english, it, other). Ustawienia: shuffleQuestions (null=ustawienie gracza), shuffleOptions, sampleSize (10/20/30 pytań losowanych z puli lub null). Schemat: quiz_schema.',
+        'Tworzy quiz. Typy pytań: single (jedna poprawna), multiple, truefalse, text (opcje to akceptowane odpowiedzi), numeric (wynik liczbowy: config {answer, tolerance?}), ordering (kolejność: config {items: [{id, text}]}), matching (pary: config {pairs: [{id, rightId, left, right}]}), cloze (luki: treść ze znacznikami {{1}}…{{n}} i config {gaps: [{answers: []}]}). Typy numeric/ordering/matching/cloze nie używają options. Pole subject grupuje quiz według przedmiotu (math, physics, chemistry, biology, geography, history, polish, english, it, other). Ustawienia: shuffleQuestions (null=ustawienie gracza), shuffleOptions, sampleSize (10/20/30 pytań losowanych z puli lub null). Schemat: quiz_schema.',
       inputSchema: { quiz: quizInput },
     },
     async ({ quiz }) => {

@@ -17,12 +17,24 @@ Plan wykonawczy (decyzje, kolejnosc commitow, kontrakty, kryteria akceptacji): [
 | `hotspot` | mapa, anatomia, geometria | punkt w obszarze; wymaga przechowywania obrazów |
 | `open` | uzasadnienie, interpretacja, dowód | kryteria oceniane przez nauczyciela lub AI z korektą; wyłamuje się z zasady „ocena tylko automatyczna po stronie serwera" |
 
-Kolejność wdrożenia: **`numeric`, `ordering`, `matching`, `cloze`** (duży zysk, przewidywalna ocena), potem `categorization`, a `expression`, `hotspot` i `open` jako osobne projekty.
+Kolejność wdrożenia: **`numeric`, `ordering`, `matching`, `cloze`** ✅ (zrobione, patrz tabela niżej), potem `categorization`, a `expression`, `hotspot` i `open` jako osobne projekty.
+
+## Stan wdrożenia
+
+| Typ | Silnik | Edytor | Gracz | Testy |
+| --- | ------ | ------- | ----- | ----- |
+| `numeric` | `engine.ts` → `numeric` | `ConfigEditor` → `NumericEditor` | `questionRenderers` → `Numeric` | `tests/engine.test.ts`, `tests/quizSchema.test.ts` |
+| `ordering` | `engine.ts` → `ordering` | `ConfigEditor` → `OrderingEditor` | `questionRenderers` → `Ordering` | `tests/engine.test.ts`, `orderingRenderer.test.tsx` |
+| `matching` | `engine.ts` → `matching` | `ConfigEditor` → `MatchingEditor` | `questionRenderers` → `Matching` | `tests/engine.test.ts`, `matchingRenderer.test.tsx` |
+| `cloze` | `engine.ts` → `cloze` | `ConfigEditor` → `ClozeEditor` | `questionRenderers` → `Cloze` | `tests/engine.test.ts`, `clozeRenderer.test.tsx` |
+
+Nowe typy trzymają dane w `questions.config` (JSONB, migracja `20261019120000_question_config.sql`),
+nie w `options`, i nie ujawniają odpowiedzi w `GET /api/quizzes/:id`.
 
 ## Zmiany w modelu danych
 
 1. **Dane osobne dla każdego typu.** Nowa kolumna `questions.config jsonb` (np. tolerancja dla `numeric`, pary dla `matching`, treść z lukami dla `cloze`). `options` zostaje dla czterech istniejących typów, żeby stare pytania działały bez migracji danych.
-2. **Wersjonowanie schematu.** Pole `schemaVersion` w obiekcie quizu i w `config` pytania; walidacja i `data/quiz.schema.json` rozróżniają wersje, a eksport/import (`scripts/quiz-tool.mjs`) zapisuje bieżącą.
+2. **Wersjonowanie schematu.** ~~Pole `schemaVersion` w obiekcie quizu i w `config` pytania; walidacja i `data/quiz.schema.json` rozróżniają wersje, a eksport/import (`scripts/quiz-tool.mjs`) zapisuje bieżącą.~~ **Nie zrobione i celowo odłożone**: `config` jest wersjonowane przez sam kształt (klucz `items`/`pairs`/`gaps`), a walidacja odrzuca nieznane kształty. Osobne pole wersji będzie potrzebne dopiero przy zmianie znaczenia istniejącego klucza.
 3. **Widok gracza bez odpowiedzi.** Dla każdego typu trzeba zdefiniować, co `GET /api/quizzes/:id` może ujawnić (np. dla `matching` - tasowane obie kolumny, bez par; dla `numeric` - bez wyniku i tolerancji).
 4. **Wynik odpowiedzi.** `quiz_attempts` przechowuje odpowiedzi per pytanie; trzeba ustalić format odpowiedzi dla typów złożonych (lista par, kolejność, mapa luk) i sposób pokazania ich w przeglądzie wyników (`AttemptsTable`, widoki ucznia/admina).
 
@@ -64,7 +76,7 @@ Fundament plus cztery pierwsze typy: ok. tygodnia. Największe ryzyko to zgodno�
 
 ## Do rozstrzygnięcia przed startem
 
-- punktacja częściowa dla `matching`, `ordering`, `cloze` (całość czy proporcjonalnie)?
-- czy `numeric` ma akceptować jednostki i które notacje (`1e3`, ułamki zwykłe)?
+- ~~punktacja częściowa dla `matching`, `ordering`, `cloze` (całość czy proporcjonalnie)?~~ → `ordering` 0/1 za całą sekwencję, `matching` i `cloze` proporcjonalnie.
+- ~~czy `numeric` ma akceptować jednostki i które notacje (`1e3`, ułamki zwykłe)?~~ → przecinek/kropka, ułamki i `1e3` tak; jednostki i `%` nie (jednostka w treści pytania).
 - skąd brać obrazy/nagrania (upload do Netlify Blobs, adres zewnętrzny)?
 - czy `open` ma w ogóle trafić do aplikacji (zmiana zasady „ocena tylko automatyczna")?
