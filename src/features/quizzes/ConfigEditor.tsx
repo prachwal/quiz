@@ -224,8 +224,21 @@ function MatchingEditor({ value, onChange }: Omit<Props, 'type'>) {
 function ClozeEditor({ value, onChange, prompt = '', onPromptChange }: Omit<Props, 'type'>) {
   const { gaps } = asCloze(value)
   const emit = (next: ClozeConfig['gaps']) => onChange?.({ gaps: next })
+  // a comma is part of an answer ("Hello, world"), so it must not split the input; trim, drop blanks
+  // and drop duplicates (case-insensitive, first one wins) so the limits from validate() are met
+  const cleanAnswers = (answers: string[]) => {
+    const seen = new Set<string>()
+    const cleaned: string[] = []
+    for (const answer of answers) {
+      const text = answer.trim()
+      if (!text || seen.has(text.toLocaleLowerCase())) continue
+      seen.add(text.toLocaleLowerCase())
+      cleaned.push(text)
+    }
+    return cleaned
+  }
   const setAnswers = (index: number, answers: string[]) =>
-    emit(gaps.map((gap, i) => (i === index ? { answers } : gap)))
+    emit(gaps.map((gap, i) => (i === index ? { answers: cleanAnswers(answers) } : gap)))
 
   const addGap = () => {
     const next = gaps.length + 1
@@ -263,7 +276,6 @@ function ClozeEditor({ value, onChange, prompt = '', onPromptChange }: Omit<Prop
               value={gap.answers}
               placeholder="Akceptowane odpowiedzi (Enter po każdej)"
               onChange={(answers: string[]) => setAnswers(i, answers)}
-              tokenSeparators={[',']}
               style={{ flex: 1 }}
             />
           </Flex>

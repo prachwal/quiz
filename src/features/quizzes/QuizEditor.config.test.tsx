@@ -157,6 +157,18 @@ describe('QuizEditor config handling', () => {
     expect((screen.getByLabelText('Treść pytania') as HTMLTextAreaElement).value).toBe('He {{1}} home and it.')
   })
 
+  it('keeps a comma inside one cloze answer', () => {
+    renderEditor({ ...emptyQuiz(), questions: [emptyQuestion('cloze')] })
+    // the tags select is the last combobox: the type select comes first
+    const combos = screen.getAllByRole('combobox')
+    const answerInput = combos[combos.length - 1] as HTMLInputElement
+    fireEvent.change(answerInput, { target: { value: 'Hello, world' } })
+    fireEvent.keyDown(answerInput, { key: 'Enter', code: 'Enter', keyCode: 13 })
+    // one tag, not two: a comma is part of the answer
+    expect(screen.getAllByText('Hello, world').length).toBeGreaterThan(0)
+    expect(screen.queryByText('Hello')).not.toBeInTheDocument()
+  })
+
   it('switching the type swaps the payload editors', async () => {
     renderEditor()
     const typeSelect = screen.getByText('Jednokrotny wybór')
