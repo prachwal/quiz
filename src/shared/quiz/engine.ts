@@ -8,7 +8,7 @@
  * questions of one quiz, so old quizzes keep working without a data migration.
  */
 
-export const QUESTION_TYPES = ['single', 'multiple', 'truefalse', 'text', 'numeric'] as const
+export const QUESTION_TYPES = ['single', 'multiple', 'truefalse', 'text', 'numeric', 'ordering'] as const
 export type QuestionType = (typeof QUESTION_TYPES)[number]
 
 export interface DraftOption {
@@ -98,6 +98,38 @@ export interface NumericConfig {
 }
 
 /**
+ * ordering: items in the correct order. Ids are random and stored with the question, so the
+ * shuffled player view never reveals the order through sortable identifiers.
+ */
+export interface OrderingItem {
+  id: string
+  text: string
+}
+
+export interface OrderingConfig {
+  items: OrderingItem[]
+}
+
+const ORDERING_MAX_ITEMS = 50
+
+const orderingConfig = (config: unknown): OrderingConfig | null => {
+  if (!config || typeof config !== 'object') return null
+  const { items } = config as Partial<OrderingConfig>
+  if (!Array.isArray(items) || items.length < 2 || items.length > ORDERING_MAX_ITEMS) return null
+  const parsed: OrderingItem[] = []
+  for (const item of items) {
+    if (!item || typeof item !== 'object') return null
+    const { id, text } = item as Partial<OrderingItem>
+    if (typeof id !== 'string' || !id || typeof text !== 'string') return null
+    parsed.push({ id, text })
+  }
+  return { items: parsed }
+}
+
+/** Items of an ordering question as they arrived (already shuffled on the server). */
+export const orderingItems = (config: unknown): OrderingItem[] => orderingConfig(config)?.items ?? []
+
+/**
  * Parses a player answer: decimal comma or dot, fractions (1/2), exponent notation (1e3),
  * Unicode minus. Commas are always decimal separators, so "1,000" is 1. Units and percentages
  * are rejected (no finite value) - authors put the unit in the prompt.
@@ -132,6 +164,20 @@ const numericConfig = (config: unknown): NumericConfig | null => {
 /** Trim, collapse inner whitespace, case-fold; keeps diacritics (they matter in Polish). */
 export const normalizeText = (value: string) =>
   value.normalize('NFC').trim().replace(/\s+/g, ' ').toLocaleLowerCase()
+
+/** Random, stable id for a config item (kept in `questions.config`, never derived from the position). */
+export const newItemId = () => Math.random().toString(36).slice(2, 10)
+
+/** In-place Fisher-Yates driven by the injected `rng` (deterministic in tests). */
+const shuffleWith = <T>(items: T[], rng: () => number): T[] => {
+  for (let i = items.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1))
+    const swap = items[i]
+    items[i] = items[j]
+    items[j] = swap
+  }
+  return items
+}
 
 const gradeChoice = (question: GradableQuestion, answer: Answer | undefined) => {
   const selected = new Set(answer?.optionIds ?? [])
@@ -268,6 +314,60 @@ export const questionTypeDefs = {
       return {
         answerText: (answer?.text ?? '').trim(),
         correctAnswers: config ? [String(config.answer)] : [],
+      }
+    },
+  },
+  ordering: {
+    label: 'Uporządkowanie elementów',
+    usesOptions: false,
+    defaultOptions: () => [],
+    defaultConfig: (): OrderingConfig => ({
+      items: [
+        { id: newItemId(), text: '' },
+        { id: newItemId(), text: '' },
+      ],
+    }),
+    validate: (q) => {
+      const config = orderingConfig(q.config)
+      if (!config) return 'Dodaj co najmniej dwa elementy do uporządkowania'
+      if (config.items.some((item) => !item.text.trim())) return 'Uzupełnij treść wszystkich elementów'
+      if (new Set(config.items.map((item) => item.id)).size !== config.items.length) {
+        return 'Elementy muszą mieć unikalne identyfikatory'
+      }
+      return null
+    },
+    // 0/1 compared by normalized text, so the answer must be a permutation of every item
+    grade: (question, answer) => {
+      const config = orderingConfig(question.config)
+      const submitted = answer?.order
+      if (!config || !submitted || submitted.length !== config.items.length) return 0
+      if (new Set(submitted).size !== submitted.length) return 0
+      const byId = new Map(config.items.map((item) => [item.id, item.text]))
+      const texts = submitted.map((id) => byId.get(id))
+      if (texts.some((text) => text === undefined)) return 0
+      return texts.every((text, i) => normalizeText(text as string) === normalizeText(config.items[i].text)) ? 1 : 0
+    },
+    // the server shuffles: a client-side shuffle would hand the correct order to the player
+    playerView: (question, rng, withAnswers) => {
+      const config = orderingConfig(question.config)
+      if (!config) return { options: [] }
+      if (withAnswers) return { options: [], config }
+      const items = [...config.items]
+      const inCorrectOrder = () => items.every((item, i) => item.id === config.items[i].id)
+      // indistinguishable items make every arrangement correct, so retrying is pointless
+      const indistinguishable = items.every((item) => normalizeText(item.text) === normalizeText(items[0].text))
+      for (let attempt = 0; attempt < 8 && !indistinguishable && inCorrectOrder(); attempt += 1) shuffleWith(items, rng)
+      if (!indistinguishable && items.length >= 2 && inCorrectOrder()) items.push(items.shift() as OrderingItem)
+      return { options: [], config: { items: items.map(({ id, text }) => ({ id, text })) } }
+    },
+    describe: (question, answer) => {
+      const config = orderingConfig(question.config)
+      if (!config) return { answerText: '', correctAnswers: [] }
+      const byId = new Map(config.items.map((item) => [item.id, item.text]))
+      const given = (answer?.order ?? []).map((id) => byId.get(id)).filter((text): text is string => Boolean(text))
+      return {
+        answerText: given.map((text, i) => `${i + 1}. ${text}`).join(', '),
+        correctAnswers: [config.items.map((item) => item.text).join(' → ')],
       }
     },
   },

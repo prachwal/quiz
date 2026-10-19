@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import {
   gradeQuiz,
   isAnswered,
+  orderingItems,
   parseNumeric,
   promptText,
   questionTypes,
@@ -11,7 +12,7 @@ import {
 } from '../src/shared/quiz/engine.ts'
 
 test('QUESTION_TYPES lists every supported type', () => {
-  assert.deepEqual([...QUESTION_TYPES], ['single', 'multiple', 'truefalse', 'text', 'numeric'])
+  assert.deepEqual([...QUESTION_TYPES], ['single', 'multiple', 'truefalse', 'text', 'numeric', 'ordering'])
 })
 
 test('every type defines playerView and describe', () => {
@@ -213,4 +214,100 @@ test('gradeQuiz result includes correctOptionIds and points', () => {
 test('multiple validate requires at least 2 options', () => {
   const t = questionTypes.multiple
   assert.ok(t.validate({ type: 'multiple', options: [{ text: 'a', isCorrect: true }] }))
+})
+
+// ---- ordering ----------------------------------------------------------------------------
+
+const items = [
+  { id: 'a', text: 'Pierwszy' },
+  { id: 'b', text: 'Drugi' },
+  { id: 'c', text: 'Trzeci' },
+]
+
+const orderingQuestion = (list = items) => [
+  { id: 'o1', type: 'ordering' as const, points: 1, explanation: '', options: [], config: { items: list } },
+]
+
+const rngFrom = (values: number[]) => {
+  let i = 0
+  return () => values[i++ % values.length]
+}
+
+test('ordering validates item count, empty texts and duplicate ids', () => {
+  const t = questionTypes.ordering
+  assert.equal(t.validate({ type: 'ordering', options: [], config: { items } }), null)
+  assert.ok(t.validate({ type: 'ordering', options: [], config: { items: [items[0]] } }))
+  assert.ok(t.validate({ type: 'ordering', options: [], config: { items: [items[0], { id: 'x', text: '  ' }] } }))
+  assert.ok(t.validate({ type: 'ordering', options: [], config: { items: [items[0], { id: 'a', text: 'Inny' }] } }))
+  assert.ok(t.validate({ type: 'ordering', options: [], config: undefined }))
+})
+
+test('ordering grades the exact sequence by normalized text', () => {
+  const ok = gradeQuiz(orderingQuestion(), { o1: { order: ['a', 'b', 'c'] } })
+  assert.equal(ok.percent, 100)
+  // case and spacing do not matter, the text sequence does
+  const spaced = gradeQuiz(orderingQuestion([{ id: 'a', text: 'Alfa' }, { id: 'b', text: 'Beta' }]), {
+    o1: { order: ['a', 'b'] },
+  })
+  assert.equal(spaced.percent, 100)
+  assert.equal(gradeQuiz(orderingQuestion(), { o1: { order: ['b', 'a', 'c'] } }).percent, 0)
+  assert.equal(gradeQuiz(orderingQuestion(), { o1: { order: ['a', 'b'] } }).percent, 0)
+  assert.equal(gradeQuiz(orderingQuestion(), {}).percent, 0)
+})
+
+test('ordering rejects duplicated and unknown ids', () => {
+  assert.equal(gradeQuiz(orderingQuestion(), { o1: { order: ['a', 'a', 'b'] } }).percent, 0)
+  assert.equal(gradeQuiz(orderingQuestion(), { o1: { order: ['a', 'b', 'zzz'] } }).percent, 0)
+  assert.equal(gradeQuiz(orderingQuestion(), { o1: { order: [] } }).percent, 0)
+})
+
+test('ordering accepts a swap of two identical items', () => {
+  const list = [
+    { id: 'a', text: 'Ten sam' },
+    { id: 'b', text: 'ten  SAM' },
+    { id: 'c', text: 'Inny' },
+  ]
+  assert.equal(gradeQuiz(orderingQuestion(list), { o1: { order: ['b', 'a', 'c'] } }).percent, 100)
+  assert.equal(gradeQuiz(orderingQuestion(list), { o1: { order: ['a', 'c', 'b'] } }).percent, 0)
+})
+
+test('ordering playerView shuffles and never returns the correct order', () => {
+  // a degenerate rng would leave the list untouched: the fallback rotation must kick in
+  const view = typeDef('ordering').playerView(
+    { type: 'ordering', options: [], config: { items } },
+    () => 0.999999,
+    false,
+  ) as { config: { items: { id: string }[] } }
+  assert.notDeepEqual(
+    view.config.items.map((i) => i.id),
+    ['a', 'b', 'c'],
+  )
+  assert.deepEqual([...view.config.items.map((i) => i.id)].sort(), ['a', 'b', 'c'])
+})
+
+test('ordering playerView keeps the author order in the editor view', () => {
+  const view = typeDef('ordering').playerView(
+    { type: 'ordering', options: [], config: { items } },
+    rngFrom([0.1]),
+    true,
+  ) as { config: { items: { id: string }[] } }
+  assert.deepEqual(
+    view.config.items.map((i) => i.id),
+    ['a', 'b', 'c'],
+  )
+})
+
+test('ordering describe lists the player order and the correct sequence', () => {
+  const described = typeDef('ordering').describe(
+    { type: 'ordering', options: [], config: { items } },
+    { order: ['b', 'a', 'c'] },
+  )
+  assert.equal(described.answerText, '1. Drugi, 2. Pierwszy, 3. Trzeci')
+  assert.deepEqual(described.correctAnswers, ['Pierwszy → Drugi → Trzeci'])
+})
+
+test('orderingItems reads the player payload and ignores broken config', () => {
+  assert.deepEqual(orderingItems({ items }), items)
+  assert.deepEqual(orderingItems({ items: 42 }), [])
+  assert.deepEqual(orderingItems(undefined), [])
 })
