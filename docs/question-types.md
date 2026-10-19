@@ -1,6 +1,6 @@
 # Plan: nowe typy pytań i materiały wspólne
 
-Stan: `single`, `multiple`, `truefalse`, `text` - wszystkie opierają się na tabeli `options` (tekst + `isCorrect`) - oraz **`numeric`** (wynik liczbowy z tolerancją), **`ordering`** (elementy do ułożenia) i **`matching`** (pary), które trzymają dane w `questions.config` (JSONB). Ocena jest tylko po stronie serwera (`src/shared/quiz/engine.ts`, rejestr `questionTypes`). Pozostałe typy z tabeli poniżej są nadal niezrealizowane.
+Stan: `single`, `multiple`, `truefalse`, `text` - wszystkie opierają się na tabeli `options` (tekst + `isCorrect`) - oraz **`numeric`** (wynik liczbowy z tolerancją), **`ordering`** (elementy do ułożenia), **`matching`** (pary) i **`cloze`** (luki w treści), które trzymają dane w `questions.config` (JSONB). Ocena jest tylko po stronie serwera (`src/shared/quiz/engine.ts`, rejestr `questionTypes`). Pozostałe typy z tabeli poniżej są nadal niezrealizowane.
 
 Plan wykonawczy (decyzje, kolejnosc commitow, kontrakty, kryteria akceptacji): [question-types-plan.md](question-types-plan.md).
 
@@ -11,7 +11,7 @@ Plan wykonawczy (decyzje, kolejnosc commitow, kontrakty, kryteria akceptacji): [
 | `numeric` ✅ | matematyka, fizyka, chemia: wynik liczbowy | tolerancja (bezwzględna/względna), jednostka, przecinek jako separator, ułamki |
 | `matching` ✅ | języki (słowo-tłumaczenie), historia (wydarzenie-data), biologia (narząd-funkcja) | proporcjonalnie po parach; prawa kolumna tasowana przez serwer, kafelek należy do jednej pary |
 | `ordering` ✅ | chronologia, etapy procesów, algorytmy | 0/1 za całą sekwencję; serwer tasuje elementy, gracz układa przyciskami w górę/w dół |
-| `cloze` | gramatyka, odmiana czasowników, brakujące pojęcia | każda luka osobno, kilka akceptowanych odpowiedzi na lukę |
+| `cloze` ✅ | gramatyka, odmiana czasowników, brakujące pojęcia | proporcjonalnie po lukach; kilka akceptowanych wariantów na lukę, znaczniki `{{n}}` tylko w treści |
 | `categorization` | klasyfikacja organizmów, części mowy, związków | element -> grupa; jak `matching` z grupami |
 | `expression` | równania, równoważne zapisy (`1/2` = `0,5`) | porównanie symboliczne (biblioteka CAS), dużo przypadków brzegowych |
 | `hotspot` | mapa, anatomia, geometria | punkt w obszarze; wymaga przechowywania obrazów |

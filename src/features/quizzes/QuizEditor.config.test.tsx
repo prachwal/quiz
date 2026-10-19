@@ -42,6 +42,12 @@ describe('quizDefaults', () => {
     expect(pairs).toHaveLength(2)
     expect(new Set([pairs[0].id, pairs[1].id, pairs[0].rightId, pairs[1].rightId]).size).toBe(4)
   })
+
+  it('gives cloze one empty gap and no options', () => {
+    const question = emptyQuestion('cloze')
+    expect(question.options).toEqual([])
+    expect(question.config).toEqual({ gaps: [{ answers: [] }] })
+  })
 })
 
 describe('QuizEditor config handling', () => {
@@ -126,6 +132,29 @@ describe('QuizEditor config handling', () => {
     const rights = screen.getAllByPlaceholderText('Prawa strona') as HTMLInputElement[]
     expect(lefts.map((input) => input.value)).toEqual(['kot', 'pies'])
     expect(rights.map((input) => input.value)).toEqual(['cat', 'dog'])
+  })
+
+  it('inserts a cloze gap marker into the prompt', () => {
+    renderEditor({ ...emptyQuiz(), questions: [emptyQuestion('cloze')] })
+    expect(screen.getAllByText('{{1}}').length).toBeGreaterThan(0)
+    fireEvent.click(screen.getByText('Wstaw lukę'))
+    expect(screen.getAllByText('{{2}}').length).toBeGreaterThan(0)
+    expect((screen.getByLabelText('Treść pytania') as HTMLTextAreaElement).value).toBe('{{2}}')
+  })
+
+  it('removes the last cloze gap and its marker', () => {
+    renderEditor({
+      ...emptyQuiz(),
+      questions: [
+        {
+          ...emptyQuestion('cloze'),
+          prompt: 'He {{1}} home and {{2}} it.',
+          config: { gaps: [{ answers: ['went'] }, { answers: ['learnt'] }] },
+        },
+      ],
+    })
+    fireEvent.click(screen.getByText('Usuń ostatnią lukę'))
+    expect((screen.getByLabelText('Treść pytania') as HTMLTextAreaElement).value).toBe('He {{1}} home and it.')
   })
 
   it('switching the type swaps the payload editors', async () => {

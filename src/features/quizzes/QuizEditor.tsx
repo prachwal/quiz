@@ -35,6 +35,7 @@ function QuestionCard({
   const type = (Form.useWatch(['questions', name, 'type'], form) ?? 'single') as QuestionType
   const def = typeDef(type)
   const config = Form.useWatch(['questions', name, 'config'], form) as unknown
+  const prompt = (Form.useWatch(['questions', name, 'prompt'], form) ?? '') as string
 
   return (
     <Card
@@ -82,7 +83,7 @@ function QuestionCard({
           rules={[
             {
               validator: (_rule, options) => {
-                const error = questionTypes[type].validate({ type, options: options ?? [] })
+                const error = questionTypes[type].validate({ type, prompt, options: options ?? [] })
                 if (error) return Promise.reject(new Error(error))
                 return options?.some((o: { text: string }) => !o.text.trim())
                   ? Promise.reject(new Error('Uzupełnij treść wszystkich opcji'))
@@ -101,13 +102,18 @@ function QuestionCard({
           rules={[
             {
               validator: (_rule, value) => {
-                const error = def.validate({ type, options: [], config: value })
+                const error = def.validate({ type, prompt, options: [], config: value })
                 return error ? Promise.reject(new Error(error)) : Promise.resolve()
               },
             },
           ]}
         >
-          <ConfigEditor type={type} value={config} />
+          <ConfigEditor
+            type={type}
+            value={config}
+            prompt={prompt}
+            onPromptChange={(next) => form.setFieldValue(['questions', name, 'prompt'], next)}
+          />
         </Form.Item>
       )}
       <Form.Item label="Wyjaśnienie (opcjonalne)" name={[name, 'explanation']} style={{ marginBottom: 0 }}>
