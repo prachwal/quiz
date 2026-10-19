@@ -39,6 +39,17 @@ describe('cloze renderer', () => {
     expect(screen.getByText(/to school and/)).toBeInTheDocument()
   })
 
+  it('does not print the gap numbers next to the inputs', () => {
+    const { container } = render(
+      <ConfigProvider>
+        <questionRenderers.cloze question={question} value={undefined} onChange={vi.fn()} />
+      </ConfigProvider>,
+    )
+    expect(screen.queryByText('1')).not.toBeInTheDocument()
+    expect(screen.queryByText('2')).not.toBeInTheDocument()
+    expect(container.textContent).toContain('He  to school and  it.')
+  })
+
   it('submits one gap without losing the others', () => {
     const onChange = renderCloze({ gaps: { 1: 'went' } })
     fireEvent.change(screen.getByLabelText('Luka 2'), { target: { value: 'learnt' } })

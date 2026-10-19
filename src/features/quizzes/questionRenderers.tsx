@@ -250,8 +250,9 @@ const Cloze = ({ question, value, onChange }: RendererProps) => {
   const answerFor = (gap: string) => value?.gaps?.[gap] ?? ''
   const setGap = (gap: string) => (text: string) => onChange({ gaps: { ...(value?.gaps ?? {}), [gap]: text } })
   const gaps = clozeGapCount(question.config)
-  // split keeps the captured numbers: ['He ', '1', ' to school', '2', '.']
-  const parts = question.prompt.split(/(\{\{(\d+)\}\})/g)
+  // one capture group: split keeps each marker as its own part (['He ', '{{1}}', ' to school', '{{2}}', '.']);
+  // a second group would also return the bare number and render it as text
+  const parts = question.prompt.split(/(\{\{\d+\}\})/g)
 
   return (
     <>

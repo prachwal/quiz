@@ -114,6 +114,7 @@ function Runner({ quiz, onRestart }: { quiz: QuizDetail; onRestart: () => void }
           )}
           <div style={{ margin: '28px 0 8px' }}>
             <Renderer
+              key={question.id}
               question={question}
               value={answer}
               onChange={(value) => setAnswers((prev) => ({ ...prev, [question.id]: value }))}
