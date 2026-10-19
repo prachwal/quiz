@@ -1,18 +1,22 @@
+/* oxlint-disable react/only-export-components -- this module is a registry: it exports the
+   components, the `questionRenderers` map and the `isAnswered` rule, and fast refresh falling
+   back to a full reload here is fine. */
 import { ArrowDownOutlined, ArrowUpOutlined } from '@ant-design/icons'
-import { Button, Flex, Input, Typography } from 'antd'
-import type { ReactNode } from 'react'
-import { orderingItems } from '../../shared/quiz/engine'
+import { Button, Flex, Input, Tag, Typography } from 'antd'
+import { useState } from 'react'
+import type { ComponentType } from 'react'
+import { matchingLefts, matchingRights, orderingItems } from '../../shared/quiz/engine'
 import type { Answer, QuestionType } from '../../shared/quiz/engine'
 import type { QuizQuestion } from '../../shared/quiz/types'
 import ChoiceTile, { LETTERS } from './ChoiceTile'
 
-interface RendererProps {
+export interface RendererProps {
   question: QuizQuestion
   value: Answer | undefined
   onChange: (value: Answer) => void
 }
 
-const single = ({ question, value, onChange }: RendererProps) => (
+const Single = ({ question, value, onChange }: RendererProps) => (
   <div className="choice-grid" role="radiogroup">
     {question.options.map((option, i) => (
       <ChoiceTile
@@ -27,7 +31,7 @@ const single = ({ question, value, onChange }: RendererProps) => (
   </div>
 )
 
-const multiple = ({ question, value, onChange }: RendererProps) => {
+const Multiple = ({ question, value, onChange }: RendererProps) => {
   const selected = value?.optionIds ?? []
   const toggle = (id: string) =>
     onChange({ optionIds: selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id] })
@@ -52,7 +56,7 @@ const multiple = ({ question, value, onChange }: RendererProps) => {
   )
 }
 
-const text = ({ value, onChange }: RendererProps) => (
+const TextAnswer = ({ value, onChange }: RendererProps) => (
   <Input
     size="large"
     placeholder="Twoja odpowiedź"
@@ -68,7 +72,7 @@ const text = ({ value, onChange }: RendererProps) => (
   />
 )
 
-const numeric = ({ value, onChange }: RendererProps) => (
+const Numeric = ({ value, onChange }: RendererProps) => (
   <Input
     size="large"
     placeholder="Twoja odpowiedź (np. 3,5 albo 1/2)"
@@ -80,7 +84,7 @@ const numeric = ({ value, onChange }: RendererProps) => (
   />
 )
 
-const ordering = ({ question, value, onChange }: RendererProps) => {
+const Ordering = ({ question, value, onChange }: RendererProps) => {
   const items = orderingItems(question.config)
   const order = value?.order?.length ? value.order : items.map((item) => item.id)
   const textOf = (id: string) => items.find((item) => item.id === id)?.text ?? ''
@@ -132,14 +136,124 @@ const ordering = ({ question, value, onChange }: RendererProps) => {
   )
 }
 
+/** Two columns; on a phone the player taps a left item and then its right counterpart. */
+const Matching = ({ question, value, onChange }: RendererProps) => {
+  const lefts = matchingLefts(question.config)
+  const rights = matchingRights(question.config)
+  const pairs = value?.pairs ?? {}
+  const [selected, setSelected] = useState<string | null>(null)
+  const ownerOf = (rightId: string) => Object.entries(pairs).find(([, chosen]) => chosen === rightId)?.[0]
+  const textOfRight = (rightId: string | undefined) => rights.find((right) => right.id === rightId)?.text
+
+  const assign = (rightId: string) => {
+    if (!selected) return
+    const next = { ...pairs }
+    // a tile belongs to one left side only, so taking it away moves it here
+    for (const [leftId, chosen] of Object.entries(next)) if (chosen === rightId) delete next[leftId]
+    next[selected] = rightId
+    onChange({ pairs: next })
+    setSelected(null)
+  }
+
+  const clear = (leftId: string) => {
+    const next = { ...pairs }
+    delete next[leftId]
+    onChange({ pairs: next })
+  }
+
+  const tileStyle = (active: boolean, dimmed: boolean) => ({
+    display: 'block',
+    width: '100%',
+    height: 'auto',
+    minHeight: 48,
+    padding: '10px 12px',
+    textAlign: 'left' as const,
+    whiteSpace: 'normal' as const,
+    borderColor: active ? 'var(--ant-color-primary)' : undefined,
+    borderWidth: active ? 2 : 1,
+    opacity: dimmed ? 0.55 : 1,
+  })
+
+  return (
+    <>
+      <Typography.Paragraph type="secondary" style={{ marginBottom: 12, fontSize: 15 }}>
+        {selected ? 'Wybierz pasujący element po prawej stronie.' : 'Wybierz element po lewej, potem jego odpowiednik.'}
+      </Typography.Paragraph>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+        <Flex vertical gap={8} role="group" aria-label="Elementy do dopasowania">
+          {lefts.map((left) => {
+            const chosen = pairs[left.id]
+            const active = selected === left.id
+            return (
+              <Button
+                key={left.id}
+                onClick={() => setSelected(active ? null : left.id)}
+                aria-pressed={active}
+                style={tileStyle(active, false)}
+              >
+                <Flex vertical gap={2} align="start">
+                  <span style={{ fontSize: 16 }}>{left.text}</span>
+                  {chosen ? (
+                    <Flex gap={6} align="center">
+                      <Typography.Text type="success" style={{ fontSize: 14 }}>
+                        {textOfRight(chosen)}
+                      </Typography.Text>
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Usuń dopasowanie: ${left.text}`}
+                        style={{ cursor: 'pointer', padding: '0 4px', fontSize: 16 }}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          clear(left.id)
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key !== 'Enter' && event.key !== ' ') return
+                          event.stopPropagation()
+                          clear(left.id)
+                        }}
+                      >
+                        ×
+                      </span>
+                    </Flex>
+                  ) : null}
+                </Flex>
+              </Button>
+            )
+          })}
+        </Flex>
+        <Flex vertical gap={8} role="group" aria-label="Dopasowania">
+          {rights.map((right) => {
+            const owner = ownerOf(right.id)
+            return (
+              <Button
+                key={right.id}
+                onClick={() => assign(right.id)}
+                disabled={!selected && !owner}
+                style={tileStyle(false, Boolean(owner) && owner !== selected)}
+              >
+                <Flex justify="space-between" align="center" gap={8} style={{ width: '100%' }}>
+                  <span style={{ fontSize: 16 }}>{right.text}</span>
+                  {owner ? <Tag style={{ marginInlineEnd: 0 }}>zajęte</Tag> : null}
+                </Flex>
+              </Button>
+            )
+          })}
+        </Flex>
+      </div>
+    </>
+  )
+}
+
 /** Player-side input for each question type (counterpart of `questionTypes` in the engine). */
-export const questionRenderers: Record<QuestionType, (props: RendererProps) => ReactNode> = {
-  single,
-  multiple,
-  truefalse: single,
-  text,
-  numeric,
-  ordering,
+export const questionRenderers: Record<QuestionType, ComponentType<RendererProps>> = {
+  single: Single,
+  multiple: Multiple,
+  truefalse: Single,
+  text: TextAnswer,
+  numeric: Numeric,
+  ordering: Ordering,
+  matching: Matching,
 }
 
 // the rule lives in the engine, so every answer shape (order, pairs, gaps) counts as answered

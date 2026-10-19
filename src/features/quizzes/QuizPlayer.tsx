@@ -75,6 +75,7 @@ function Runner({ quiz, onRestart }: { quiz: QuizDetail; onRestart: () => void }
   const isLast = index === questions.length - 1
   const answer = answers[question.id]
   const shownAnswer = withShownOrders([question], answers)[question.id]
+  const Renderer = questionRenderers[question.type]
 
   return (
     <div ref={cardRef} className="quiz-card-anchor">
@@ -110,11 +111,11 @@ function Runner({ quiz, onRestart }: { quiz: QuizDetail; onRestart: () => void }
             {question.prompt}
           </h2>
           <div style={{ margin: '28px 0 8px' }}>
-            {questionRenderers[question.type]({
-              question,
-              value: answer,
-              onChange: (value) => setAnswers((prev) => ({ ...prev, [question.id]: value })),
-            })}
+            <Renderer
+              question={question}
+              value={answer}
+              onChange={(value) => setAnswers((prev) => ({ ...prev, [question.id]: value }))}
+            />
           </div>
           {error && <Alert type="error" showIcon title={errorMessage(error)} style={{ marginTop: 16 }} />}
         </div>
