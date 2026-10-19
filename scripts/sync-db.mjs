@@ -167,7 +167,7 @@ async function dependencyOrder(db, tables) {
 
 async function columnsOf(db, table) {
   const { rows } = await db.query(
-    `SELECT column_name, is_generated, is_identity
+    `SELECT column_name, data_type, is_generated, is_identity
      FROM information_schema.columns
      WHERE table_schema = 'public' AND table_name = $1
      ORDER BY ordinal_position`,
@@ -186,7 +186,7 @@ async function copyTable(from, to, table, batch) {
   if (encoded.length === 0) throw new Error(`table "${table}" does not exist in the target — run: npm run db:migrate`)
 
   const target = new Map(encoded.map((column) => [column.column_name, column]))
-  const columns = (await columnsOf(from, table))
+  const sourceColumns = (await columnsOf(from, table))
     .filter((column) => column.is_generated !== 'ALWAYS')
     .filter((column) => {
       if (!target.has(column.column_name)) {
@@ -194,27 +194,32 @@ async function copyTable(from, to, table, batch) {
       }
       return true
     })
-    .map((column) => column.column_name)
 
   const identity = encoded.some((column) => column.is_identity === 'YES')
-  const select = `SELECT ${columns.map(quote).join(', ')} FROM ${quote(table)}`
+  const select = `SELECT ${sourceColumns.map((column) => quote(column.column_name)).join(', ')} FROM ${quote(table)}`
   const { rows } = await from.query(select)
   if (rows.length === 0) return 0
 
-  const perStatement = Math.max(1, Math.min(batch, Math.floor(MAX_PARAMS / columns.length)))
+  const perStatement = Math.max(1, Math.min(batch, Math.floor(MAX_PARAMS / sourceColumns.length)))
   const overriding = identity ? ' OVERRIDING SYSTEM VALUE' : ''
+  /** `pg` turns a JS array into a Postgres array literal; jsonb must travel as JSON text. */
+  const jsonType = (column) =>
+    column.data_type === 'jsonb' ? 'jsonb' : column.data_type === 'json' ? 'json' : null
+
   for (let offset = 0; offset < rows.length; offset += perStatement) {
     const chunk = rows.slice(offset, offset + perStatement)
     const values = []
     const tuples = chunk.map((row) => {
-      const placeholders = columns.map((column) => {
-        values.push(row[column])
-        return `$${values.length}`
+      const placeholders = sourceColumns.map((column) => {
+        const value = row[column.column_name]
+        const json = jsonType(column)
+        values.push(json && value !== null ? JSON.stringify(value) : value)
+        return json ? `$${values.length}::${json}` : `$${values.length}`
       })
       return `(${placeholders.join(', ')})`
     })
     await to.query(
-      `INSERT INTO ${quote(table)} (${columns.map(quote).join(', ')})${overriding} VALUES ${tuples.join(', ')}`,
+      `INSERT INTO ${quote(table)} (${sourceColumns.map((column) => quote(column.column_name)).join(', ')})${overriding} VALUES ${tuples.join(', ')}`,
       values,
     )
   }
