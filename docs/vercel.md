@@ -4,7 +4,7 @@ tags:
   - deploy
   - runbook
 created: 2026-10-19
-updated: 2026-10-19
+updated: 2026-10-20
 ---
 
 # Deploy na Vercel (Neon)
@@ -44,11 +44,14 @@ Zmienne środowiskowe (Production/Preview/Development): `DATABASE_URL` (+ `*_UNP
 `AUTH0_MGMT_*`, `SENTRY_DSN`, `VITE_AUTH0_*`, `VITE_SENTRY_DSN`; magazyn obrazów (opis w
 [Media-Storage-Plan](Media-Storage-Plan.md), „Konfiguracja”): `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`,
 `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` (secret), `S3_FORCE_PATH_STYLE` (`true`), `S3_KEY_PREFIX`
-(`dev/` lokalnie, puste na produkcji), `MEDIA_PUBLIC_BASE_URL`, `MEDIA_DRIVER` (`s3`), `MEDIA_MAX_BYTES`,
+(`dev/` lokalnie, `preview/` na Preview, puste na Production), `MEDIA_PUBLIC_BASE_URL`, `MEDIA_DRIVER` (`s3`), `MEDIA_MAX_BYTES`,
 `MEDIA_URL_FETCH` (zostaje `false`, dopóki nie zweryfikowano przypinania połączeń na Vercelu) oraz
 `VITE_MEDIA_PUBLIC_BASE_URL` (to samo co `MEDIA_PUBLIC_BASE_URL`, wartość budowania: po zmianie wdróż ponownie);
 `CRON_SECRET` (sprzątanie, poniżej). `MEDIA_CLEANUP_OWNER_FILTER` ustawia tylko `npm run test:mcp`; w produkcji
-nie wolno jej ustawiać. Zmienne są wspólne dla wszystkich środowisk, więc preview widzi te same dane co produkcja.
+nie wolno jej ustawiać. Bucket `media` (Neon Object Storage, `public_read`) jest wspólny dla wszystkich środowisk,
+ale `S3_KEY_PREFIX` rozdziela ich obiekty (`dev/`, `preview/`, Production bez prefiksu), więc Preview nie widzi
+plików Production i odwrotnie. Klucze S3 z `neon env pull --project-id broad-leaf-41334668 --branch main -s object-storage`
+dodaje się na Vercelu ręcznie (`vercel env add`); automatycznej integracji Neon–Vercel nie potwierdzono.
 
 ## Baza
 

@@ -24,7 +24,7 @@ updated: 2026-10-20
 | Cloze | F1–F4 (znacznik, znaki typograficzne, limity, przecinek), D1 (końcowa kropka w lukach) | |
 | Uwagi z przeglądu | `key` w graczu, TLS i pula, zabezpieczenie `test:mcp`, odsyłacz do `quiz_schema`, kolejność w `ordering`/`matching` ujawniała odpowiedź, `withShownOrders` liczył nietknięte pytania, brak limitu długości `id` w `config` (faza 0) | nic |
 | Podział nauki | nic | kroki 1–8 |
-| Obrazy (S3) | M1–M6, L1 (wstęp lekcji), L2 (ilustracje czasowników), S1 (sprzątanie) i S2 (dokumentacja) zrobione w kodzie; migracje `media`, `verb_images` i `attempt_questions_snapshot` zastosowane na bazie (2026-10-20) | M0 (człowiek: bucket, CORS, klucze na Vercelu, Preview), weryfikacja w przeglądarce, `MEDIA_URL_FETCH` pozostaje wyłączone |
+| Obrazy (S3) | M0 (spike 2026-10-20: bucket Neon `media`, klucze, `media:smoke` PASS 14 kroków, D7 = Neon), M1–M6, L1 (wstęp lekcji), L2 (ilustracje czasowników), S1 (sprzątanie) i S2 (dokumentacja) zrobione; migracje `media`, `verb_images` i `attempt_questions_snapshot` zastosowane na bazie (2026-10-20) | zmienne `S3_*`/`MEDIA_*` na Vercelu (Preview, potem Production) i ponowne wdrożenie; krok 8 runbooka M0 (Preview); weryfikacja w przeglądarce; `MEDIA_URL_FETCH` pozostaje wyłączone |
 
 ## Zasady kolejności
 
@@ -40,7 +40,7 @@ updated: 2026-10-20
 ```
 Faza 0 (poprawki)
    │
-   ├────────────── M0 spike (równolegle, wymaga człowieka: CLI Neona)
+   ├────────────── M0 spike (zrobione 2026-10-20 przez właściciela, CLI Neona)
    ▼                │
 Faza 1: db.ts ──────┤
    ▼                │
@@ -48,7 +48,7 @@ Faza 2: grade event → UI bez nauki → injectEndpoints
    ▼                │
 Faza 3: migawka pytań → quiz_stats → user_* → audit/feedback/settings
    ▼                │
-Faza 4: media M1 → M2 → M3 → M4 → M5 → M6 ← bramka po M0
+Faza 4: media M1 → M2 → M3 → M4 → M5 → M6 ← bramka po M0 (przeszła 2026-10-20, D7 = Neon)
                     L1 ← klasy przez API nauki (krok 5) → L2 → S1 → S2
    ▼
 Faza 5: przeniesienie plików → granice → (schemat: nie robić)
@@ -73,7 +73,7 @@ Dlaczego tu: wszystkie siedzą w `QuizPlayer.tsx`, `engine.ts` i `schema.ts`, kt
 | # | Zadanie | Uzasadnienie |
 | --- | --- | --- |
 | 1.1 | **Podział, krok 1:** `pool` do `server/db.ts` (11 importów + `quizRepo`), bez re-eksportu z `quizRepo` (zrobione) | wymaga go `media` (M1) i migawka pytań; mechaniczny, bez zmiany zachowania |
-| 1.2 | **M0 (spike):** bucket Neon, skrypt `scripts/media-smoke.ts`, odpowiedzi na niewiadome 1–5 z [[Media-Storage-Plan]] | równolegle z fazami 2–3, bo wymaga logowania CLI i czasu człowieka; wynik decyduje o dostawcy przed M1 |
+| 1.2 | ✅ **M0 (spike):** bucket Neon `media`, skrypt `scripts/media-smoke.ts` (PASS, 14 kroków, 2026-10-20), odpowiedzi na niewiadome 1–5 z [[Media-Storage-Plan]]; D7 = Neon | zrobione przez właściciela; zostają zmienne na Vercelu i krok 8 runbooka (Preview) |
 
 ### Faza 2 — rozcięcie sprzężenia quizy ↔ nauka (około 2–3 dni)
 
@@ -103,7 +103,7 @@ Faza dodała **15 narzędzi** (16 z opcjonalnym `quiz_duplicate`, którego nie z
 
 ### Faza 4 — obrazy w quizach i lekcjach (około 8 dni)
 
-Rozpoczyna się po rozstrzygnięciu M0.
+Rozpoczyna się po rozstrzygnięciu M0 (rozstrzygnięte 2026-10-20, D7 = Neon).
 
 | # | Zadanie | Uwagi |
 | --- | --- | --- |
@@ -112,7 +112,7 @@ Rozpoczyna się po rozstrzygnięciu M0.
 | 4.3 | ✅ **M3** mapa `media` w odpowiedziach (zrobione 2026-10-20) | po 2.3: endpointy przez `injectEndpoints` |
 | 4.4 | ✅ **M4** renderowanie w quizie: `RichText`, `MediaImage`, `MediaProvider`, `ChoiceTile` z obrazem, `Cloze`, wynik (zrobione 2026-10-20; **nie zrobione:** wstęp lekcji (L1) i podgląd w edytorze (M6)) | po 2.2 |
 | 4.5 | ✅ **M5** narzędzia MCP do wysyłania (`media_upload`, `media_upload_from_url`, …) — zrobione 2026-10-20 (`f8cfd4a` … `a8b891e`; pobieranie z adresu za bramką `MEDIA_URL_FETCH`, domyślnie wyłączone) | najpierw testy `ssrf`; wydanie 2 narzędzi |
-| 4.6 | ✅ **M6** wysyłanie w edytorze (`ImageUpload`) — kod gotowy 2026-10-20: trasy `/api/media/uploads` i `/complete` (w trybie memory także `PUT …/content`), przycisk „Wstaw obrazek” przy treści, wyjaśnieniu i opcjach wyboru w `QuizEditor`; **weryfikacja na prawdziwym buckecie: M0** | po M4 |
+| 4.6 | ✅ **M6** wysyłanie w edytorze (`ImageUpload`) — kod gotowy 2026-10-20: trasy `/api/media/uploads` i `/complete` (w trybie memory także `PUT …/content`), przycisk „Wstaw obrazek” przy treści, wyjaśnieniu i opcjach wyboru w `QuizEditor`; **weryfikacja w przeglądarce na Preview: krok 8 runbooka M0** (bucket i smoke już przeszły) | po M4 |
 | 4.7 | ✅ **Podział, krok 5:** klasy czytają postęp lekcji przez API nauki (zrobione 2026-10-20) | przed L1, żeby narzędzia lekcji lądowały na ustalonym API |
 | 4.8 | ✅ **L1** wstęp lekcji (zrobione 2026-10-20: slajd „Wstęp” od obrazu albo >140 znaków, `lesson_get`/`lesson_update`); ✅ **L2** ilustracje czasowników, zrobione w kodzie (`0270913`, `2660351`, `7cd7227`, `429244d`; kolumna `irregular_verbs.image_media_id` z migracji `20261020120000_verb_images`, zastosowanej na bazie; `verb_set_image`, `VerbSlide`/`VerbTable`, skrypt `npm run media:verb-images`) | narzędzia lekcji w wydaniu 2.3.0 (51), `verb_set_image` w 2.4.0 (52) |
 | 4.9 | ✅ **S1** sprzątanie (`30ce36a`, `1143d1d`, `a75dd51`: usuwanie starych `pending` w ścieżce żądania, `GET /api/media/cleanup` pod `CRON_SECRET`, cron `0 3 * * *`, zawężenie tylko w e2e); ✅ **S2** dokumentacja i `.env.example` (ten commit) | na końcu |
@@ -157,7 +157,7 @@ Zmienne środowiskowe `S3_*` i `MEDIA_*` dodać na Vercelu (Production/Preview/D
 | przed 3.3 | D1 tokeny z `manage:users` | nie (wariant A: tylko OAuth) (zdecydowane) |
 | przed 3.4 | D3 admin zmienia cudze klasy | tylko `class_transfer` (zdecydowane) |
 | przed 3.3 | D4 e-mail w `attempt_list` | nie (zdecydowane) |
-| przed 4.1 | dostawca magazynu (wynik M0) | Neon, jeśli M0 przejdzie, inaczej S3/R2 |
+| przed 4.1 | dostawca magazynu (wynik M0) | **Neon** (D7, rozstrzygnięte 2026-10-20: smoke PASS); S3/R2 tylko jako plan awaryjny |
 | przed 4.1 | D10: klient S3 — SDK czy własny SigV4 (pomiar 2026-10-20: SDK dodaje 1,5 MB do bundla, 578 KB po minifikacji) | własny SigV4 (zdecydowane) |
 | przed 4.5 | czy `media_upload_from_url` wchodzi (SSRF) | tak, pod warunkiem pełnych zabezpieczeń |
 
@@ -182,7 +182,7 @@ Po każdej fazie produkt jest spójny, więc plan można przerwać w dowolnym z 
 - po fazie 0 — błędy naprawione;
 - po fazie 2 — jądro quizów niezależne od nauki;
 - po fazie 3 — komplet narzędzi admina;
-- po fazie 4 — obrazy działają w kodzie (weryfikacja w przeglądarce i na prawdziwym buckecie czeka na M0);
+- po fazie 4 — obrazy działają w kodzie; bucket i smoke zweryfikowane 2026-10-20, weryfikacja w przeglądarce na Preview czeka na krok 8 runbooka M0;
 - po fazie 5 — struktura docelowa.
 
 ## Gdyby priorytetem była struktura
