@@ -253,7 +253,7 @@ Wyjście per pytanie:
 ```
 
 Plus na poziomie quizu: `attempts` (liczba podejść), `avgPercent`, `minPercent`,
-`maxPercent`, `unattributedAttempts` (podejścia, których `questionId` nie ma już
+`maxPercent` (`null`, gdy quiz nie ma podejść), `unattributedAttempts` (podejścia, których `questionId` nie ma już
 w quizie — tylko w wariancie D2-B), `sampleSize` (pytania mogą być losowane z
 puli, więc `attempts` per pytanie może być mniejsze niż liczba podejść).
 

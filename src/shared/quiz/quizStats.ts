@@ -50,9 +50,10 @@ export interface QuestionStatsRow extends ItemStats {
 export interface QuizStatsReport {
   quiz: { title: string | null; sampleSize: number | null }
   attempts: number
-  avgPercent: number
-  minPercent: number
-  maxPercent: number
+  /** Quiz-level percents over all attempts; null without any attempt (an average of nothing is not 0). */
+  avgPercent: number | null
+  minPercent: number | null
+  maxPercent: number | null
   /** Attempts with at least one result whose question is known neither from the snapshot nor from the quiz. */
   unattributedAttempts: number
   /** Questions answered at least once. */
@@ -120,9 +121,9 @@ export function quizStats(input: { quiz: StatsQuiz; attempts: StatsAttempt[]; li
   return {
     quiz: { title: quiz.title, sampleSize: quiz.sampleSize },
     attempts: attempts.length,
-    avgPercent: percents.length ? Math.round(mean(percents)) : 0,
-    minPercent: percents.length ? Math.min(...percents) : 0,
-    maxPercent: percents.length ? Math.max(...percents) : 0,
+    avgPercent: percents.length ? Math.round(mean(percents)) : null,
+    minPercent: percents.length ? Math.min(...percents) : null,
+    maxPercent: percents.length ? Math.max(...percents) : null,
     unattributedAttempts,
     total: rows.length,
     hasMore: rows.length > limit,

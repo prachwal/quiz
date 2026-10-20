@@ -168,11 +168,11 @@ test('a deleted quiz keeps its statistics from the snapshots', () => {
   assert.equal(report.questions[0].inCurrentQuiz, false)
 })
 
-test('empty quiz returns zeros and an empty list', () => {
+test('empty quiz has no averages (null, not 0) and an empty list', () => {
   const report = quizStats({ quiz: quiz([q('a'), q('b')]), attempts: [], limit: 50 })
   assert.deepEqual(
     { attempts: report.attempts, avg: report.avgPercent, min: report.minPercent, max: report.maxPercent, total: report.total, hasMore: report.hasMore },
-    { attempts: 0, avg: 0, min: 0, max: 0, total: 0, hasMore: false },
+    { attempts: 0, avg: null, min: null, max: null, total: 0, hasMore: false },
   )
   assert.deepEqual(report.questions, [])
   assert.equal(report.unattributedAttempts, 0)

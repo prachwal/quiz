@@ -75942,9 +75942,9 @@ function quizStats(input2) {
   return {
     quiz: { title: quiz.title, sampleSize: quiz.sampleSize },
     attempts: attempts.length,
-    avgPercent: percents.length ? Math.round(mean(percents)) : 0,
-    minPercent: percents.length ? Math.min(...percents) : 0,
-    maxPercent: percents.length ? Math.max(...percents) : 0,
+    avgPercent: percents.length ? Math.round(mean(percents)) : null,
+    minPercent: percents.length ? Math.min(...percents) : null,
+    maxPercent: percents.length ? Math.max(...percents) : null,
     unattributedAttempts,
     total: rows.length,
     hasMore: rows.length > limit,
@@ -76300,7 +76300,7 @@ function registerAdminTools(server, ctx) {
     "quiz_stats",
     {
       title: "Statystyka pyta\u0144 quizu (admin)",
-      description: "Analiza pyta\u0144 quizu na podstawie wszystkich podej\u015B\u0107: dla ka\u017Cdego pytania liczba odpowiedzi (attempts), poprawne (correct), accuracy 0..1 (zdobyte punkty / wszystkie punkty, wi\u0119c punkty cz\u0119\u015Bciowe si\u0119 licz\u0105), earnedPercent, topAnswers (najcz\u0119stsze odpowiedzi tekstem) i flag. Pytania: najpierw w kolejno\u015Bci quizu, potem usuni\u0119te przy edycji (inCurrentQuiz=false); pytania bez \u017Cadnej odpowiedzi nie s\u0105 wymienione. Zwraca liczby z quizu: attempts, avgPercent, minPercent, maxPercent, sampleSize, total, hasMore oraz unattributedAttempts (podej\u015Bcia z pytaniem nieznanym ani z migawki, ani z aktualnego quizu). Ograniczenia: quiz z sampleSize losuje pytania, wi\u0119c attempts per pytanie jest mniejsze ni\u017C liczba podej\u015B\u0107; flag insufficient-data (poni\u017Cej 10 odpowiedzi) oznacza, \u017Ce nie wolno wyci\u0105ga\u0107 wniosk\xF3w; topAnswers mo\u017Ce by\u0107 puste dla podej\u015B\u0107 zapisanych przed zapisem tekstu odpowiedzi; edycja quizu tworzy nowe id pyta\u0144 (podej\u015Bcia z migawk\u0105 dalej licz\u0105 si\u0119 poprawnie, bez migawki trafiaj\u0105 do unattributedAttempts). flag ambiguous jest tylko dla pyta\u0144 wyboru.",
+      description: "Analiza pyta\u0144 quizu na podstawie wszystkich podej\u015B\u0107: dla ka\u017Cdego pytania liczba odpowiedzi (attempts), poprawne (correct), accuracy 0..1 (zdobyte punkty / wszystkie punkty, wi\u0119c punkty cz\u0119\u015Bciowe si\u0119 licz\u0105), earnedPercent, topAnswers (najcz\u0119stsze odpowiedzi tekstem) i flag. Pytania: najpierw w kolejno\u015Bci quizu, potem usuni\u0119te przy edycji (inCurrentQuiz=false); pytania bez \u017Cadnej odpowiedzi nie s\u0105 wymienione. Zwraca liczby z quizu: attempts, avgPercent, minPercent, maxPercent (null, gdy quiz nie ma podej\u015B\u0107), sampleSize, total, hasMore oraz unattributedAttempts (podej\u015Bcia z pytaniem nieznanym ani z migawki, ani z aktualnego quizu). Ograniczenia: quiz z sampleSize losuje pytania, wi\u0119c attempts per pytanie jest mniejsze ni\u017C liczba podej\u015B\u0107; flag insufficient-data (poni\u017Cej 10 odpowiedzi) oznacza, \u017Ce nie wolno wyci\u0105ga\u0107 wniosk\xF3w; topAnswers mo\u017Ce by\u0107 puste dla podej\u015B\u0107 zapisanych przed zapisem tekstu odpowiedzi; edycja quizu tworzy nowe id pyta\u0144 (podej\u015Bcia z migawk\u0105 dalej licz\u0105 si\u0119 poprawnie, bez migawki trafiaj\u0105 do unattributedAttempts). flag ambiguous jest tylko dla pyta\u0144 wyboru.",
       inputSchema: {
         quizId: external_exports.string().uuid().describe("Id quizu (UUID) z quiz_list"),
         limit: external_exports.number().int().min(1).max(200).default(50).describe("Ile pyta\u0144 zwr\xF3ci\u0107 (domy\u015Blnie 50, maks. 200)")
