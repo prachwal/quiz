@@ -1,6 +1,7 @@
 import { Alert, Card, Empty, Flex, Segmented, Select, Skeleton, Tag, Typography, App as AntdApp } from 'antd'
 import { useState } from 'react'
-import { errorMessage, useListAdminFeedbackQuery, useSetFeedbackStatusMutation } from '../../app/api'
+import { errorMessage } from '../../app/api'
+import { useListAdminFeedbackQuery, useSetFeedbackStatusMutation } from './api'
 import type { FeedbackItem, FeedbackKind, FeedbackStatus } from '../../shared/quiz/types'
 
 const KIND: Record<FeedbackKind, { label: string; color: string }> = {

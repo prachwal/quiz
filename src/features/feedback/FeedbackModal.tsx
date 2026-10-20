@@ -1,6 +1,7 @@
 import { Alert, Form, Input, Modal, Radio, Typography, App as AntdApp } from 'antd'
 import { useEffect } from 'react'
-import { errorMessage, useSendFeedbackMutation } from '../../app/api'
+import { errorMessage } from '../../app/api'
+import { useSendFeedbackMutation } from './api'
 import { useAppDispatch, useAppSelector } from '../../app/hooks'
 import { getLastRequestId } from '../../app/errorTracking'
 import { Sentry, sentryEnabled } from '../../app/sentry'

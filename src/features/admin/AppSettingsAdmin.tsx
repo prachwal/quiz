@@ -1,6 +1,7 @@
 import { Alert, Button, Card, Flex, Form, InputNumber, Tag, Typography, App as AntdApp, theme } from 'antd'
 import { useEffect } from 'react'
-import { errorMessage, useGetAppSettingsQuery, useUpdateAppSettingsMutation } from '../../app/api'
+import { errorMessage } from '../../app/api'
+import { useGetAppSettingsQuery, useUpdateAppSettingsMutation } from './api'
 import { DEFAULT_SCORE_THRESHOLDS, scoreBand } from '../../shared/quiz/scoreBands'
 import type { ScoreThresholds } from '../../shared/quiz/scoreBands'
 

@@ -1,6 +1,7 @@
 import { Alert, Card, Flex, Select, Typography } from 'antd'
 import { useEffect, useState } from 'react'
-import { errorMessage, useListAdminStudentsQuery } from '../../app/api'
+import { errorMessage } from '../../app/api'
+import { useListAdminStudentsQuery } from './api'
 
 /**
  * Admins pick any user of the app (not only class members) to see all of their results. Lists the most

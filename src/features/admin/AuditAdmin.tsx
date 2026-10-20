@@ -1,6 +1,7 @@
 import { Alert, Flex, Table, Tag, Typography } from 'antd'
 import type { TableColumnsType } from 'antd'
-import { errorMessage, useListAuditQuery } from '../../app/api'
+import { errorMessage } from '../../app/api'
+import { useListAuditQuery } from './api'
 import { PHONE_QUERY, useMediaQuery } from '../../app/useMediaQuery'
 import type { AuditEntry } from '../../shared/quiz/types'
 
