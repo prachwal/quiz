@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { buildVerbQuiz, randomSample, regularForm } from '../server/verbQuizBuilder.ts'
+import { verbConditions } from '../server/verbFilter.ts'
 import type { IrregularVerb } from '../src/shared/quiz/types.ts'
 
 const verb = (id: number, base: string): IrregularVerb => ({
@@ -90,4 +91,28 @@ test('randomSample of empty array is empty', () => {
 
 test('regularForm for base ending in y but preceded by vowel', () => {
   assert.equal(regularForm('play'), 'played')
+})
+
+test('verbConditions applies the B2 level by default', () => {
+  const { conditions, values } = verbConditions({})
+  assert.deepEqual(conditions, ['v.cefr_level = $1'])
+  assert.deepEqual(values, ['B2'])
+})
+
+test('verbConditions drops the level condition when lessons list ids', () => {
+  const { conditions, values } = verbConditions({ ids: [3, 7] })
+  assert.deepEqual(conditions, ['v.id = ANY($1::int[])'])
+  assert.deepEqual(values, [[3, 7]])
+})
+
+test('verbConditions keeps an explicit level alongside ids', () => {
+  const { conditions, values } = verbConditions({ ids: [3], level: 'C1' })
+  assert.deepEqual(conditions, ['v.cefr_level = $1', 'v.id = ANY($2::int[])'])
+  assert.deepEqual(values, ['C1', [3]])
+})
+
+test('verbConditions keeps the B2 level for other filters', () => {
+  const { conditions, values } = verbConditions({ difficulty: 'medium', pattern: 'ABC' })
+  assert.deepEqual(conditions, ['v.cefr_level = $1', 'd.code = $2', 'pt.code = $3'])
+  assert.deepEqual(values, ['B2', 'medium', 'ABC'])
 })

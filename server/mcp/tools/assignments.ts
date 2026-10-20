@@ -22,7 +22,9 @@ export function registerAssignmentTools(server: McpServer, ctx: Ctx, guards: Cla
       annotations: { readOnlyHint: true },
     },
     async () => {
-      if (!canReadClasses(v)) return needTeacherOrAdmin()
+      // courses and lessons are visible to every signed-in user over REST, so authors with write:quizzes may list them
+      // too (lesson_get / lesson_update need the lesson ids)
+      if (!canReadClasses(v) && !ctx.canWriteQuizzes) return needTeacherOrAdmin()
       const [list, lessons] = await Promise.all([courses.listCourses(null), courses.listLessonBriefs()])
       return text(
         list.map((c) => ({

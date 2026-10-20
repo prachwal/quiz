@@ -1,6 +1,7 @@
 import type { IrregularVerb, DifficultyCode, PopularityCode, PatternCode } from '../src/shared/quiz/types'
 import { pool } from './db'
 import { buildVerbQuiz, randomSample, type GenerateOptions } from './verbQuizBuilder'
+import { verbConditions, type VerbFilter } from './verbFilter'
 
 type VerbRow = {
   id: number
@@ -47,26 +48,8 @@ const toVerb = (row: VerbRow): IrregularVerb => ({
 const query = async (text: string, values: unknown[] = []) =>
   (await pool().query(text, values)) as { rows: VerbRow[] }
 
-export interface VerbFilter {
-  level?: string
-  difficulty?: DifficultyCode
-  popularity?: PopularityCode
-  pattern?: PatternCode
-  ids?: number[]
-}
-
 export async function listVerbs(filter: VerbFilter = {}): Promise<IrregularVerb[]> {
-  const conditions = ['v.cefr_level = $1']
-  const values: unknown[] = [filter.level ?? 'B2']
-  const add = (sql: string, value: unknown) => {
-    values.push(value)
-    conditions.push(sql.replace('?', `$${values.length}`))
-  }
-  if (filter.difficulty) add('d.code = ?', filter.difficulty)
-  if (filter.popularity) add('p.code = ?', filter.popularity)
-  if (filter.pattern) add('pt.code = ?', filter.pattern)
-  if (filter.ids) add('v.id = ANY(?::int[])', filter.ids)
-
+  const { conditions, values } = verbConditions(filter)
   const { rows } = await query(`${VERB_SELECT} WHERE ${conditions.join(' AND ')} ORDER BY v.base`, values)
   return rows.map(toVerb)
 }

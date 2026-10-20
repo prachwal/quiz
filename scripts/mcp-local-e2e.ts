@@ -699,6 +699,12 @@ try {
   )
   check('audit: feedback_update and settings_set are logged as mcp.call', JSON.stringify(ops.rows.map((r) => r.tool)) === JSON.stringify(['feedback_update', 'settings_set']), ops.rows)
 
+  // ==== BEGIN: verb images and author access to course_list (Learning fix + Media-Storage-Plan L2) ====
+  // course_list is open to teachers, admins and viewers with write:quizzes (they need the lesson ids for lesson_get)
+  ok('course_list for a write:quizzes viewer', await call(tAdminWrite, 'course_list', {}), (d) => Array.isArray(d) && d.some((c: any) => c.id === courseId))
+  denied('course_list for a viewer with neither role', await call(tPlain, 'course_list', {}), 'roli nauczyciela lub admina')
+  // ==== END: verb images and author access to course_list ====
+
   for (const c of [tTeacher, tAdminWrite, tAdmin, tOther, tPlain, writer2, quotaClient, adminBoth]) await c.close()
 } catch (error) {
   failures.push(`test crashed: ${(error as Error).stack ?? error}`)
