@@ -110,8 +110,8 @@ try {
   const getOk = await fetch(`${base}/mcp`, { headers: { Authorization: `Bearer ${await token(PLAIN, [])}` } })
   check('GET /mcp -> 405', getOk.status === 405, getOk.status)
   const names = (await tPlain.listTools()).tools.map((t) => t.name).sort()
-  check('51 tools listed', names.length === 51, names.length)
-  for (const required of ['quiz_create', 'class_create', 'student_search', 'student_add', 'class_analyze', 'assignment_create', 'attempt_list', 'attempt_get', 'quiz_stats', 'user_results', 'user_analysis', 'user_list', 'user_get', 'user_search', 'user_roles_set', 'user_block', 'class_transfer', 'audit_list', 'feedback_list', 'feedback_update', 'settings_get', 'settings_set', 'system_stats', 'media_upload', 'media_upload_from_url', 'media_create_upload', 'media_complete', 'media_list', 'media_get', 'media_delete', 'lesson_get', 'lesson_update'])
+  check('52 tools listed', names.length === 52, names.length)
+  for (const required of ['verb_set_image', 'quiz_create','class_create', 'student_search', 'student_add', 'class_analyze', 'assignment_create', 'attempt_list', 'attempt_get', 'quiz_stats', 'user_results', 'user_analysis', 'user_list', 'user_get', 'user_search', 'user_roles_set', 'user_block', 'class_transfer', 'audit_list', 'feedback_list', 'feedback_update', 'settings_get', 'settings_set', 'system_stats', 'media_upload', 'media_upload_from_url', 'media_create_upload', 'media_complete', 'media_list', 'media_get', 'media_delete', 'lesson_get', 'lesson_update'])
     check(`tool ${required} exists`, names.includes(required))
 
   // ---- quizzes ---------------------------------------------------------------------------
@@ -703,6 +703,49 @@ try {
   // course_list is open to teachers, admins and viewers with write:quizzes (they need the lesson ids for lesson_get)
   ok('course_list for a write:quizzes viewer', await call(tAdminWrite, 'course_list', {}), (d) => Array.isArray(d) && d.some((c: any) => c.id === courseId))
   denied('course_list for a viewer with neither role', await call(tPlain, 'course_list', {}), 'roli nauczyciela lub admina')
+
+  // verb illustrations (Media-Storage-Plan L2): the first B2 verb by id; the image is restored in the finally block
+  // before the cleanup removes the media rows (irregular_verbs.image_media_id keeps them RESTRICTed)
+  const [illVerb] = (await pool().query<{ id: number; image: string | null }>(
+    "SELECT v.id, v.image_media_id AS image FROM irregular_verbs v WHERE v.cefr_level = 'B2' ORDER BY v.id LIMIT 1",
+  )).rows
+  const verbImgId = randomUUID()
+  const verbPendingId = randomUUID()
+  await mediaRow(verbImgId, 'ready')
+  await mediaRow(verbPendingId, 'pending')
+  const verbRefs = async () =>
+    (await pool().query<{ id: string }>(`SELECT media_id::text AS id FROM media_refs WHERE owner_kind = 'verb' AND owner_id = $1`, [String(illVerb.id)])).rows.map((r) => r.id)
+  const verbImage = async () => (await pool().query<{ image: string | null }>('SELECT image_media_id AS image FROM irregular_verbs WHERE id = $1', [illVerb.id])).rows[0]?.image ?? null
+  try {
+    denied('verb_set_image without write', await call(tPlain, 'verb_set_image', { verbId: illVerb.id, mediaId: verbImgId }), 'write:quizzes')
+    denied('verb_set_image with an unknown verb', await call(tAdminWrite, 'verb_set_image', { verbId: 2147483647, mediaId: null }), 'Nie znaleziono czasownika')
+    denied('verb_set_image with an unknown media id', await call(tAdminWrite, 'verb_set_image', { verbId: illVerb.id, mediaId: randomUUID() }), 'nieistniejące')
+    denied('verb_set_image with a pending media id', await call(tAdminWrite, 'verb_set_image', { verbId: illVerb.id, mediaId: verbPendingId }), 'jeszcze niewysłane')
+    check('refused verb images left the verb and its references alone', (await verbImage()) === illVerb.image && JSON.stringify(await verbRefs()) === JSON.stringify(illVerb.image ? [illVerb.image] : []), { image: await verbImage(), refs: await verbRefs() })
+
+    ok('verb_set_image sets a ready image', await call(tAdminWrite, 'verb_set_image', { verbId: illVerb.id, mediaId: verbImgId }), (d) => d.verbId === illVerb.id && d.imageMediaId === verbImgId)
+    check('media_refs: the verb holds the image reference', JSON.stringify(await verbRefs()) === JSON.stringify([verbImgId]), await verbRefs())
+    const withImageBody = await rest('/irregular-verbs', { method: 'GET', bearer: plainBearer })
+    const listed = (Array.isArray(withImageBody.body) ? withImageBody.body : withImageBody.body?.verbs ?? []) as any[]
+    check('GET /irregular-verbs carries the media map when a verb has an image', mediaOf(withImageBody.body)?.[verbImgId]?.url === `https://media.test/media/2026/${verbImgId}.png` && listed.find((v) => v.id === illVerb.id)?.imageMediaId === verbImgId, withImageBody.body?.media)
+
+    ok('verb_set_image clears the image', await call(tAdminWrite, 'verb_set_image', { verbId: illVerb.id, mediaId: null }), (d) => d.imageMediaId === null)
+    check('media_refs: the verb row is gone after the clear', (await verbRefs()).length === 0 && (await verbImage()) === null, await verbRefs())
+    const clearedBody = await rest('/irregular-verbs', { method: 'GET', bearer: plainBearer })
+    const clearedList = (Array.isArray(clearedBody.body) ? clearedBody.body : clearedBody.body?.verbs ?? []) as any[]
+    check('GET /irregular-verbs: the cleared verb has no image key and no map entry', clearedList.every((v) => !(v.id === illVerb.id && 'imageMediaId' in v)) && mediaOf(clearedBody.body)?.[verbImgId] === undefined, clearedBody.body?.media)
+
+    const verbAudit = await pool().query<{ before: string | null; after: string | null }>(
+      `SELECT details->>'mediaBefore' AS before, details->>'mediaAfter' AS after FROM admin_audit_log
+        WHERE action = 'mcp.call' AND details->>'tool' = 'verb_set_image' AND actor_id = $1 ORDER BY created_at, id`,
+      [`${ADMIN}-w`],
+    )
+    check('audit: verb_set_image logs only the two successful changes, before and after', JSON.stringify(verbAudit.rows) === JSON.stringify([{ before: null, after: verbImgId }, { before: verbImgId, after: null }]), verbAudit.rows)
+  } finally {
+    // restore the verb's previous illustration (the media rows of this run are removed by cleanup afterwards)
+    const restored = await call(tAdminWrite, 'verb_set_image', { verbId: illVerb.id, mediaId: illVerb.image })
+    if (restored.err || (await verbImage()) !== illVerb.image) failures.push(`verb ${illVerb.id} image was not restored`)
+  }
   // ==== END: verb images and author access to course_list ====
 
   for (const c of [tTeacher, tAdminWrite, tAdmin, tOther, tPlain, writer2, quotaClient, adminBoth]) await c.close()

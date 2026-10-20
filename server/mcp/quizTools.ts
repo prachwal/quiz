@@ -3,7 +3,7 @@ import { z } from 'zod'
 import quizFileSchema from '../../data/quiz.schema.json' with { type: 'json' }
 import { DIFFICULTIES, POPULARITIES, quizInput } from '../../src/shared/quiz/schema'
 import { SUBJECTS } from '../../src/shared/quiz/types'
-import { listVerbs } from '../irregularVerbs'
+import { listVerbs, setVerbImage } from '../irregularVerbs'
 import { MediaRefError } from '../media/repo'
 import * as repo from '../quizRepo'
 import { audit, failure, needQuizWrite, text } from './context'
@@ -11,7 +11,7 @@ import type { Ctx } from './context'
 
 const uuid = z.string().uuid().describe('Id quizu (UUID)')
 
-/** quiz_* and verbs_list: reading is open to everybody, changes need write:quizzes. */
+/** quiz_*, verbs_list and verb_set_image: reading is open to everybody, changes need write:quizzes. */
 export function registerQuizTools(server: McpServer, ctx: Ctx) {
   server.registerTool(
     'quiz_list',
@@ -70,6 +70,33 @@ export function registerQuizTools(server: McpServer, ctx: Ctx) {
       annotations: { readOnlyHint: true },
     },
     async ({ limit, ...filter }) => text((await listVerbs(filter)).slice(0, limit)),
+  )
+
+  server.registerTool(
+    'verb_set_image',
+    {
+      title: 'Ilustracja czasownika',
+      description:
+        'Ustawia ilustrację czasownika nieregularnego (verbId z verbs_list; mediaId z media_upload albo media_upload_from_url). Plik musi być gotowy (nie w stanie pending). mediaId=null usuwa ilustrację. Ilustracja pokazuje się na slajdzie lekcji i w katalogu czasowników. Zmiana trafia do audytu (poprzednie i nowe id pliku). Wymaga write:quizzes.',
+      inputSchema: {
+        verbId: z.number().int().positive().describe('Id czasownika z verbs_list'),
+        mediaId: z.string().uuid().nullable().describe('Id gotowego pliku albo null, aby usunąć ilustrację'),
+      },
+      annotations: { idempotentHint: true },
+    },
+    async ({ verbId, mediaId }) => {
+      if (!ctx.canWriteQuizzes) return needQuizWrite()
+      let change: Awaited<ReturnType<typeof setVerbImage>>
+      try {
+        change = await setVerbImage(verbId, mediaId)
+      } catch (error) {
+        if (error instanceof MediaRefError) return failure(error.message)
+        throw error
+      }
+      if (!change) return failure('Nie znaleziono czasownika.')
+      await audit(ctx, 'verb_set_image', { id: String(verbId) }, { verbId, mediaBefore: change.before, mediaAfter: change.after })
+      return text({ verbId, imageMediaId: change.after })
+    },
   )
 
   server.registerTool(

@@ -47,8 +47,8 @@ założenia aplikacji Auth0. Token `qz_…` działa natychmiast i nadaje się do
 | Metoda uwierzytelniania tokena | `none` (klient publiczny, tylko PKCE, **bez sekretu**) |
 | Audience | `https://api.quiz.local` (ustawiony jako `default_audience` tenanta) |
 
-Narzędzia (51): `quiz_list`, `quiz_get`, `quiz_schema`, `quiz_create`, `quiz_update`,
-`quiz_delete`, `verbs_list`, `class_list`, `class_get`, `class_create`, `class_update`,
+Narzędzia (52): `quiz_list`, `quiz_get`, `quiz_schema`, `quiz_create`, `quiz_update`,
+`quiz_delete`, `verbs_list`, `verb_set_image`, `class_list`, `class_get`, `class_create`, `class_update`,
 `class_regenerate_code`, `class_archive`, `class_report`, `class_analyze`, `student_list`,
 `student_search`, `student_add`, `student_remove`, `student_results`, `student_analyze`,
 `course_list`, `assignment_create`, `assignment_update_due`, `assignment_delete`,
@@ -57,7 +57,7 @@ Narzędzia (51): `quiz_list`, `quiz_get`, `quiz_schema`, `quiz_create`, `quiz_up
 `feedback_list`, `feedback_update`, `settings_get`, `settings_set`, `system_stats`, `media_upload`,
 `media_upload_from_url`, `media_create_upload`, `media_complete`, `media_list`, `media_get`, `media_delete`,
 `lesson_get`, `lesson_update`.
-Wszystkie narzędzia `media_*` oraz `lesson_*` wymagają `write:quizzes`; `media_upload_from_url` działa tylko przy `MEDIA_URL_FETCH=true` (domyślnie wyłączone, zob. [mcp.md](mcp.md#obrazy-ścieżki-wysyłania-i-zabezpieczenia)).
+Wszystkie narzędzia `media_*`, `lesson_*` oraz `verb_set_image` wymagają `write:quizzes` (`course_list` przyjmuje też konto z `write:quizzes`, żeby autor znalazł id lekcji); `media_upload_from_url` działa tylko przy `MEDIA_URL_FETCH=true` (domyślnie wyłączone, zob. [mcp.md](mcp.md#obrazy-ścieżki-wysyłania-i-zabezpieczenia)).
 Zapis quizów wymaga roli **admin**, klasy i wyniki — roli **nauczyciel** (`teacher`).
 Narzędzia administracyjne (wszystko od `attempt_*` do `system_stats`) wymagają `manage:users`, czyli
 **tylko konektora OAuth** (token `qz_…` tego uprawnienia nie dostaje): administrator je wywoła,
@@ -292,7 +292,7 @@ Serwer jest bezsesyjny i odpowiada czystym JSON-em, więc **nie wysyła** `notif
 | wynik `quiz_schema` (reguły i limity pól, nowe typy pytań) | od razu, przy następnym wywołaniu `quiz_schema` |
 | opisy narzędzi, `inputSchema`, nowe lub usunięte narzędzia | dopiero po odświeżeniu konektora w kliencie i w **nowej** rozmowie (trwająca zwykle zachowuje starą listę) |
 
-Zasady po naszej stronie: opisy `quiz_create` i `quiz_update` kierują do `quiz_schema` jako źródła prawdy i nie powtarzają limitów liczbowych; przy zmianie kontraktu narzędzi podbijamy `version` w `server/mcp/index.ts`. Po wdrożeniu zmiany w narzędziach: odśwież konektor (ChatGPT, Claude) albo usuń go i dodaj ponownie, potem zacznij nową rozmowę. **Przypomnienie przy każdym wydaniu z nowymi narzędziami** (np. 2.3.0 z 51 narzędziami, w tym siedmioma `media_*` i dwoma `lesson_*`): bez odświeżenia konektora klient nie zobaczy nowych narzędzi, a zobaczy tylko te, które miał wcześniej. Weryfikacja bez klienta: `tools/list` z sekcji poniżej pokazuje to, co serwer zwraca teraz.
+Zasady po naszej stronie: opisy `quiz_create` i `quiz_update` kierują do `quiz_schema` jako źródła prawdy i nie powtarzają limitów liczbowych; przy zmianie kontraktu narzędzi podbijamy `version` w `server/mcp/index.ts`. Po wdrożeniu zmiany w narzędziach: odśwież konektor (ChatGPT, Claude) albo usuń go i dodaj ponownie, potem zacznij nową rozmowę. **Przypomnienie przy każdym wydaniu z nowymi narzędziami** (np. 2.4.0 z 52 narzędziami, w tym siedmioma `media_*`, dwoma `lesson_*` i `verb_set_image`): bez odświeżenia konektora klient nie zobaczy nowych narzędzi, a zobaczy tylko te, które miał wcześniej. Weryfikacja bez klienta: `tools/list` z sekcji poniżej pokazuje to, co serwer zwraca teraz.
 
 ## Rozwiązywanie problemów
 

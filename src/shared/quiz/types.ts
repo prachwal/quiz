@@ -114,6 +114,11 @@ export interface IrregularVerb {
   meanings: string[]
   exampleEn: string
   examplePl: string
+  /**
+   * Id of the verb's illustration (media file). Only present when the verb has one: the key is left out otherwise,
+   * so the JSON of image-free verbs is unchanged (optional for the same reason on the client).
+   */
+  imageMediaId?: string | null
 }
 
 export interface AttemptSummary {

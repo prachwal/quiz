@@ -11,6 +11,7 @@ import { resolveMedia } from '../media/resolve'
 import * as progress from '../progressRepo'
 import * as repo from '../quizRepo'
 import * as reviews from '../reviewsRepo'
+import { verbImageIds, verbListBody } from '../verbMedia'
 
 /** Verb catalog and the learning module (courses, lessons, the final exam). */
 
@@ -25,7 +26,9 @@ const examInput = z.object({ count: z.number().int().min(5).max(40).default(15) 
 export function registerLearningRoutes(router: Router) {
   router.get('/irregular-verbs', async (req, res) => {
     const filter = verbQuery.parse(req.query)
-    res.json(await listVerbs(filter))
+    const verbs = await listVerbs(filter)
+    // illustrations: the `media` map only when a verb has one (verbListBody keeps the plain array otherwise)
+    res.json(verbListBody(verbs, await resolveMedia(verbImageIds(verbs))))
   })
 
   router.get('/courses', async (req, res) => {
@@ -44,8 +47,8 @@ export function registerLearningRoutes(router: Router) {
       ? await courses.getLesson(parseCourseId(req.params.id), lessonId.data, currentUserId(req))
       : null
     if (!lesson) throw new HttpError(404, 'Lesson not found')
-    // the intro's images only; without images there is no `media` key and the JSON is unchanged
-    res.json(withMedia(lesson, await resolveMedia(extractMediaIds(lesson.intro))))
+    // images of the intro and the verb illustrations; without any there is no `media` key and the JSON is unchanged
+    res.json(withMedia(lesson, await resolveMedia([...extractMediaIds(lesson.intro), ...verbImageIds(lesson.verbs)])))
   })
 
   router.post('/courses/:id/lessons/:lessonId/complete', async (req, res) => {
