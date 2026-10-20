@@ -48,3 +48,7 @@ coverage/*
 
 # git worktrees of parallel subagents
 .claude/worktrees/
+
+# Playwright browser suite (npm run test:e2e): HTML report and failure artifacts
+playwright-report/
+test-results/
