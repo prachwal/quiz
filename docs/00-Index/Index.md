@@ -13,6 +13,7 @@ Mapa treści vaultu. Zacznij tutaj.
 ## Dokumentacja techniczna
 
 - [[Architecture]] — architektura systemu
+- [[Architecture-Audit]] — audyt zależności między modułami (naruszenia granic, cykle)
 - [[Setup]] — konfiguracja środowiska
 - [[Environment]] — zmienne środowiskowe
 - [[Database]] — baza danych i migracje

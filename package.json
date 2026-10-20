@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "arch:audit": "node scripts/arch-audit.mjs",
     "preview": "vite preview",
     "test:mcp": "bash scripts/mcp-local-e2e.sh",
     "media:verb-images": "esbuild scripts/upload-verb-images.ts --bundle --platform=node --format=esm --packages=external --outfile=.upload-verb-images.mjs --log-level=error && node --env-file-if-exists=.env --env-file-if-exists=.env.local .upload-verb-images.mjs",

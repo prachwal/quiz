@@ -250,6 +250,7 @@ Niezależne od kroków 2–8 podziału nauki, poza zależnością od kroku 1 (`d
 ## Powiązane
 
 - [[Architecture]] — obecna architektura
+- [[Architecture-Audit]] — pomiar naruszeń granic modułów (przed krokiem 6)
 - [[Quiz-Engine]] — silnik quizów (jądro)
 - [[Progress]] — powtórki i seria
 - [[Classes]] — klasy i zadania (konsument obu modułów)
