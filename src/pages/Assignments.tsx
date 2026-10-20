@@ -2,13 +2,8 @@ import { ArrowRightOutlined, LogoutOutlined, TeamOutlined } from '@ant-design/ic
 import { Alert, Button, Card, Empty, Flex, Input, Popconfirm, Skeleton, Tag, Typography, App as AntdApp } from 'antd'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  errorMessage,
-  useJoinClassMutation,
-  useLeaveClassMutation,
-  useListMyAssignmentsQuery,
-  useListMyClassesQuery,
-} from '../app/api'
+import { errorMessage } from '../app/api'
+import { useJoinClassMutation, useLeaveClassMutation, useListMyAssignmentsQuery, useListMyClassesQuery } from '../features/classes/api'
 import PageHeader from '../components/PageHeader'
 import { formatDue } from '../features/classes/formatDue'
 import { StatusTag } from '../features/classes/statusTags'

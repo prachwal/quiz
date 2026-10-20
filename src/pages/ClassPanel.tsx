@@ -3,13 +3,8 @@ import { Alert, Button, Flex, Input, Popconfirm, Segmented, Skeleton, Switch, Ta
 import type { TableColumnsType } from 'antd'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import {
-  errorMessage,
-  useArchiveClassMutation,
-  useGetClassQuery,
-  useListClassesQuery,
-  useUpdateClassMutation,
-} from '../app/api'
+import { errorMessage } from '../app/api'
+import { useArchiveClassMutation, useGetClassQuery, useListClassesQuery, useUpdateClassMutation } from '../features/classes/api'
 import { PHONE_QUERY, useMediaQuery } from '../app/useMediaQuery'
 import PageHeader from '../components/PageHeader'
 import { useAuth } from '../features/auth/useAuth'

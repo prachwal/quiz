@@ -2,7 +2,8 @@ import { PlusOutlined, TeamOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Empty, Flex, Form, Input, Modal, Skeleton, Tag, Typography, App as AntdApp } from 'antd'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { errorMessage, useCreateClassMutation, useListClassesQuery } from '../app/api'
+import { errorMessage } from '../app/api'
+import { useCreateClassMutation, useListClassesQuery } from '../features/classes/api'
 import PageHeader from '../components/PageHeader'
 
 export default function Classes() {

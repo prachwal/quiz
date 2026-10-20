@@ -1,7 +1,7 @@
 import { ProfileOutlined } from '@ant-design/icons'
 import { Button, Card, Flex, Typography } from 'antd'
 import { Link } from 'react-router-dom'
-import { useListMyAssignmentsQuery } from '../../app/api'
+import { useListMyAssignmentsQuery } from './api'
 import { formatDue } from './formatDue'
 
 /** Home: reminder about open assignments from the teacher (hidden when there is nothing to do). */

@@ -1,6 +1,7 @@
 import { Alert, Card, Flex, Select, Typography } from 'antd'
 import { useMemo } from 'react'
-import { errorMessage, useListStudentsQuery } from '../../app/api'
+import { errorMessage } from '../../app/api'
+import { useListStudentsQuery } from './api'
 import { useAuth } from '../auth/useAuth'
 import { studentKey } from './studentKey'
 

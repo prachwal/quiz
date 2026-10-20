@@ -1,6 +1,7 @@
 import { Alert, Card, Descriptions, Empty, Flex, Skeleton, Table, Tag, Typography } from 'antd'
 import type { TableColumnsType } from 'antd'
-import { errorMessage, useGetStudentResultsQuery } from '../../app/api'
+import { errorMessage } from '../../app/api'
+import { useGetStudentResultsQuery } from './api'
 import { PHONE_QUERY, useMediaQuery } from '../../app/useMediaQuery'
 import type { StudentAssignmentProgress } from '../../shared/quiz/types'
 import AttemptsTable from '../results/AttemptsTable'

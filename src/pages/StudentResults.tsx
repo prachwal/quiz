@@ -1,6 +1,7 @@
 import { Alert, Skeleton } from 'antd'
 import { useParams } from 'react-router-dom'
-import { errorMessage, useGetStudentResultsQuery } from '../app/api'
+import { errorMessage } from '../app/api'
+import { useGetStudentResultsQuery } from '../features/classes/api'
 import PageHeader from '../components/PageHeader'
 import StudentResultsView from '../features/classes/StudentResultsView'
 

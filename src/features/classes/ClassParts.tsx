@@ -2,14 +2,8 @@ import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import { Button, Empty, Flex, Form, Input, Modal, Popconfirm, Select, Tag, Typography, App as AntdApp } from 'antd'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  errorMessage,
-  useAddClassMemberMutation,
-  useCreateClassMutation,
-  useRemoveClassMemberMutation,
-  useSearchStudentCandidatesQuery,
-  useUpdateClassMutation,
-} from '../../app/api'
+import { errorMessage } from '../../app/api'
+import { useAddClassMemberMutation, useCreateClassMutation, useRemoveClassMemberMutation, useSearchStudentCandidatesQuery, useUpdateClassMutation } from './api'
 import { isAuth0Id } from '../../shared/quiz/auth0Id'
 import type { ClassDetail as ClassDetailData, ClassSummary, StudentCandidate } from '../../shared/quiz/types'
 
