@@ -1,7 +1,7 @@
 import type { userOf } from './http'
 
 /**
- * Event "a lesson was completed for the first time", pure (types only, no DB) so the order and the
+ * Event "a lesson was completed for the first time", import-free and without a DB so the order and the
  * error behaviour can be tested without a database. The lesson route runs the registry only when the
  * completion is new (`result.created`); the `progress` module subscribes in `server/progressHooks.ts`,
  * so the `learning` module never imports progress.
@@ -13,9 +13,6 @@ import type { userOf } from './http'
 export interface LessonCompletedContext {
   /** The value `userOf(req)` returns. */
   user: ReturnType<typeof userOf>
-  /** The signed-in user's id as the auth helper reports it; the route requires authentication. */
-  userId: string | null
-  courseId: string
   lessonId: string
 }
 

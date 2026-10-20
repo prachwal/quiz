@@ -79379,8 +79379,6 @@ function registerLearningRoutes(router) {
     if (result.created) {
       await lessonRegistry.runCompleted({
         user: userOf(req),
-        userId: currentUserId(req),
-        courseId: parseCourseId(req.params.id),
         lessonId: String(req.params.lessonId)
       });
     }

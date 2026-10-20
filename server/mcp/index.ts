@@ -15,7 +15,8 @@ import { quizTitles } from '../quizRepo'
  * Model Context Protocol endpoint (`POST /api/mcp`, Streamable HTTP, stateless, JSON responses).
  * It sits behind the normal authentication, so a client authenticates with `Authorization: Bearer qz_...`
  * (a personal API token) or an Auth0 login and gets exactly the permissions of that identity:
- *   - quizzes (`quiz_*`, `verbs_list`): reading for everybody, changes with `write:quizzes`;
+ *   - quizzes (`quiz_*`): reading for everybody, changes with `write:quizzes`;
+ *   - lessons (`verbs_list`, `lesson_*`, `verb_set_image`): reading for everybody, changes with `write:quizzes`;
  *   - classes (`class_*`, `student_*`, `assignment_*`, `course_list`): teachers (`manage:classes`) work on their
  *     own classes, admins (`manage:users`, OAuth login only) can read every class;
  *   - admin tools (`attempt_*`): `manage:users` only, so OAuth login only;

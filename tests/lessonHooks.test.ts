@@ -5,8 +5,6 @@ import type { LessonCompletedContext } from '../server/lessonHooks.ts'
 
 const ctx = {
   user: 'user-1',
-  userId: 'user-1',
-  courseId: 'course-1',
   lessonId: 'lesson-1',
 } as LessonCompletedContext
 
@@ -19,13 +17,13 @@ test('hooks run sequentially in registration order with the same context', async
   const registry = createLessonRegistry()
   const seen: string[] = []
   registry.onCompleted(async (c) => {
-    seen.push(`first:${c.user}:${c.courseId}:${c.lessonId}`)
+    seen.push(`first:${c.user}:${c.lessonId}`)
   })
   registry.onCompleted(async () => {
     seen.push('second')
   })
   await registry.runCompleted(ctx)
-  assert.deepEqual(seen, ['first:user-1:course-1:lesson-1', 'second'])
+  assert.deepEqual(seen, ['first:user-1:lesson-1', 'second'])
 })
 
 test('the first error propagates unchanged and the later hooks do not run', async () => {

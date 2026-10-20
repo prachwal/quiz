@@ -4,7 +4,8 @@ import type { QuizDetail } from '../src/shared/quiz/types'
 /**
  * Post-grade event of the quiz module, pure (types only, no DB) so the orchestration can be tested
  * without a database. The grade handler runs the registry; modules such as `learning` and `progress`
- * register their side effects in `server/learningGradeHooks.ts`, so `quizzes` never imports them.
+ * register their side effects in `server/learningGradeHooks.ts` and `server/progressHooks.ts`, so `quizzes`
+ * never imports them.
  *
  * Two phases, both sequential and inside the same request (serverless functions may freeze as soon
  * as the response is sent, so fire-and-forget work is not an option):

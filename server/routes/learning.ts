@@ -60,8 +60,6 @@ export function registerLearningRoutes(router: Router) {
       // the progress module subscribes to this event (server/progressHooks.ts); errors propagate, as before
       await lessonRegistry.runCompleted({
         user: userOf(req),
-        userId: currentUserId(req),
-        courseId: parseCourseId(req.params.id),
         lessonId: String(req.params.lessonId),
       })
     }
