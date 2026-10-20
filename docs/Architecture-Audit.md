@@ -5,37 +5,49 @@ tags:
   - quiz
   - backend
   - frontend
-  - status/todo
+  - status/done
 created: 2026-10-20
 updated: 2026-10-20
 ---
 
 # Audyt zależności modułów
 
-> Pomiar odległości kodu od granic z [[Learning-Slice-Plan]] (sekcje „Zasada docelowa”, „Docelowa struktura”, „Egzekwowanie granic”) **przed przenoszeniem plików** (krok 6 planu). Narzędzie: `npm run arch:audit` (`scripts/arch-audit.mjs`), reguły: `scripts/arch-manifest.json`. Stan kodu: commit `d0c627c` (gałąź `vercel-neon`). Ten commit nie zmienia kodu produktu.
+> Pomiar odległości kodu od granic z [[Learning-Slice-Plan]] (sekcje „Zasada docelowa”, „Docelowa struktura”, „Egzekwowanie granic”). Narzędzie: `npm run arch:audit` (`scripts/arch-audit.mjs`), reguły: `scripts/arch-manifest.json`, kanarek: `tests/architecture.test.ts`. Stan kodu: commit `0d880c1` (gałąź `vercel-neon`); od tego commita zmieniła się tylko dokumentacja. Liczby w sekcjach „Wynik w skrócie”, „Manifest” i „Pełny wynik” pochodzą z uruchomienia `node scripts/arch-audit.mjs` na tym stanie.
 
 ## Wynik w skrócie
 
-- 368 plików kodu (`server/`, `src/`, `api-src/`, `scripts/`, `tests/`): wszystkie przypisane do modułu. Po korekcie manifestu (decyzje a–f) `src/vite-env.d.ts` trafia do `f-platform`.
-- 1134 względne importy rozwiązano do plików, 0 nierozwiązanych. Poza zakresem: 805 importów pakietów npm, 2 importy CSS, 1 import dynamiczny bez literału (`scripts/dev-server.mjs:52`).
-- **24 importy łamią zasadę w 13 parach modułów** (z 137 par, łącznie z testami). Przed korektą manifestu było 36 importów w 21 parach. Korekta usunęła 12 importów i 8 par, bez nowych naruszeń. 7 z 24 to `import type`, czyli tanie w naprawie.
-- Serwer: `learning -> progress` (hooki oceny i aktywność dzienna), `quizzes -> learning/progress/classes` i `mcp-platform -> classes` (guardy klas w narzędziach MCP, `context.ts`, `tools/shared.ts`). Quizy zależą od `learning` (generator z czasowników) i `classes` (`attemptsRepo`).
-- Frontend: `f-learning -> f-progress` (znacznik „słabe”), `f-quizzes -> f-progress` (wynik quizu), `f-platform -> shared-quizzes` (typy wejścia tokenów i uwag).
-- **3 cykle** między modułami: klaster serwerowy (6 modułów), frontendowy (3) i `shared-quizzes` z `shared-types` (2). Cykle nie są liczone przez skrypt jako błąd; kanarek pilnuje, żeby ich liczba i składy nie rosły (`tests/architecture.test.ts`).
-- Importy z testów (331) są raportowane w tabeli, ale nigdy nie są naruszeniem.
+- 381 plików kodu (`server/`, `src/`, `api-src/`, `scripts/`, `tests/`): wszystkie przypisane do modułu, 0 nieprzypisanych. 12 plików niekodowych pominięto.
+- 1169 względnych importów rozwiązano do plików, 0 nierozwiązanych. Poza zakresem: 821 importów pakietów npm, 2 importy zasobów (CSS), 1 import dynamiczny bez literału (`scripts/dev-server.mjs:52`).
+- **2 importy łamią zasadę w 2 parach modułów**, oba to `import type` w `src/shared/quiz/types.ts`: `shared-types -> shared-media` (`MediaMap`) i `shared-types -> shared-quizzes` (`QuizResult`, `QuestionType`). Obie są na liście wyjątków (`scripts/arch-allowlist.json`) z opisem „do naprawy w 5.C”. Znikną dopiero po podziale `types.ts` (5.1, opcjonalne).
+- **1 cykl** między modułami: `shared-quizzes` ↔ `shared-types`. Zniknie razem z podziałem `types.ts`.
+- Reguły twarde (`media` nie zna domeny, `src/**` nie importuje `server/**`): 0 naruszeń, 0 wyjątków (`HARD_RULE_EXCEPTIONS` pusta).
+- Importy z testów (336) są raportowane w tabeli, ale nigdy nie są naruszeniem.
+
+## Historia
+
+Liczba naruszeń (importy łamiące zasadę, w nawiasie pary modułów i cykle) po kolejnych etapach. Wszystkie wartości z uruchomienia skryptu na danym commicie.
+
+| Etap | Commit | Naruszenia (importy) | Pary modułów | Cykle |
+|---|---|---:|---:|---:|
+| Pierwszy audyt | `a2591f2` | 36 (w tym 8 `import type`) | 21 | 3 |
+| Po korekcie manifestu (decyzje a–f) | `94955b4` | 24 (7 typów) | 13 | 3 |
+| Po fazie 1 (5.C: sloty UI, platforma, media i próby) | `6ccc533` | 9 (2 typy) | 5 | 2 |
+| Po fazie 2 (5.C: hooki postępu, trasy generowania quizów) — stan teraz | `0d880c1` | 2 (2 typy) | 2 | 1 |
+
+Kanarek (`tests/architecture.test.ts`) został dodany w `d70c869`. Od tego commita każdy nowy import łamiący granicę, nowy cykl albo wpis allowlisty, który już nie narusza zasady, przerywa `npm test`. Bramka lokalna (`npm run gate`) i CI uruchamiają ten test razem z resztą.
 
 ## Decyzje właściciela (korekta manifestu)
 
-Commit „correct the module manifest” stosuje sześć decyzji. To decyzje projektowe, nie błędy audytu. Pliki i reguły zmieniono tylko w `scripts/arch-manifest.json`.
+Commit „correct the module manifest” (`94955b4`) stosuje sześć decyzji. To decyzje projektowe, nie błędy audytu. Pliki i reguły zmieniono tylko w `scripts/arch-manifest.json`.
 
 - **a)** `server/mcp/index.ts` → `root`. Jest kompozycją narzędzi MCP wszystkich modułów, więc składanie należy do roota. Zamknięte pary: `mcp-platform -> admin` (3), `-> learning` (1), `-> media` (1), `-> quizzes` (1).
 - **b)** `src/shared/quiz/userHistory.ts` → `shared-classes` (test w `tests/` bez zmian, bo `tests` jest osobnym modułem). Zamknięta para `shared-quizzes -> shared-classes` (1, typ). Plik importuje `studentAnalysis` z `shared-classes`.
 - **c)** `src/vite-env.d.ts` → `f-platform` (ambientne typy Vite). Lista nieprzypisanych plików jest pusta.
 - **d)** `src/components/AppLayout.tsx` → `root` (składa widżety funkcji: `StreakChip`, `useTimezoneSync`, feedback). Zamknięta para `f-platform -> f-progress` (2). Pozostałe `src/components/**` zostają w `f-platform`.
-- **e)** `src/features/results/useScoreColors.ts` i `src/features/results/Score.tsx` (`ScoreTag`, `ScoreProgress`) → `f-platform`, reguła przed ogólną regułą `src/features/results/**`. Te atomy są współdzielone przez klasy, quizy, wyniki i panel admina. Testów dla nich nie ma w repo. Zamknięte pary: `f-quizzes -> f-results` (1). Pliki `AttemptsTable`/`AttemptDetails` zostają w `f-results`.
+- **e)** `src/features/results/useScoreColors.ts` i `src/features/results/Score.tsx` (`ScoreTag`, `ScoreProgress`) → `f-platform`, reguła przed ogólną regułą `src/features/results/**`. Te atomy są współdzielone przez klasy, quizy, wyniki i panel admina. Zamknięte pary: `f-quizzes -> f-results` (1). Pliki `AttemptsTable`/`AttemptDetails` zostają w `f-results`.
 - **f)** `f-classes` może importować `f-results` (dodane do `allow`). Zamknięta para `f-classes -> f-results` (1).
 
-Efekt: naruszenia 36 → 24 importów, pary 21 → 13, cykle 3 → 3 (inne składy, patrz „Cykle”). Pary, które zniknęły: `mcp-platform -> admin`, `mcp-platform -> learning`, `mcp-platform -> media`, `mcp-platform -> quizzes`, `f-platform -> f-progress`, `f-classes -> f-results`, `f-quizzes -> f-results`, `shared-quizzes -> shared-classes`. Pozostała para `mcp-platform -> classes` ma 3 importy (było 4): `index.ts` nie importuje już klas, zostają `context.ts` i `tools/shared.ts`.
+Efekt: naruszenia 36 → 24 importów, pary 21 → 13. Pary, które zniknęły: `mcp-platform -> admin`, `mcp-platform -> learning`, `mcp-platform -> media`, `mcp-platform -> quizzes`, `f-platform -> f-progress`, `f-classes -> f-results`, `f-quizzes -> f-results`, `shared-quizzes -> shared-classes`.
 
 Dla porównania, naruszenia przed korektą (`node scripts/arch-audit.mjs` na `a2591f2`): `f-classes -> f-results` 1, `f-learning -> f-progress` 2, `f-platform -> f-progress` 2, `f-platform -> shared-quizzes` 3 (typy), `f-quizzes -> f-progress` 2, `f-quizzes -> f-results` 1, `learning -> progress` 4, `mcp-platform -> admin` 3, `mcp-platform -> classes` 4 (1 typ), `mcp-platform -> learning` 1, `mcp-platform -> media` 1, `mcp-platform -> quizzes` 1, `mcp-platform -> shared-quizzes` 1, `media -> quizzes` 1, `platform -> shared-quizzes` 1, `quizzes -> classes` 2 (1 typ), `quizzes -> learning` 2, `quizzes -> progress` 1, `shared-quizzes -> shared-classes` 1 (typ), `shared-types -> shared-media` 1 (typ), `shared-types -> shared-quizzes` 1 (typ).
 
@@ -46,9 +58,10 @@ Dla porównania, naruszenia przed korektą (`node scripts/arch-audit.mjs` na `a2
 - **`open`**: moduły, które może importować każdy: `platform`, `mcp-platform`, `shared-platform`, `shared-types`, `f-platform`.
 - **`incoming`**: kto może importować dany moduł. `admin` i `f-admin` tylko z `root`, `root` z nikogo.
 - **Warstwy** (reguła dopisana ponad plan, bo plan jej wprost nie zapisał): plik w `src/**` nie importuje z `server/**`, a plik serwerowy (`server/`, `api-src/`, `scripts/`) importuje z `src/` tylko `src/shared/**`. Naruszenie tego typu to `tier`.
+- **Reguły twarde** (`HARD_RULES` w `scripts/arch-core.mjs`): moduły `media`, `f-media` i `shared-media` nie importują domeny (`quizzes`, `learning`, `progress`, `classes`). Nie mają wpisów na liście wyjątków, więc naruszenie nie da się ukryć.
 - **`shared-X`** to część współdzielona modułu X. Moduł może importować `shared-Y` tylko tam, gdzie wolno mu importować Y (domknięcie zbioru z planu).
 - **Parser**: tekst jest czyszczony z komentarzy (znaki nowej linii zostają, więc numery linii są dokładne), następnie szukane są `import … from`, `export … from`, `import '…'`, `import('…')`, `require('…')`. Import `type` i lista `{ type X }` są oznaczane jako typowe. Wywołania `vi.mock` nie są czytane. Względne specyfikatory rozwiązywane są przez `.ts`, `.tsx`, `.mts`, `.cts`, `.mjs`, `.js`, `.jsx`, `.cjs`, `/index.*` i zamianę `.js` na `.ts`. W repo nie ma aliasów `paths`.
-- **Wyjścia**: tabela krawędzi, naruszenia pogrupowane wg krawędzi, nieprzypisane pliki, cykle (Tarjan), nierozwiązane importy, importy dynamiczne, podsumowanie. `--json` daje to samo jako JSON; `--fail-on-violations` kończy się kodem 1, gdy są naruszenia; `--print-allowlist` wypisuje listę wyjątków (patrz „Kanarek”). Wynik jest deterministyczny (sprawdzone dwoma uruchomieniami i diffem).
+- **Wyjścia**: tabela krawędzi, naruszenia pogrupowane wg krawędzi, nieprzypisane pliki, cykle (Tarjan), nierozwiązane importy, importy dynamiczne, podsumowanie. `--json` daje to samo jako JSON; `--fail-on-violations` kończy się kodem 1, gdy są naruszenia; `--print-allowlist` wypisuje listę wyjątków (patrz „Kanarek”). Wynik jest deterministyczny.
 
 ## Decyzje i odchylenia od propozycji
 
@@ -56,76 +69,75 @@ Dla porównania, naruszenia przed korektą (`node scripts/arch-audit.mjs` na `a2
 2. `admin`, `f-admin` i `root` mają `allow: *`, a ograniczenie wejścia realizuje `incoming`. Dla `tests` też `*`, bo jego krawędzi nikt nie sprawdza.
 3. `shared-*` w `allow` to domknięcie zbiorów z planu. Np. `shared-quizzes` może importować `shared-platform` i `shared-media` (plan: „platform + media”), ale nie serwerowe pliki.
 4. `platform` i `f-platform` nie importują nic poza `shared-*` (plan: „nothing”), a ich wejście jest otwarte.
-5. `src/vite-env.d.ts` zostaje nieprzypisany (ambientne typy Vite, bez importów). Propozycja: `f-platform`. **Zastosowane** (decyzja c).
+5. `src/vite-env.d.ts` przypisany do `f-platform` (decyzja c).
 6. CSS (`src/index.css`, `src/styles/*`) nie jest skanowane, bo nie tworzy krawędzi modułów.
-7. **Zastosowane** (decyzja a): `server/mcp/index.ts` przenieść do `root`, bo składa narzędzia `admin`, `learning`, `media`, `quizzes` i `classes`. Pozwoliłoby to usunąć 7 z 36 naruszeń (krawędzie `mcp-platform -> *` z `index.ts`). Patrz naprawy 8–12.
-8. **Zastosowane** (decyzja d): `src/components/AppLayout.tsx` razem z `src/App.tsx` (root), bo składa elementy wielu funkcji. Patrz naprawa 3.
+7. Decyzje a–f: patrz wyżej. Propozycje naprawy 1, 3, 6, 8, 10, 11, 12 i 19 z pierwotnego audytu załatwiła korekta manifestu, bez zmian w kodzie.
 
 ## Manifest: podsumowanie
 
-Pliki na moduł (po przypisaniu) i zbiór modułów, z których moduł może importować (`allow`, plus `open` i `incoming` opisane wyżej).
+Pliki na moduł (stan `0d880c1`) i zbiór modułów, z których moduł może importować (`allow`; `open` i `incoming` opisane wyżej). `nic` oznacza brak importów w górę (poza `shared-*`, `platform` i `f-platform`, które nie importują nic poza częścią współdzieloną).
 
 | Moduł | Pliki | Może importować (poza sobą) |
 |---|---:|---|
 | `admin` | 7 | `*` |
-| `classes` | 11 | `platform`, `media`, `quizzes`, `learning`, `progress`, `shared-classes`, `shared-progress`, `shared-learning`, `shared-quizzes`, `shared-media`, `shared-platform` |
+| `classes` | 12 | `platform`, `media`, `quizzes`, `learning`, `progress`, `shared-classes`, `shared-progress`, `shared-learning`, `shared-quizzes`, `shared-media`, `shared-platform` |
 | `f-admin` | 7 | `*` |
 | `f-classes` | 9 | `f-platform`, `f-media`, `f-quizzes`, `f-learning`, `f-progress`, `f-results`, `shared-classes`, `shared-progress`, `shared-learning`, `shared-quizzes`, `shared-media`, `shared-platform` |
 | `f-learning` | 8 | `f-platform`, `f-media`, `f-quizzes`, `shared-learning`, `shared-quizzes`, `shared-media`, `shared-platform` |
 | `f-media` | 14 | `f-platform`, `shared-media`, `shared-platform` |
 | `f-platform` | 40 | nic |
-| `f-progress` | 9 | `f-platform`, `f-media`, `f-quizzes`, `f-learning`, `shared-progress`, `shared-learning`, `shared-quizzes`, `shared-media`, `shared-platform` |
+| `f-progress` | 10 | `f-platform`, `f-media`, `f-quizzes`, `f-learning`, `shared-progress`, `shared-learning`, `shared-quizzes`, `shared-media`, `shared-platform` |
 | `f-quizzes` | 12 | `f-platform`, `f-media`, `shared-quizzes`, `shared-media`, `shared-platform` |
 | `f-results` | 3 | `f-platform`, `f-media`, `f-quizzes`, `f-learning`, `f-progress`, `f-classes`, `shared-classes`, `shared-progress`, `shared-learning`, `shared-quizzes`, `shared-media`, `shared-platform` |
-| `learning` | 9 | `platform`, `media`, `quizzes`, `shared-learning`, `shared-quizzes`, `shared-media`, `shared-platform` |
+| `learning` | 11 | `platform`, `media`, `quizzes`, `shared-learning`, `shared-quizzes`, `shared-media`, `shared-platform` |
 | `mcp-platform` | 2 | nic |
-| `media` | 22 | `platform`, `shared-media`, `shared-platform` |
-| `platform` | 12 | nic |
-| `progress` | 3 | `platform`, `media`, `quizzes`, `learning`, `shared-progress`, `shared-learning`, `shared-quizzes`, `shared-media`, `shared-platform` |
-| `quizzes` | 6 | `platform`, `media`, `shared-quizzes`, `shared-media`, `shared-platform` |
+| `media` | 23 | `platform`, `shared-media`, `shared-platform` |
+| `platform` | 13 | nic |
+| `progress` | 5 | `platform`, `media`, `quizzes`, `learning`, `shared-progress`, `shared-learning`, `shared-quizzes`, `shared-media`, `shared-platform` |
+| `quizzes` | 7 | `platform`, `media`, `shared-quizzes`, `shared-media`, `shared-platform` |
 | `root` | 32 | `*` |
 | `shared-classes` | 4 | `shared-platform`, `shared-media`, `shared-quizzes`, `shared-learning`, `shared-progress` |
 | `shared-learning` | 4 | `shared-platform`, `shared-media`, `shared-quizzes` |
 | `shared-media` | 3 | `shared-platform` |
-| `shared-platform` | 3 | nic |
+| `shared-platform` | 4 | nic |
 | `shared-progress` | 1 | `shared-platform`, `shared-media`, `shared-quizzes`, `shared-learning` |
 | `shared-quizzes` | 7 | `shared-platform`, `shared-media` |
 | `shared-types` | 1 | nic |
-| `tests` | 139 | `*` |
+| `tests` | 142 | `*` |
 
-## Pełny wynik audytu (po commicie kanarka)
+## Pełny wynik audytu
 
-Wynik `node scripts/arch-audit.mjs` po korekcie manifestu (decyzje a–f) i po dodaniu kanarka (`scripts/arch-core.mjs`, `tests/architecture.test.ts`), które same są w skanowanym zakresie. Naruszenia są pogrupowane wg krawędzi; `[reason]` to `not-allowed`, `incoming` lub `tier`.
+Wynik `node scripts/arch-audit.mjs` na commicie `0d880c1` (stan kodu). Naruszenia są pogrupowane wg krawędzi; `[reason]` to `not-allowed`, `incoming` lub `tier`.
 
 ```text
 arch-audit (manifest v1, 26 rules)
 
 ## Modules (files)
 admin                 7
-classes              11
+classes              12
 f-admin               7
 f-classes             9
 f-learning            8
 f-media              14
 f-platform           40
-f-progress            9
+f-progress           10
 f-quizzes            12
 f-results             3
-learning              9
+learning             11
 mcp-platform          2
-media                22
-platform             12
-progress              3
-quizzes               6
+media                23
+platform             13
+progress              5
+quizzes               7
 root                 32
 shared-classes        4
 shared-learning       4
 shared-media          3
-shared-platform       3
+shared-platform       4
 shared-progress       1
 shared-quizzes        7
 shared-types          1
-tests               139
+tests               142
 
 ## Module edges (cross-module imports)
 admin -> classes                              7  ok
@@ -135,16 +147,18 @@ admin -> progress                             2  ok
 admin -> quizzes                              1  ok
 admin -> shared-classes                       3  ok
 admin -> shared-learning                      1  ok
-admin -> shared-quizzes                       6  ok
+admin -> shared-platform                      3  ok
+admin -> shared-quizzes                       5  ok
 admin -> shared-types                         2  ok
 classes -> learning                           4  ok
-classes -> mcp-platform                      11  ok
-classes -> platform                           7  ok
+classes -> mcp-platform                      12  ok
+classes -> platform                          12  ok
 classes -> progress                           3  ok
+classes -> quizzes                            2  ok
 classes -> shared-classes                     4  ok
 classes -> shared-learning                    2  ok
 classes -> shared-platform                    2  ok
-classes -> shared-quizzes                     4  ok
+classes -> shared-quizzes                     3  ok
 classes -> shared-types                       5  ok
 f-admin -> f-platform                        15  ok
 f-admin -> f-progress                         1  ok
@@ -158,24 +172,21 @@ f-classes -> shared-platform                  1  ok
 f-classes -> shared-types                     4  ok
 f-learning -> f-media                         2  ok
 f-learning -> f-platform                      9  ok
-f-learning -> f-progress                      2  VIOLATING 2
 f-learning -> f-quizzes                       2  ok
 f-learning -> shared-media                    1  ok
 f-learning -> shared-types                    5  ok
 f-media -> f-platform                         3  ok
 f-media -> shared-media                      12  ok
-f-platform -> shared-platform                 2  ok
-f-platform -> shared-quizzes                  3  VIOLATING 3
+f-platform -> shared-platform                 5  ok
 f-platform -> shared-types                   10  ok
 f-progress -> f-learning                      1  ok
 f-progress -> f-media                         2  ok
-f-progress -> f-platform                      4  ok
-f-progress -> f-quizzes                       1  ok
+f-progress -> f-platform                      5  ok
+f-progress -> f-quizzes                       2  ok
 f-progress -> shared-media                    1  ok
 f-progress -> shared-types                    2  ok
 f-quizzes -> f-media                         18  ok
 f-quizzes -> f-platform                      10  ok
-f-quizzes -> f-progress                       2  VIOLATING 2
 f-quizzes -> shared-media                     2  ok
 f-quizzes -> shared-quizzes                  19  ok
 f-quizzes -> shared-types                     4  ok
@@ -184,39 +195,32 @@ f-results -> shared-quizzes                   1  ok
 f-results -> shared-types                     3  ok
 learning -> mcp-platform                      2  ok
 learning -> media                             5  ok
-learning -> platform                          4  ok
-learning -> progress                          4  VIOLATING 4
-learning -> quizzes                           3  ok
+learning -> platform                          5  ok
+learning -> quizzes                           2  ok
 learning -> shared-learning                   1  ok
 learning -> shared-media                      4  ok
 learning -> shared-quizzes                    4  ok
 learning -> shared-types                      5  ok
-mcp-platform -> classes                       3  VIOLATING 3
-mcp-platform -> platform                      4  ok
-mcp-platform -> shared-quizzes                1  VIOLATING 1
+mcp-platform -> platform                      5  ok
+mcp-platform -> shared-platform               1  ok
 media -> mcp-platform                         2  ok
 media -> platform                             7  ok
-media -> quizzes                              1  VIOLATING 1
 media -> shared-media                         5  ok
-platform -> shared-platform                   1  ok
-platform -> shared-quizzes                    1  VIOLATING 1
+platform -> shared-platform                   2  ok
 platform -> shared-types                      6  ok
-progress -> learning                          3  ok
+progress -> learning                          5  ok
 progress -> media                             1  ok
-progress -> platform                          4  ok
-progress -> quizzes                           1  ok
+progress -> platform                          6  ok
+progress -> quizzes                           4  ok
 progress -> shared-learning                   4  ok
 progress -> shared-progress                   2  ok
-progress -> shared-quizzes                    1  ok
+progress -> shared-quizzes                    3  ok
 progress -> shared-types                      2  ok
-quizzes -> classes                            2  VIOLATING 2
-quizzes -> learning                           2  VIOLATING 2
 quizzes -> mcp-platform                       2  ok
 quizzes -> media                              5  ok
-quizzes -> platform                           5  ok
-quizzes -> progress                           1  VIOLATING 1
-quizzes -> shared-quizzes                    12  ok
-quizzes -> shared-types                       5  ok
+quizzes -> platform                           6  ok
+quizzes -> shared-quizzes                    13  ok
+quizzes -> shared-types                       6  ok
 root -> admin                                 4  ok
 root -> classes                               2  ok
 root -> f-admin                               6  ok
@@ -224,15 +228,15 @@ root -> f-classes                            17  ok
 root -> f-learning                           11  ok
 root -> f-media                               3  ok
 root -> f-platform                           77  ok
-root -> f-progress                            9  ok
+root -> f-progress                           13  ok
 root -> f-quizzes                             9  ok
 root -> f-results                             3  ok
-root -> learning                              6  ok
+root -> learning                              7  ok
 root -> mcp-platform                          1  ok
 root -> media                                 8  ok
 root -> platform                             12  ok
-root -> progress                              1  ok
-root -> quizzes                               4  ok
+root -> progress                              3  ok
+root -> quizzes                               5  ok
 root -> shared-learning                       2  ok
 root -> shared-quizzes                        6  ok
 root -> shared-types                          6  ok
@@ -250,56 +254,23 @@ tests -> f-classes                            6  ok
 tests -> f-learning                          11  ok
 tests -> f-media                             14  ok
 tests -> f-platform                         148  ok
-tests -> f-progress                           8  ok
+tests -> f-progress                           9  ok
 tests -> f-quizzes                           26  ok
 tests -> f-results                            3  ok
-tests -> learning                             6  ok
-tests -> media                               18  ok
+tests -> learning                             8  ok
+tests -> media                               19  ok
 tests -> platform                             3  ok
 tests -> quizzes                              2  ok
 tests -> root                                20  ok
 tests -> shared-classes                       8  ok
 tests -> shared-learning                      7  ok
 tests -> shared-media                         7  ok
-tests -> shared-platform                      3  ok
+tests -> shared-platform                      5  ok
 tests -> shared-progress                      2  ok
-tests -> shared-quizzes                      18  ok
+tests -> shared-quizzes                      17  ok
 tests -> shared-types                        10  ok
 
 ## Violations
-[f-learning -> f-progress] 2 import(s), 0 type-only
-  src/features/learn/VerbSlide.tsx:4  f-learning -> f-progress  ../progress/WeakMark  [not-allowed]
-  src/features/learn/VerbTable.tsx:7  f-learning -> f-progress  ../progress/WeakMark  [not-allowed]
-[f-platform -> shared-quizzes] 3 import(s), 3 type-only
-  src/features/auth/ApiTokens.tsx:8  f-platform -> shared-quizzes  ../../shared/quiz/schema  [not-allowed] (type-only)
-  src/features/auth/api.ts:2  f-platform -> shared-quizzes  ../../shared/quiz/schema  [not-allowed] (type-only)
-  src/features/feedback/api.ts:2  f-platform -> shared-quizzes  ../../shared/quiz/schema  [not-allowed] (type-only)
-[f-quizzes -> f-progress] 2 import(s), 0 type-only
-  src/features/quizzes/ResultView.tsx:13  f-quizzes -> f-progress  ../progress/api  [not-allowed]
-  src/features/quizzes/ResultView.tsx:20  f-quizzes -> f-progress  ../progress/ProgressLine  [not-allowed]
-[learning -> progress] 4 import(s), 0 type-only
-  server/learningGradeHooks.ts:4  learning -> progress  ./progressRepo  [not-allowed]
-  server/learningGradeHooks.ts:6  learning -> progress  ./reviewsRepo  [not-allowed]
-  server/routes/learning.ts:11  learning -> progress  ../progressRepo  [not-allowed]
-  server/routes/learning.ts:13  learning -> progress  ../reviewsRepo  [not-allowed]
-[mcp-platform -> classes] 3 import(s), 1 type-only
-  server/mcp/context.ts:7  mcp-platform -> classes  ../classAccess  [not-allowed]
-  server/mcp/context.ts:8  mcp-platform -> classes  ../classAccess  [not-allowed] (type-only)
-  server/mcp/tools/shared.ts:3  mcp-platform -> classes  ../../classAccess  [not-allowed]
-[mcp-platform -> shared-quizzes] 1 import(s), 0 type-only
-  server/mcp/tools/shared.ts:2  mcp-platform -> shared-quizzes  ../../../src/shared/quiz/schema  [not-allowed]
-[media -> quizzes] 1 import(s), 0 type-only
-  server/mcp/tools/media.ts:24  media -> quizzes  ../../quizRepo  [not-allowed]
-[platform -> shared-quizzes] 1 import(s), 0 type-only
-  server/routes/tokens.ts:2  platform -> shared-quizzes  ../../src/shared/quiz/schema  [not-allowed]
-[quizzes -> classes] 2 import(s), 1 type-only
-  server/attemptsRepo.ts:2  quizzes -> classes  ./classes/results  [not-allowed]
-  server/attemptsRepo.ts:3  quizzes -> classes  ./classes/results  [not-allowed] (type-only)
-[quizzes -> learning] 2 import(s), 0 type-only
-  server/mcp/quizTools.ts:6  quizzes -> learning  ../irregularVerbs  [not-allowed]
-  server/routes/quizzes.ts:11  quizzes -> learning  ../irregularVerbs  [not-allowed]
-[quizzes -> progress] 1 import(s), 0 type-only
-  server/routes/quizzes.ts:16  quizzes -> progress  ../reviewsRepo  [not-allowed]
 [shared-types -> shared-media] 1 import(s), 1 type-only
   src/shared/quiz/types.ts:2  shared-types -> shared-media  ../media/types  [not-allowed] (type-only)
 [shared-types -> shared-quizzes] 1 import(s), 1 type-only
@@ -309,32 +280,7 @@ tests -> shared-types                        10  ok
 none
 
 ## Cycles (between modules)
-cycle 1: classes, learning, mcp-platform, media, progress, quizzes
-  classes -> learning (4)
-  classes -> mcp-platform (11)
-  classes -> progress (3)
-  learning -> mcp-platform (2)
-  learning -> media (5)
-  learning -> progress (4)
-  learning -> quizzes (3)
-  mcp-platform -> classes (3)
-  media -> mcp-platform (2)
-  media -> quizzes (1)
-  progress -> learning (3)
-  progress -> media (1)
-  progress -> quizzes (1)
-  quizzes -> classes (2)
-  quizzes -> learning (2)
-  quizzes -> mcp-platform (2)
-  quizzes -> media (5)
-  quizzes -> progress (1)
-cycle 2: f-learning, f-progress, f-quizzes
-  f-learning -> f-progress (2)
-  f-learning -> f-quizzes (2)
-  f-progress -> f-learning (1)
-  f-progress -> f-quizzes (1)
-  f-quizzes -> f-progress (2)
-cycle 3: shared-quizzes, shared-types
+cycle 1: shared-quizzes, shared-types
   shared-quizzes -> shared-types (3)
   shared-types -> shared-quizzes (1)
 
@@ -345,37 +291,65 @@ none
 scripts/dev-server.mjs:52  import(...)
 
 ## Summary
-filesScanned: 368
-filesAssigned: 368
+filesScanned: 381
+filesAssigned: 381
 filesUnassigned: 0
-nonCodeFilesSkipped: 11
-importEdges: 1134
-crossModuleEdgePairs: 137
-violatingImports: 24
-violatingImportsTypeOnly: 7
-violatingModulePairs: 13
-cycles: 3
+nonCodeFilesSkipped: 12
+importEdges: 1169
+crossModuleEdgePairs: 129
+violatingImports: 2
+violatingImportsTypeOnly: 2
+violatingModulePairs: 2
+cycles: 1
 unresolvedRelative: 0
 dynamicSpecifiers: 1
-externalPackageImports: 805
+externalPackageImports: 821
 assetImportsIgnored: 2
 importsOutsideScope: 0
-testEdges: 331
+testEdges: 336
 ```
 
-## Nieprzypisane pliki
+## Stan napraw
 
-- Brak. `src/vite-env.d.ts` przypisany do `f-platform` (decyzja c).
+Każda krawędź, która naruszała zasadę przy pierwszym audycie (numeracja jak w pierwotnej liście propozycji), z commitem, który ją usunął. Commity fazy 1 i 2 to scalenia gałęzi (`Merge phase …`) albo commity na `vercel-neon`. Zapis „pozostaje: typy, 5.D” oznacza, że naprawa wymaga podziału `types.ts`, czyli przenoszenia plików.
+
+| # | Krawędź (przed) | Naprawa | Commit | Stan |
+|---|---|---|---|---|
+| 1 | `f-classes -> f-results` | przeniesienie `StudentResultsView` odrzucone: zamknięte decyzją f (`f-classes` może importować `f-results`) | `94955b4` | zamknięte (manifest) |
+| 2 | `f-learning -> f-progress` (`WeakMark`, 2) | slot `renderBadge` w `VerbSlide`/`VerbTable`, składany w `LessonView`/`Verbs` | `450cd0b` (1A) | zrobione |
+| 3 | `f-platform -> f-progress` (`AppLayout`, 2) | `AppLayout` do `root` (decyzja d) | `94955b4` | zamknięte (manifest) |
+| 4 | `f-platform -> shared-quizzes` (typy tokenów i uwag, 3) | schematy tokenów, uwag i Auth0 id w `src/shared/platform/schema.ts` | `bfb1a42` (1B) | zrobione |
+| 5 | `f-quizzes -> f-progress` (`ResultView`, 2) | sloty `resultFooter` i `reviewActionFor` w `QuizPlayer`, składane w `pages/QuizPlay.tsx` (`ProgressLine`, `NextReviewButton`) | `450cd0b` (1A) | zrobione |
+| 6 | `f-quizzes -> f-results` (`useScoreColors`, 1) | `useScoreColors` i `ScoreTag`/`ScoreProgress` w `f-platform` (decyzja e) | `94955b4` | zamknięte (manifest) |
+| 7 | `learning -> progress` (hooki i rejestracja, 4) | `afterSave` powtórek i aktywności w `server/progressHooks.ts`; zdarzenie „lekcja ukończona” w `server/lessonHooks.ts` i `lessonRegistry.ts`; `learning` zostaje z `beforeSave` egzaminu (`learningGradeHooks.ts`) | `addd37a` (2A) | zrobione (inna lokalizacja niż w propozycji) |
+| 8 | `mcp-platform -> admin` (`index.ts`, 3) | `server/mcp/index.ts` do `root` (decyzja a) | `94955b4` | zamknięte (manifest) |
+| 9 | `mcp-platform -> classes` (`context.ts`, `tools/shared.ts`, 3) | `Viewer`/`viewerOf` w `server/viewer.ts` (platform); guardy klas w `server/mcp/tools/classGuards.ts` (classes) | `bfb1a42` (1B) | zrobione (guardy w `classGuards.ts`, nie w `tools/classes.ts`) |
+| 10 | `mcp-platform -> learning` (`index.ts`) | montowanie w roocie (decyzja a); `verbs_list` i `verb_set_image` w `server/mcp/lessonTools.ts` (learning) | `94955b4`, `0d880c1` (2B) | zrobione |
+| 11 | `mcp-platform -> media` (`index.ts`) | montowanie w roocie (decyzja a) | `94955b4` | zamknięte (manifest) |
+| 12 | `mcp-platform -> quizzes` (`index.ts`) | montowanie w roocie (decyzja a) | `94955b4` | zamknięte (manifest) |
+| 13 | `mcp-platform -> shared-quizzes` (`tools/shared.ts`, auth0 id) | schemat Auth0 id w `src/shared/platform/` | `bfb1a42` (1B) | zrobione |
+| 14 | `media -> quizzes` (`tools/media.ts`, `quizRepo`) | narzędzia mediów dostają opisy właścicieli przez `MediaToolDeps` (`ownerLabels` z `server/mcp/index.ts`); czysta funkcja `server/media/ownerNames.ts`. Narzędzia `quiz_*` zostają w quizach | `db5d02a` (1C) | zrobione (wstrzyknięcie zamiast przeniesienia narzędzia) |
+| 15 | `platform -> shared-quizzes` (`routes/tokens.ts`) | jak w 4 | `bfb1a42` (1B) | zrobione |
+| 16 | `quizzes -> classes` (`attemptsRepo.ts`, `questionDetails`, `AttemptRow`, 2) | `server/attemptDetails.ts` (quizzes); klasy importują stamtąd | `db5d02a` (1C) | zrobione |
+| 17 | `quizzes -> learning` (generator z czasowników, 2) | trasy `generate/irregular-verbs` i `retry-wrong` w `server/routes/verbQuizzes.ts` (module **progress**, bo `onlyWeak` czyta powtórki); narzędzia `verbs_list`/`verb_set_image` w learning | `0d880c1` (2B) | zrobione (generator zostaje w `irregularVerbs.ts`, trasy idą do progress) |
+| 18 | `quizzes -> progress` (`reviewsRepo`, 1) | jak w 17: `server/routes/verbQuizzes.ts` | `0d880c1` (2B) | zrobione |
+| 19 | `shared-quizzes -> shared-classes` (`userHistory.ts`, 1 typ) | decyzja b: plik do `shared-classes` | `94955b4` | zamknięte (manifest) |
+| 20 | `shared-types -> shared-media` (`MediaMap`, typ) | pozostaje: typy, 5.D (podział `types.ts`) | — | **otwarte** (allowlista) |
+| 21 | `shared-types -> shared-quizzes` (`QuizResult`, `QuestionType`, typy) i cykl `shared-quizzes` ↔ `shared-types` | pozostaje: typy, 5.D (podział `types.ts`) | — | **otwarte** (allowlista, cykl w `EXPECTED_CYCLES`) |
+
+Poza numeracją z pierwotnej listy zamknięto jeszcze: `quizzes -> classes` (drugi import, typ, też w 16), `f-platform -> shared-quizzes` (dwa pozostałe pliki, `features/auth/api.ts`, `features/feedback/api.ts`, w 4) i wyjątek twardej reguły `media-no-domain` (`server/mcp/tools/media.ts → server/quizRepo.ts`, naprawa 14; lista `HARD_RULE_EXCEPTIONS` jest pusta).
 
 ## Cykle
 
-- **Cykl 1 (serwer, 6 modułów):** `classes`, `learning`, `mcp-platform`, `media`, `progress`, `quizzes`. Wszystkie krawędzie w cyklu to naruszenia albo zależności dozwolone, więc każdy cykl zawiera pozycje z listy. Najbardziej ruchome: `learning -> progress` i `quizzes -> progress/learning/classes` (naprawy 7, 16–18) oraz `mcp-platform -> classes` (naprawa 9).
-- **Cykl 2 (frontend, 3 moduły):** `f-learning`, `f-progress`, `f-quizzes`. Zamykają go naprawy 2 i 5 (`f-learning -> f-progress`, `f-quizzes -> f-progress`). Krawędzie `f-progress -> f-learning` i `f-progress -> f-quizzes` są dozwolone.
-- **Cykl 3 (`shared-*`, 2 moduły):** `shared-quizzes`, `shared-types`. Zamyka go naprawa 21 (rozbicie `types.ts`).
+Pierwotne trzy cykle (serwerowy z 6 modułami, frontendowy z 3 i `shared-*` z 2) zniknęły poza jednym:
 
-## Podział `src/shared/quiz/types.ts` (propozycja, bez zmian w kodzie)
+- **Cykl serwerowy** (`classes`, `learning`, `mcp-platform`, `media`, `progress`, `quizzes`): zamknięty naprawami 7, 8–12, 14, 16–18 (faza 1 i 2 oraz korekta manifestu).
+- **Cykl frontendowy** (`f-learning`, `f-progress`, `f-quizzes`): zamknięty naprawami 2 i 5 (faza 1A).
+- **Cykl `shared-*`** (`shared-quizzes`, `shared-types`): **pozostaje** do podziału `types.ts` (naprawa 21, 5.D). Skrypt liczy go jako cykl, kanarek zna jego skład (`EXPECTED_CYCLES`).
 
-Plik ma 460 linii i mieszankę wszystkich modułów. Proponowany przydział eksportów:
+## Podział `src/shared/quiz/types.ts` (propozycja, 5.D, nie zrobione)
+
+Plik ma około 460 linii i mieszankę wszystkich modułów. Proponowany przydział eksportów:
 
 | Eksport | Proponowany moduł | Uwagi |
 |---|---|---|
@@ -386,55 +360,25 @@ Plik ma 460 linii i mieszankę wszystkich modułów. Proponowany przydział eksp
 | `ProgressSummary`, `ReviewSummary` | `shared-progress` | seria, cel dzienny, powtórki (`streaks.ts`) |
 | `ApiTokenSummary`, `CreatedApiToken`, `FeedbackKind`, `FeedbackStatus`, `FeedbackContext`, `FeedbackItem`, `MANAGED_ROLES`, `ManagedRole`, `AppSettings` | `shared-platform` | tokeny, uwagi, role i ustawienia aplikacji (globalne) |
 | `AdminUser`, `AdminUsersPage`, `AuditEntry` | nowy `shared-admin` | tylko panel admina; wymaga wpisu w manifeście |
-| `AdminStudentAttempt`, `AdminStudentResults`, `AdminStudentListItem` | `shared-classes` (lub `shared-admin`) | `userHistory.ts` (`shared-quizzes`) importuje `AdminStudentAttempt`, więc to musi się rozstrzygnąć przy naprawie 19 |
+| `AdminStudentAttempt`, `AdminStudentResults`, `AdminStudentListItem` | `shared-classes` (lub `shared-admin`) | `userHistory.ts` (`shared-classes`) importuje `AdminStudentAttempt`, więc to musi się rozstrzygnąć przy podziale |
 | `ClassSummary`, `ClassMember`, `AssignmentItem`, `AssignmentStatus`, `MyAssignment`, `MyClass`, `ClassReportRow`, `ClassReport`, `ClassDetail` | `shared-classes` | klasy i zadania |
 | `StudentAttemptQuestion`, `StudentAttempt`, `StudentAssignmentProgress`, `StudentResults`, `StudentCandidate`, `StudentListItem` | `shared-classes` | wyniki ucznia w klasie |
 
-Po rozdzieleniu `types.ts` znika jako nośnik i krawędzie `shared-types -> *` (naprawy 20–21) przestają być potrzebne. Dziś `shared-types` importuje z `shared-media` (`MediaMap`) i z `shared-quizzes` (`QuizResult`, `QuestionType`), więc nawet jako „nośnik typów” nie jest czysty.
-
-## Proponowane naprawy
-
-Jedna konkretna propozycja na każdą krawędź naruszającą zasadę. `(typ)` oznacza import typu, tani w naprawie. Numer odpowiada pozycji w tabeli naruszeń wyżej.
-
-Po korekcie manifestu naprawy 1, 3, 6, 8, 10, 11, 12 i 19 nie dotyczą już naruszeń (załatwiła je korekta). Naprawa 9 dotyczy tylko `mcp-platform -> classes` (3 importy). Pozostałe są aktualne.
-
-1. **`f-classes -> f-results`** (`src/features/classes/StudentResultsView.tsx:7`): przenieść `StudentResultsView.tsx` do `src/features/results/`. To widok wyników, nie klas.
-2. **`f-learning -> f-progress`** (`VerbSlide.tsx:4`, `VerbTable.tsx:7`, `WeakMark`): przekazać znacznik „słabe” jako slot (`weakMark?: (verbId) => ReactNode`) z stron `pages/` (root).
-3. **`f-platform -> f-progress`** (`src/components/AppLayout.tsx:21-22`, `StreakChip`, `useTimezoneSync`): montować `StreakChip` i `useTimezoneSync` w `src/App.tsx` (root) i przekazać do `AppLayout` jako `headerExtra?: ReactNode`.
-4. **`f-platform -> shared-quizzes`** (`features/auth/ApiTokens.tsx:8`, `features/auth/api.ts:2`, `features/feedback/api.ts:2`; `TokenInput`, `FeedbackInput`, wszystko `(typ)`): przenieść `tokenInput` i `feedbackInput` (zod i typy) do pliku `shared-platform`, np. `src/shared/quiz/platformInput.ts`. Ten sam ruch zamyka naprawę 15.
-5. **`f-quizzes -> f-progress`** (`features/quizzes/ResultView.tsx:13,20`; `useStartReviewMutation`, `ProgressLine`): dostarczać oba przez `ResultOutcome`, który już istnieje dla egzaminu kursu, i składać w `pages/QuizPlay.tsx` (root).
-6. **`f-quizzes -> f-results`** (`ResultView.tsx:21`, `useScoreColors`): przenieść `useScoreColors` (progi są globalnym ustawieniem `app_settings`) do `src/app/` (`f-platform`).
-7. **`learning -> progress`** (`server/learningGradeHooks.ts:4,6`, `server/routes/learning.ts:11,13`): przenieść rejestrację `afterSave` (`recordActivity`, `applyResults`) do `server/progress/gradeHooks.ts`, podpiętej w `createApp`. W `routes/learning.ts` zastąpić bezpośrednie wywołania zdarzeniem `lessonCompleted` z rejestru.
-8. **`mcp-platform -> admin`** (`server/mcp/index.ts:5-7`): przenieść składanie narzędzi (`index.ts`) do `root` (`server/app.ts` albo `server/mcp/mount.ts` w root). Ten sam ruch zamyka naprawy 9–12 w `index.ts`.
-9. **`mcp-platform -> classes`** (`server/mcp/context.ts:7-8` `viewerOf`/`Viewer` (ostatni `(typ)`), `server/mcp/tools/shared.ts:3` guardy klas): `viewerOf` i `Viewer` przenieść do `server/auth.ts` (tożsamość z żądania, `platform`); guardy klas z `tools/shared.ts` przenieść do `tools/classes.ts`.
-10. **`mcp-platform -> learning`** (`server/mcp/index.ts:10`, `lessonTools`): montowanie w roocie, jak w naprawie 8.
-11. **`mcp-platform -> media`** (`server/mcp/index.ts:8`, `tools/media`): montowanie w roocie, jak w naprawie 8.
-12. **`mcp-platform -> quizzes`** (`server/mcp/index.ts:11`, `quizTools`): montowanie w roocie, jak w naprawie 8.
-13. **`mcp-platform -> shared-quizzes`** (`server/mcp/tools/shared.ts:2`, `auth0UserId` z `schema.ts`): przenieść regułę do `src/shared/quiz/auth0Id.ts` (`shared-platform`), o ile jest tam ta sama reguła (do sprawdzenia przy naprawie).
-14. **`media -> quizzes`** (`server/mcp/tools/media.ts:24`, `../../quizRepo`): narzędzie wiążące obraz z quizem przenieść do `server/mcp/quizTools.ts` (`quizzes`), a `media` zostawić przy wysyłaniu i referencjach.
-15. **`platform -> shared-quizzes`** (`server/routes/tokens.ts:2`, `tokenInput`): tak jak w naprawie 4, czyli jeden plik `shared-platform` dla wejść tokenów i uwag.
-16. **`quizzes -> classes`** (`server/attemptsRepo.ts:2` `questionDetails`, `:3` `AttemptRow` (typ)): przenieść `questionDetails` i `AttemptRow` z `server/classes/results.ts` do `server/attemptsRepo.ts`. Klasy importują je stamtąd (`classes -> quizzes` jest dozwolone).
-17. **`quizzes -> learning`** (`server/routes/quizzes.ts:11`, `server/mcp/quizTools.ts:6`, `irregularVerbs`): generator z czasowników przenieść do `learning` (`routes/learning.ts`, `mcp/lessonTools.ts`). `quizzes` zostaje z CRUD i oceną.
-18. **`quizzes -> progress`** (`server/routes/quizzes.ts:16`, `reviewsRepo`, używane przy `weakVerbs` w linii 78): obsługę generowania „tylko słabe” przenieść do `server/routes/progress.ts`. Progress może importować learning, a wybór słabych czasowników to dane postępu.
-19. **`shared-quizzes -> shared-classes`** (`src/shared/quiz/userHistory.ts:5` `AnalysisAttempt`, `AnalysisInput` (typy)): przenieść te dwa typy do `userHistory.ts`. `studentAnalysis.ts` importuje je stamtąd (`shared-classes -> shared-quizzes` jest dozwolone).
-20. **`shared-types -> shared-media`** (`src/shared/quiz/types.ts:2`, `MediaMap` (typ)): pole używające `MediaMap` przenieść do typu zdefiniowanego w `src/shared/media/types.ts` (np. `QuizWithMedia`). `types.ts` nie importuje mediów.
-21. **`shared-types -> shared-quizzes`** (`src/shared/quiz/types.ts:1`, `QuizResult`, `QuestionType` z `engine.ts` (typy)): rozdzielić `types.ts` wg tabeli wyżej. Typy quizowe trafiają do `shared-quizzes`, a `types.ts` przestaje istnieć jako nośnik.
+Po rozdzieleniu `types.ts` znikają krawędzie `shared-types -> *` (naprawy 20–21) i cykl. Dziś `shared-types` importuje z `shared-media` (`MediaMap`) i z `shared-quizzes` (`QuizResult`, `QuestionType`), więc nawet jako „nośnik typów” nie jest czysty.
 
 ## Kanarek
 
 Test `tests/architecture.test.ts` działa w `npm test` (ok. 0,4 s). Analizę robi `scripts/arch-core.mjs` (czysta funkcja `auditRepo(rootDir)`, bez wypisywania i bez `exit`); `scripts/arch-audit.mjs` to tylko CLI. Test porównuje wynik z `scripts/arch-allowlist.json` i sprawdza pięć rzeczy:
 
-1. **Nowe naruszenie.** Para plik → plik, która narusza granicę i nie jest na liście. Komunikat wypisuje `plik -> cel (moduł -> moduł)` i podpowiada: `napraw import albo (wyjątkowo) dopisz do scripts/arch-allowlist.json z uzasadnieniem`. Domyślna odpowiedź to naprawa importu (propozycje w „Proponowane naprawy”). Wpis na liście wymaga uzasadnienia w review.
+1. **Nowe naruszenie.** Para plik → plik, która narusza granicę i nie jest na liście. Komunikat wypisuje `plik -> cel (moduł -> moduł)` i podpowiada: `napraw import albo (wyjątkowo) dopisz do scripts/arch-allowlist.json z uzasadnieniem`. Domyślna odpowiedź to naprawa importu (stan napraw wyżej). Wpis na liście wymaga uzasadnienia w review.
 2. **Wpis nieaktualny.** Wpis, który już nie narusza granicy (plik usunięty, import naprawiony). Komunikat kończy się `usuń z scripts/arch-allowlist.json`. Dzięki temu lista tylko się kurczy.
 3. **Pole `pair`.** Musi zgadzać się z aktualnym modułem plików. Inaczej test prosi o poprawienie pola (np. po przeniesieniu pliku między modułami).
-4. **Cykle.** Liczba cykli modułów nie może wzrosnąć, a każdy cykl musi mieć skład znany z `EXPECTED_CYCLES` w teście. Nowy cykl albo większy skład pada. Usunięty cykl jest w porządku (wtedy lista w teście też się skraca).
-5. **Reguły twarde** (`HARD_RULES` w `arch-core.mjs`), niezależne od listy: moduły `media`, `f-media`, `shared-media` nie importują `quizzes`, `learning`, `progress` ani `classes` (serwer, front, shared), a `src/**` nie importuje `server/**`. Wpis allowlisty nie może ukrywać takiego importu.
-
-**Wyjątek reguły twardej.** Jedna krawędź `server/mcp/tools/media.ts → server/quizRepo.ts` (naprawa 14, 5.C) łamie regułę `media-no-domain` już dziś. Nie trafia do allowlisty (reguły twarde nie mają wpisów), tylko do `HARD_RULE_EXCEPTIONS` w teście. Wyjątek jest sprawdzany jak wpis nieaktualny: po naprawie test pada z komunikatem `usuń wyjątek` i trzeba go skasować. Lista wyjątków tylko się kurczy.
+4. **Cykle.** Liczba cykli modułów nie może wzrosnąć, a każdy cykl musi mieć skład znany z `EXPECTED_CYCLES` w teście (dziś: `shared-quizzes`, `shared-types`). Nowy cykl albo większy skład pada. Usunięty cykl jest w porządku (wtedy lista w teście też się skraca).
+5. **Reguły twarde** (`HARD_RULES` w `arch-core.mjs`), niezależne od listy: moduły `media`, `f-media`, `shared-media` nie importują domeny (`quizzes`, `learning`, `progress`, `classes`), a `src/**` nie importuje `server/**`. Wpis allowlisty nie może ukrywać takiego importu. Lista wyjątków `HARD_RULE_EXCEPTIONS` jest pusta (wyjątek `media -> quizzes` zlikwidowano w naprawie 14, `db5d02a`); pusta lista też jest sprawdzana: wyjątek, który już nie narusza, pada z komunikatem `usuń wyjątek`.
 
 **Jak czytać porażkę.** Nazwa testu mówi, która reguła padła, a komunikat wypisuje pliki i pary modułów. Dla każdego naruszenia wybierz: naprawić import (zwykle najlepsze), albo dopisać wpis z `reason` (rzadko, z review). Wpis nieaktualny zawsze się usuwa.
 
-**Jak regenerować listę.** `node scripts/arch-audit.mjs --print-allowlist` wypisuje JSON (`$comment` i `entries`) dla bieżących naruszeń, z `reason` `do naprawy w 5.C`. Służy do przeglądu, nie do dopisywania: po naprawie porównaj wynik z plikiem (`diff`), powinny zniknąć wyłącznie wpisy naprawionych naruszeń. Nowe wpisy wymagają uzasadnienia w review. Ręczna edycja jest w porządku, o ile zasada „tylko znikają” jest zachowana.
+**Jak regenerować listę.** `node scripts/arch-audit.mjs --print-allowlist` wypisuje JSON (`$comment` i `entries`) dla bieżących naruszeń, z `reason` `do naprawy w 5.C`. Służy do przeglądu, nie do dopisywania: po naprawie porównaj wynik z plikiem (`diff`), powinny zniknąć wyłącznie wpisy naprawionych naruszeń. Obecny plik ma 2 wpisy (typy `shared-types`).
 
 **Test syntetyczny.** Ostatni test buduje w `os.tmpdir()` drzewo z dwoma modułami i jednym naruszeniem, wpisem nieaktualnym, importem `media -> quizzes` i cyklem, i sprawdza, że kanarek to wszystko wykrywa. Dzięki temu porażka nie jest jedynym dowodem, że kanarek działa.
 
@@ -444,4 +388,4 @@ Test `tests/architecture.test.ts` działa w `npm test` (ok. 0,4 s). Analizę rob
 - Importy dynamiczne bez literału nie są rozwiązywane. Jest jeden taki przypadek: `scripts/dev-server.mjs:52` (`import(bundle.href)`), wypisany w sekcji „Dynamic”. Nie wpływa na wyniki modułowe, bo ładuje zbudowany bundle.
 - Pliki `.d.ts` i CSS są pomijane albo nieprzypisane (patrz wyżej).
 - `vi.mock` i `vi.importActual` w testach nie są czytane. Testy nie są źródłem naruszeń, więc nie wpływa to na wynik.
-- Wynik dotyczy stanu kodu w commicie `a2591f2` z korektą manifestu (decyzje a–f). Po przeniesieniu plików (krok 6) trzeba go uruchomić ponownie: `npm run arch:audit`, a w kanarku `node scripts/arch-audit.mjs --fail-on-violations`.
+- Wynik dotyczy stanu kodu w commicie `0d880c1`. Po podziale `types.ts` (5.D) trzeba go uruchomić ponownie: `npm run arch:audit`, a w kanarku `node scripts/arch-audit.mjs --fail-on-violations`. Przeniesienie plików zmieni też pola `pair` w allowlistcie (kanarek to zgłosi).

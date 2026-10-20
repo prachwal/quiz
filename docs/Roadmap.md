@@ -51,7 +51,7 @@ Faza 3: migawka pytań → quiz_stats → user_* → audit/feedback/settings
 Faza 4: media M1 → M2 → M3 → M4 → M5 → M6 ← bramka po M0 (przeszła 2026-10-20, D7 = Neon)
                     L1 ← klasy przez API nauki (krok 5) → L2 → S1 → S2
    ▼
-Faza 5: przeniesienie plików → granice → (schemat: nie robić)
+Faza 5: granice i naprawy (5.2, 5.C — zrobione) → przeniesienie plików (5.1, opcjonalne) → (schemat: nie robić)
 ```
 
 ## Fazy
@@ -121,8 +121,9 @@ Rozpoczyna się po rozstrzygnięciu M0 (rozstrzygnięte 2026-10-20, D7 = Neon).
 
 | # | Zadanie | Uwagi |
 | --- | --- | --- |
-| 5.1 | **Krok 6:** `server/modules/*`, `src/features/*`, podział `shared/quiz/` i `types.ts` | jeden duży, mechaniczny diff; `media` jest już w docelowym kształcie, narzędzia admina przenosimy razem z resztą |
-| 5.2 | **Krok 7:** granice (`no-restricted-imports` albo `dependency-cruiser`) i test-kanarek | kanarek gotowy; naprawy naruszeń w toku (5.C), przenoszenie plików (5.D) później |
+| 5.1 | ⬜ **Krok 6:** `server/modules/*`, `src/features/*`, podział `shared/quiz/` i `types.ts` | opcjonalne; jeden duży, mechaniczny diff; `media` jest już w docelowym kształcie. Ostatnie 2 wpisy listy wyjątków (`shared-types`) i cykl `shared-quizzes`/`shared-types` znikną po podziale `types.ts` |
+| 5.2 | ✅ **Krok 7:** granice — manifest `scripts/arch-manifest.json`, kanarek `tests/architecture.test.ts` (zrobione 2026-10-20) | egzekwowanie przez kanarek zamiast `no-restricted-imports`/`dependency-cruiser`; naprawy naruszeń w 5.C, stan i historia w [[Architecture-Audit]] |
+| 5.C | ✅ **Naprawy granic:** sloty UI (`ResultView`, `VerbSlide`), platforma (`viewer`, schematy tokenów), media i próby (`attemptDetails`, właściciele w narzędziach mediów), hooki postępu (`progressHooks`, `lessonRegistry`) i trasy generowania quizów (`routes/verbQuizzes.ts`); 36 → 2 importy (oba `import type` w `shared/quiz/types.ts`) i 3 cykle → 1 (zrobione 2026-10-20) | plan i dziennik w [[Phase5C-Orchestration]]; w tym cyklu doszły bramka (`npm run gate`) i CI (`.github/workflows/ci.yml`) |
 | — | **Krok 8** (schemat `course_exams`) | nie robić do czasu drugiego rodzaju egzaminu |
 
 ## Licznik narzędzi MCP
@@ -183,7 +184,7 @@ Po każdej fazie produkt jest spójny, więc plan można przerwać w dowolnym z 
 - po fazie 2 — jądro quizów niezależne od nauki;
 - po fazie 3 — komplet narzędzi admina;
 - po fazie 4 — obrazy działają w kodzie; bucket i smoke zweryfikowane 2026-10-20, weryfikacja w przeglądarce na Preview czeka na krok 8 runbooka M0;
-- po fazie 5 — struktura docelowa.
+- po fazie 5 — granice egzekwowane kanarkiem, 2 wpisy typów i jeden cykl do usunięcia podziałem `types.ts` (5.1); struktura docelowa dopiero po 5.1.
 
 ## Gdyby priorytetem była struktura
 

@@ -43,7 +43,7 @@ Czwarta część, **jeszcze nieistniejąca**: **media** — obrazki przechowywan
 
 | Miejsce | Co robi |
 | --- | --- |
-| `server/routes/quizzes.ts:147-173` (`grade`) | woła `coursesRepo.coursePassInfo`, `reviews.applyResults`, `progress.recordActivity`; dokłada `course` do odpowiedzi |
+| ~~`server/routes/quizzes.ts:147-173` (`grade`)~~ | ~~woła `coursesRepo.coursePassInfo`, `reviews.applyResults`, `progress.recordActivity`~~ (krok 2 i 5.C: handler tylko uruchamia rejestr; zaliczenie w `learningGradeHooks.ts`, skutki postępu w `progressHooks.ts`; `routes/quizzes.ts` nie importuje nauki ani postępu) |
 | `server/quizRepo.ts` | `courseId` w `createQuiz`, `saveAttempt`, `QuizDetail` |
 | baza | `quizzes.course_id`, `quiz_attempts.course_id` (FK do `courses`) |
 | `features/quizzes/ResultView.tsx` | ~~zna `result.course`~~ (krok 3: baner i przyciski egzaminu przeniesione do `features/learn/courseExam.tsx`) |
@@ -110,13 +110,13 @@ Każdy krok to osobny commit; przed commitem `npm run lint`, `npm test`, `npm ru
 | # | Krok | Zakres | Ryzyko |
 | --- | --- | --- | --- |
 | 1 | **`pool` do `server/db.ts`** (zrobione) | mechaniczna zmiana 11 importów; bez re-eksportu z `quizRepo` | niskie |
-| 2 | **Zdarzenie po ocenie** (zrobione: `server/gradeHooks.ts`, rejestracja w `server/learningGradeHooks.ts`) | `grade` publikuje `onGraded({ quiz, userId, result, attemptId })`; `learning` rejestruje obsługę: `passed` kursu, `reviews.applyResults`, `progress.recordActivity`; `course` w odpowiedzi dokłada `learning` | średnie (kolejność skutków ubocznych, błąd obsługi nie może zgubić zapisanego podejścia) |
+| 2 | **Zdarzenie po ocenie** (zrobione: `server/gradeHooks.ts`; `beforeSave` w `server/learningGradeHooks.ts`, `afterSave` w `server/progressHooks.ts` od 5.C) | `grade` publikuje `onGraded({ quiz, userId, result, attemptId })`; `learning` rejestruje obsługę: `passed` kursu, `reviews.applyResults`, `progress.recordActivity`; `course` w odpowiedzi dokłada `learning` | średnie (kolejność skutków ubocznych, błąd obsługi nie może zgubić zapisanego podejścia) |
 | 3 | **UI quizów bez nauki** (zrobione: `ResultView` dostaje `outcome?: ResultOutcome`, `QuizPlayer` `outcomeFor`/`backLinkFor`; `pages/QuizPlay.tsx` składa je z `features/learn/courseExam.tsx`; wpisany `/learn/...` usunięty) | niskie |
 | 4 | **RTK Query na slice'y** (zrobione) | `api.injectEndpoints` w każdym module; baza i tagi zostają w `app/api.ts` | niskie |
-| 5 | ✅ **Klasy przez publiczne API nauki** (zrobione) | zamiast SQL na `lessons`/`lesson_progress`/`courses`/`lesson_verbs` w `classes` i `reviewsRepo` czytają je funkcje `server/coursesRepo.ts` (`lessonTotalsByCourse`, `lessonsDoneByUser`, `lessonsCompletedCount`, `courseExists`, `courseTitles`, `lessonVerbIds`); zamiast jednego `progressFacts` — wąskie funkcje, bo każda ma jednego konsumenta lub jest batchowa; `attemptsRepo` i MCP nie czytały tych tabel | średnie |
-| 6 | **Przeniesienie plików do slice'ów** | `server/modules/*`, `src/features/learning`, podział `shared/quiz/` i `types.ts` | niskie logicznie, duży diff |
-| 7 | **Egzekwowanie granic** | reguła zakazująca importów „w górę” (patrz niżej); kanarek gotowy (`tests/architecture.test.ts`), naprawy naruszeń w toku (5.C), przenoszenie plików (5.D) później | niskie |
-| 8 | *(opcjonalnie)* **Schemat** | tabela `course_exams(quiz_id, course_id)` + ogólne `quizzes.pass_percent` zamiast `course_id` w `quizzes`/`quiz_attempts`; migracja z backfillem | wyższe |
+| 5 | ✅ **Klasy przez publiczne API nauki** (zrobione; 5.C: zdarzenie „lekcja ukończona” w `server/lessonRegistry.ts`, subskrybuje `progress`) | zamiast SQL na `lessons`/`lesson_progress`/`courses`/`lesson_verbs` w `classes` i `reviewsRepo` czytają je funkcje `server/coursesRepo.ts` (`lessonTotalsByCourse`, `lessonsDoneByUser`, `lessonsCompletedCount`, `courseExists`, `courseTitles`, `lessonVerbIds`); zamiast jednego `progressFacts` — wąskie funkcje, bo każda ma jednego konsumenta lub jest batchowa; `attemptsRepo` i MCP nie czytały tych tabel | średnie |
+| 6 | ⬜ **Przeniesienie plików do slice'ów** (otwarte, 5.1 w [[Roadmap]], opcjonalne) | `server/modules/*`, `src/features/learning`, podział `shared/quiz/` i `types.ts` | niskie logicznie, duży diff |
+| 7 | ✅ **Egzekwowanie granic** (zrobione w 5.C jako kanarek: `tests/architecture.test.ts`, manifest `scripts/arch-manifest.json`) | zostają 2 wpisy `shared-types` (importy typów) i jeden cykl `shared-quizzes`/`shared-types`; znikną po podziale `types.ts` (krok 6) | niskie |
+| 8 | ⬜ *(opcjonalnie, nie zrobione i nie robić)* **Schemat** | tabela `course_exams(quiz_id, course_id)` + ogólne `quizzes.pass_percent` zamiast `course_id` w `quizzes`/`quiz_attempts`; migracja z backfillem | wyższe |
 
 ### Kolejność i rekomendacja
 
@@ -131,7 +131,7 @@ Każdy krok to osobny commit; przed commitem `npm run lint`, `npm test`, `npm ru
 - `passed` i `courseId` muszą być znane **przed** `saveAttempt`, więc zdarzenie ma dwie fazy: `beforeSave` (zwraca `{ passed, courseId }` oraz dane do odpowiedzi) i `afterSave` (skutki uboczne). Alternatywa: najpierw zapis podejścia, potem `UPDATE quiz_attempts SET passed` — gorsza, bo daje stan pośredni.
 - Test: `tests/` z atrapą rejestru — ocena bez zarejestrowanych obsług zwraca wynik bez `course`; z obsługą `learning` zachowanie jak dziś.
 
-**Zrobione (krok 2).** Handler `grade` przechodzi przez rejestr (`createGradeRegistry`); `learning` rejestruje `beforeSave` (pass mark, `course` w odpowiedzi) i dwa `afterSave` (przeglądy, aktywność dzienna). Zmiana zamierzona: błąd `afterSave` jest logowany (JSON + Sentry) i **nie kończy żądania** — podejście jest już zapisane, a 500 skłaniałoby klienta do ponowienia i zdublowania podejścia. Znane zostawione na później: sprawdzenie „egzamin kursu jest osobisty” (401/403) nadal stoi w handlerze `grade`, obok `resolveGradedIds`; przeniesie się do `learning` przy kroku 3 albo przy zmianie schematu (krok 8).
+**Zrobione (krok 2).** Handler `grade` przechodzi przez rejestr (`createGradeRegistry`); `learning` rejestruje `beforeSave` (pass mark, `course` w odpowiedzi). Aktualizacja (5.C, `addd37a`): dwa `afterSave` (przeglądy, aktywność dzienna) przeszły do `progress` (`server/progressHooks.ts`), a pierwsze ukończenie lekcji idzie przez zdarzenie `lessonRegistry` (błędy tego zdarzenia propagują, w przeciwieństwie do haków oceny). Zmiana zamierzona: błąd `afterSave` jest logowany (JSON + Sentry) i **nie kończy żądania** — podejście jest już zapisane, a 500 skłaniałoby klienta do ponowienia i zdublowania podejścia. Znane zostawione na później: sprawdzenie „egzamin kursu jest osobisty” (401/403) nadal stoi w handlerze `grade`, obok `resolveGradedIds`; przeniesie się do `learning` przy kroku 3 albo przy zmianie schematu (krok 8).
 
 ## Moduł media (S3)
 
@@ -228,9 +228,8 @@ Niezależne od kroków 2–8 podziału nauki, poza zależnością od kroku 1 (`d
 
 ## Egzekwowanie granic
 
-- Oxlint ma `no-restricted-imports`; konfiguracja per katalog przez `overrides`. **Nie sprawdzone** w tej wersji (`oxlint ^1.88`) i w `.oxlintrc.json` repo — do zweryfikowania na początku kroku 7.
-- Alternatywa: `dependency-cruiser` z regułami „quizzes nie importuje learning/progress/classes” w CI.
-- Test-kanarek w `tests/`: skanuje importy plików `modules/quizzes` i `features/quizzes` i pada, gdy znajdzie ścieżkę do `learning`; drugi taki test pilnuje, że `media` (serwer, frontend, `shared/media`) nie importuje nic z `quizzes`, `learning`, `progress` ani `classes`.
+- Wybrano kanarek zamiast `no-restricted-imports` (nie sprawdzone w `oxlint ^1.88`) i `dependency-cruiser`. Zrobione w 5.C: `scripts/arch-manifest.json` przypisuje pliki do modułów i reguł „allow”, `scripts/arch-core.mjs` analizuje importy, `tests/architecture.test.ts` pada na nowym naruszeniu, nieaktualnym wpisie allowlisty, nowym cyklu i naruszeniu reguł twardych (`media` nie importuje domeny, `src/**` nie importuje `server/**`).
+- Stan i historia naruszeń: [[Architecture-Audit]].
 
 ## Poza zakresem
 
