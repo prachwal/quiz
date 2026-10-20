@@ -49,7 +49,7 @@ Czwarta część, **jeszcze nieistniejąca**: **media** — obrazki przechowywan
 | `features/quizzes/ResultView.tsx` | ~~zna `result.course`~~ (krok 3: baner i przyciski egzaminu przeniesione do `features/learn/courseExam.tsx`) |
 | `features/quizzes/QuizPlayer.tsx:176` | ~~wpisany link `/learn/${courseId}`~~ (krok 3: `backLinkFor` z `pages/QuizPlay.tsx`) |
 
-**Inni sięgają do tabel nauki surowym SQL-em:** `classes/assignments.ts`, `classes/results.ts`, `attemptsRepo.ts`, część narzędzi MCP (`lessons`, `lesson_progress`, `courses`).
+**Inni sięgali do tabel nauki surowym SQL-em** (krok 5, zrobione: `classes/assignments.ts`, `classes/results.ts`, `reviewsRepo.ts`; poza `coursesRepo.ts` nie ma już SQL na tabelach nauki w `server/`).
 
 **Wspólne rzeczy bez właściciela:**
 
@@ -113,7 +113,7 @@ Każdy krok to osobny commit; przed commitem `npm run lint`, `npm test`, `npm ru
 | 2 | **Zdarzenie po ocenie** (zrobione: `server/gradeHooks.ts`, rejestracja w `server/learningGradeHooks.ts`) | `grade` publikuje `onGraded({ quiz, userId, result, attemptId })`; `learning` rejestruje obsługę: `passed` kursu, `reviews.applyResults`, `progress.recordActivity`; `course` w odpowiedzi dokłada `learning` | średnie (kolejność skutków ubocznych, błąd obsługi nie może zgubić zapisanego podejścia) |
 | 3 | **UI quizów bez nauki** (zrobione: `ResultView` dostaje `outcome?: ResultOutcome`, `QuizPlayer` `outcomeFor`/`backLinkFor`; `pages/QuizPlay.tsx` składa je z `features/learn/courseExam.tsx`; wpisany `/learn/...` usunięty) | niskie |
 | 4 | **RTK Query na slice'y** (zrobione) | `api.injectEndpoints` w każdym module; baza i tagi zostają w `app/api.ts` | niskie |
-| 5 | **Klasy przez publiczne API nauki** | `learning.progressFacts(userIds)` zamiast SQL na `lessons`/`lesson_progress`/`courses` w `classes`, `attemptsRepo`, MCP | średnie |
+| 5 | ✅ **Klasy przez publiczne API nauki** (zrobione) | zamiast SQL na `lessons`/`lesson_progress`/`courses`/`lesson_verbs` w `classes` i `reviewsRepo` czytają je funkcje `server/coursesRepo.ts` (`lessonTotalsByCourse`, `lessonsDoneByUser`, `lessonsCompletedCount`, `courseExists`, `courseTitles`, `lessonVerbIds`); zamiast jednego `progressFacts` — wąskie funkcje, bo każda ma jednego konsumenta lub jest batchowa; `attemptsRepo` i MCP nie czytały tych tabel | średnie |
 | 6 | **Przeniesienie plików do slice'ów** | `server/modules/*`, `src/features/learning`, podział `shared/quiz/` i `types.ts` | niskie logicznie, duży diff |
 | 7 | **Egzekwowanie granic** | reguła zakazująca importów „w górę” (patrz niżej) | niskie |
 | 8 | *(opcjonalnie)* **Schemat** | tabela `course_exams(quiz_id, course_id)` + ogólne `quizzes.pass_percent` zamiast `course_id` w `quizzes`/`quiz_attempts`; migracja z backfillem | wyższe |

@@ -63540,6 +63540,52 @@ async function coursePassInfo(courseId) {
   );
   return rows[0] ? { id: rows[0].id, title: rows[0].title, passPercent: rows[0].pass_percent } : null;
 }
+async function lessonTotalsByCourse() {
+  const { rows } = await pool().query(
+    "SELECT course_id, COUNT(*)::int AS total FROM lessons GROUP BY course_id"
+  );
+  return new Map(rows.map((r) => [r.course_id, r.total]));
+}
+async function lessonsDoneByUser(userIds) {
+  const result = /* @__PURE__ */ new Map();
+  if (userIds.length === 0) return result;
+  const { rows } = await pool().query(
+    `SELECT lp.user_id, l.course_id, COUNT(*)::int AS done
+     FROM lesson_progress lp JOIN lessons l ON l.id = lp.lesson_id
+     WHERE lp.user_id = ANY($1::text[]) GROUP BY lp.user_id, l.course_id`,
+    [userIds]
+  );
+  for (const r of rows) {
+    const byCourse = result.get(r.user_id) ?? /* @__PURE__ */ new Map();
+    byCourse.set(r.course_id, r.done);
+    result.set(r.user_id, byCourse);
+  }
+  return result;
+}
+async function lessonsCompletedCount(userId) {
+  const { rows } = await pool().query("SELECT COUNT(*)::int AS n FROM lesson_progress WHERE user_id = $1", [userId]);
+  return rows[0]?.n ?? 0;
+}
+async function courseExists(courseId) {
+  const { rows } = await pool().query("SELECT 1 FROM courses WHERE id = $1", [courseId]);
+  return rows.length > 0;
+}
+async function courseTitles(ids) {
+  const unique = [...new Set(ids)];
+  if (unique.length === 0) return /* @__PURE__ */ new Map();
+  const { rows } = await pool().query(
+    "SELECT id, title FROM courses WHERE id = ANY($1::uuid[])",
+    [unique]
+  );
+  return new Map(rows.map((r) => [r.id, r.title]));
+}
+async function lessonVerbIds(lessonId) {
+  const { rows } = await pool().query(
+    "SELECT verb_id FROM lesson_verbs WHERE lesson_id = $1 ORDER BY position",
+    [lessonId]
+  );
+  return rows.map((r) => r.verb_id);
+}
 
 // src/shared/quiz/streaks.ts
 function localDay(instant, timeZone) {
@@ -64220,11 +64266,13 @@ async function dueVerbIds(userId, limit) {
   return rows.map((r) => r.verb_id);
 }
 async function enqueueLessonVerbs(userId, lessonId) {
+  const verbIds = await lessonVerbIds(lessonId);
+  if (verbIds.length === 0) return;
   await pool().query(
     `INSERT INTO verb_reviews (user_id, verb_id)
-     SELECT $1, lv.verb_id FROM lesson_verbs lv WHERE lv.lesson_id = $2
+     SELECT $1, verb_id FROM unnest($2::int[]) AS verb_id
      ON CONFLICT (user_id, verb_id) DO NOTHING`,
-    [userId, lessonId]
+    [userId, verbIds]
   );
 }
 async function applyResults(userId, results) {
@@ -74975,38 +75023,40 @@ async function listMyClasses(userId) {
 
 // server/classes/assignments.ts
 var ASSIGNMENT_SELECT = `
-  SELECT a.id, a.class_id, a.kind, a.course_id, a.quiz_id, a.due_at, a.created_at,
-         COALESCE(c.title, q.title, 'Usuni\u0119te zadanie') AS title
+  SELECT a.id, a.class_id, a.kind, a.course_id, a.quiz_id, a.due_at, a.created_at, q.title AS quiz_title
   FROM assignments a
-  LEFT JOIN courses c ON c.id = a.course_id
   LEFT JOIN quizzes q ON q.id = a.quiz_id`;
-var toAssignment = (r) => ({
+var toAssignment = (r, courseTitle) => ({
   id: r.id,
   classId: r.class_id,
   kind: r.kind,
   courseId: r.course_id,
   quizId: r.quiz_id,
-  title: r.title,
+  title: courseTitle ?? r.quiz_title ?? "Usuni\u0119te zadanie",
   dueAt: r.due_at?.toISOString() ?? null,
   createdAt: r.created_at.toISOString()
 });
+async function toAssignments(rows) {
+  const titles = await courseTitles(rows.flatMap((r) => r.course_id ? [r.course_id] : []));
+  return rows.map((r) => toAssignment(r, r.course_id ? titles.get(r.course_id) : void 0));
+}
 async function listAssignments(classId2) {
   const { rows } = await pool().query(
     `${ASSIGNMENT_SELECT} WHERE a.class_id = $1 ORDER BY a.due_at NULLS LAST, a.created_at DESC`,
     [classId2]
   );
-  return rows.map(toAssignment);
+  return toAssignments(rows);
 }
 async function createAssignment(classId2, createdBy, input2) {
-  const exists = input2.kind === "course" ? await pool().query("SELECT 1 FROM courses WHERE id = $1", [input2.courseId]) : await pool().query("SELECT 1 FROM quizzes WHERE id = $1 AND kind = 'manual'", [input2.quizId]);
-  if (exists.rows.length === 0) return null;
+  const exists = input2.kind === "course" ? input2.courseId !== void 0 && await courseExists(input2.courseId) : (await pool().query("SELECT 1 FROM quizzes WHERE id = $1 AND kind = 'manual'", [input2.quizId])).rows.length > 0;
+  if (!exists) return null;
   const { rows } = await pool().query(
     `INSERT INTO assignments (class_id, kind, course_id, quiz_id, due_at, created_by)
      VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
     [classId2, input2.kind, input2.courseId ?? null, input2.quizId ?? null, input2.dueAt ?? null, createdBy]
   );
   const list = await pool().query(`${ASSIGNMENT_SELECT} WHERE a.id = $1`, [rows[0].id]);
-  return toAssignment(list.rows[0]);
+  return (await toAssignments(list.rows))[0];
 }
 async function setAssignmentDue(classId2, assignmentId, dueAt) {
   const r = await pool().query("UPDATE assignments SET due_at = $3 WHERE id = $1 AND class_id = $2", [assignmentId, classId2, dueAt]);
@@ -75021,22 +75071,18 @@ async function loadFacts(userIds) {
     userIds.map((id) => [id, { lessonsByCourse: /* @__PURE__ */ new Map(), totalLessons: /* @__PURE__ */ new Map(), exam: /* @__PURE__ */ new Map(), quizBest: /* @__PURE__ */ new Map() }])
   );
   if (userIds.length === 0) return facts;
-  const totals = await pool().query(
-    "SELECT course_id, COUNT(*)::int AS total FROM lessons GROUP BY course_id"
-  );
-  const lessons = await pool().query(
-    `SELECT lp.user_id, l.course_id, COUNT(*)::int AS done
-     FROM lesson_progress lp JOIN lessons l ON l.id = lp.lesson_id
-     WHERE lp.user_id = ANY($1::text[]) GROUP BY lp.user_id, l.course_id`,
-    [userIds]
-  );
+  const totals = await lessonTotalsByCourse();
+  const lessons = await lessonsDoneByUser(userIds);
   const attempts = await pool().query(
     `SELECT user_id, quiz_id, course_id, MAX(percent)::int AS best, BOOL_OR(passed) AS passed
      FROM quiz_attempts WHERE user_id = ANY($1::text[]) GROUP BY user_id, quiz_id, course_id`,
     [userIds]
   );
-  for (const f of facts.values()) for (const t of totals.rows) f.totalLessons.set(t.course_id, t.total);
-  for (const r of lessons.rows) facts.get(r.user_id)?.lessonsByCourse.set(r.course_id, r.done);
+  for (const f of facts.values()) for (const [courseId, total] of totals) f.totalLessons.set(courseId, total);
+  for (const [userId, byCourse] of lessons) {
+    const f = facts.get(userId);
+    if (f) f.lessonsByCourse = byCourse;
+  }
   for (const r of attempts.rows) {
     const f = facts.get(r.user_id);
     if (!f) continue;
@@ -75071,9 +75117,10 @@ async function myAssignments(userId) {
     [userId]
   );
   const facts = (await loadFacts([userId])).get(userId);
+  const items = await toAssignments(rows);
   const now = Date.now();
-  return rows.map((r) => {
-    const item = toAssignment(r);
+  return rows.map((r, i) => {
+    const item = items[i];
     const { status, detail } = judge(item, facts);
     return {
       ...item,
@@ -75250,12 +75297,11 @@ async function lastActiveDayOf(userId) {
   );
   return rows[0]?.last_day ?? null;
 }
+async function totalLessonsCompleted(userId) {
+  return lessonsCompletedCount(userId);
+}
 async function countAttempts(userId) {
   const { rows } = await pool().query("SELECT COUNT(*)::int AS n FROM quiz_attempts WHERE user_id = $1", [userId]);
-  return rows[0]?.n ?? 0;
-}
-async function totalLessonsCompleted(userId) {
-  const { rows } = await pool().query("SELECT COUNT(*)::int AS n FROM lesson_progress WHERE user_id = $1", [userId]);
   return rows[0]?.n ?? 0;
 }
 async function classesOfMember(userId) {

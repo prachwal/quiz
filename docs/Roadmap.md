@@ -113,7 +113,7 @@ Rozpoczyna się po rozstrzygnięciu M0.
 | 4.4 | ✅ **M4** renderowanie w quizie: `RichText`, `MediaImage`, `MediaProvider`, `ChoiceTile` z obrazem, `Cloze`, wynik (zrobione 2026-10-20; **nie zrobione:** wstęp lekcji (L1) i podgląd w edytorze (M6)) | po 2.2 |
 | 4.5 | ✅ **M5** narzędzia MCP do wysyłania (`media_upload`, `media_upload_from_url`, …) — zrobione 2026-10-20 (`f8cfd4a` … `a8b891e`; pobieranie z adresu za bramką `MEDIA_URL_FETCH`, domyślnie wyłączone) | najpierw testy `ssrf`; wydanie 2 narzędzi |
 | 4.6 | **M6** wysyłanie w edytorze (`ImageUpload`) | po M4 |
-| 4.7 | **Podział, krok 5:** klasy czytają postęp lekcji przez API nauki | przed L1, żeby narzędzia lekcji lądowały na ustalonym API |
+| 4.7 | ✅ **Podział, krok 5:** klasy czytają postęp lekcji przez API nauki (zrobione 2026-10-20) | przed L1, żeby narzędzia lekcji lądowały na ustalonym API |
 | 4.8 | **L1** wstęp lekcji, **L2** ilustracje czasowników | `lesson_get`/`lesson_update`/`verb_set_image` w wydaniu 3 narzędzi |
 | 4.9 | **S1** sprzątanie (Cron), **S2** dokumentacja i `.env.example` | na końcu |
 

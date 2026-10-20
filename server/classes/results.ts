@@ -7,6 +7,7 @@ import type {
   StudentAttemptQuestion,
   StudentResults,
 } from '../../src/shared/quiz/types'
+import { lessonsCompletedCount } from '../coursesRepo'
 import { pool } from '../db'
 import { judge, listAssignments, loadFacts } from './assignments'
 import { listMembers } from './classes'
@@ -188,14 +189,13 @@ export async function lastActiveDayOf(userId: string): Promise<string | null> {
   return rows[0]?.last_day ?? null
 }
 
+export async function totalLessonsCompleted(userId: string): Promise<number> {
+  return lessonsCompletedCount(userId)
+}
+
 /** Every saved attempt of a user, without loading them. */
 export async function countAttempts(userId: string): Promise<number> {
   const { rows } = await pool().query<{ n: number }>('SELECT COUNT(*)::int AS n FROM quiz_attempts WHERE user_id = $1', [userId])
-  return rows[0]?.n ?? 0
-}
-
-export async function totalLessonsCompleted(userId: string): Promise<number> {
-  const { rows } = await pool().query<{ n: number }>('SELECT COUNT(*)::int AS n FROM lesson_progress WHERE user_id = $1', [userId])
   return rows[0]?.n ?? 0
 }
 

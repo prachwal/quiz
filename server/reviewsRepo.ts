@@ -3,6 +3,7 @@ import type { ReviewState } from '../src/shared/quiz/spaced'
 import type { ReviewSummary } from '../src/shared/quiz/types'
 import { accuracyOf, isWeak, rankWeak } from '../src/shared/quiz/weak'
 import type { VerbStat } from '../src/shared/quiz/weak'
+import { lessonVerbIds } from './coursesRepo'
 import { pool } from './db'
 
 export async function getReviewSummary(userId: string): Promise<ReviewSummary> {
@@ -39,11 +40,13 @@ export async function dueVerbIds(userId: string, limit: number): Promise<number[
 
 /** Puts verbs from a completed lesson into the review queue (no-op for verbs already tracked). */
 export async function enqueueLessonVerbs(userId: string, lessonId: string) {
+  const verbIds = await lessonVerbIds(lessonId)
+  if (verbIds.length === 0) return
   await pool().query(
     `INSERT INTO verb_reviews (user_id, verb_id)
-     SELECT $1, lv.verb_id FROM lesson_verbs lv WHERE lv.lesson_id = $2
+     SELECT $1, verb_id FROM unnest($2::int[]) AS verb_id
      ON CONFLICT (user_id, verb_id) DO NOTHING`,
-    [userId, lessonId],
+    [userId, verbIds],
   )
 }
 

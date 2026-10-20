@@ -159,3 +159,62 @@ export async function coursePassInfo(courseId: string) {
   )
   return rows[0] ? { id: rows[0].id, title: rows[0].title, passPercent: rows[0].pass_percent } : null
 }
+
+// ---- read API for other modules (classes, reviews): the learning tables stay behind this file ----
+
+/** Total number of lessons per course id (courses without lessons are absent). */
+export async function lessonTotalsByCourse(): Promise<Map<string, number>> {
+  const { rows } = await pool().query<{ course_id: string; total: number }>(
+    'SELECT course_id, COUNT(*)::int AS total FROM lessons GROUP BY course_id',
+  )
+  return new Map(rows.map((r) => [r.course_id, r.total]))
+}
+
+/** Completed lessons per user, grouped by course. One query for all users. */
+export async function lessonsDoneByUser(userIds: string[]): Promise<Map<string, Map<string, number>>> {
+  const result = new Map<string, Map<string, number>>()
+  if (userIds.length === 0) return result
+  const { rows } = await pool().query<{ user_id: string; course_id: string; done: number }>(
+    `SELECT lp.user_id, l.course_id, COUNT(*)::int AS done
+     FROM lesson_progress lp JOIN lessons l ON l.id = lp.lesson_id
+     WHERE lp.user_id = ANY($1::text[]) GROUP BY lp.user_id, l.course_id`,
+    [userIds],
+  )
+  for (const r of rows) {
+    const byCourse = result.get(r.user_id) ?? new Map<string, number>()
+    byCourse.set(r.course_id, r.done)
+    result.set(r.user_id, byCourse)
+  }
+  return result
+}
+
+/** Number of lesson completions recorded for a user (all courses). */
+export async function lessonsCompletedCount(userId: string): Promise<number> {
+  const { rows } = await pool().query<{ n: number }>('SELECT COUNT(*)::int AS n FROM lesson_progress WHERE user_id = $1', [userId])
+  return rows[0]?.n ?? 0
+}
+
+export async function courseExists(courseId: string): Promise<boolean> {
+  const { rows } = await pool().query('SELECT 1 FROM courses WHERE id = $1', [courseId])
+  return rows.length > 0
+}
+
+/** Course titles by id, fetched in one query (missing ids are absent from the map). */
+export async function courseTitles(ids: string[]): Promise<Map<string, string>> {
+  const unique = [...new Set(ids)]
+  if (unique.length === 0) return new Map()
+  const { rows } = await pool().query<{ id: string; title: string }>(
+    'SELECT id, title FROM courses WHERE id = ANY($1::uuid[])',
+    [unique],
+  )
+  return new Map(rows.map((r) => [r.id, r.title]))
+}
+
+/** Verb ids of one lesson in the lesson's order. */
+export async function lessonVerbIds(lessonId: string): Promise<number[]> {
+  const { rows } = await pool().query<{ verb_id: number }>(
+    'SELECT verb_id FROM lesson_verbs WHERE lesson_id = $1 ORDER BY position',
+    [lessonId],
+  )
+  return rows.map((r) => r.verb_id)
+}

@@ -1,5 +1,6 @@
 import { isWeak } from '../../src/shared/quiz/weak'
 import type { AssignmentItem, AssignmentStatus, ClassReport, MyAssignment } from '../../src/shared/quiz/types'
+import { courseExists, courseTitles, lessonsDoneByUser, lessonTotalsByCourse } from '../coursesRepo'
 import { pool } from '../db'
 import { listMembers } from './classes'
 
@@ -13,33 +14,38 @@ interface AssignmentRow {
   quiz_id: string | null
   due_at: Date | null
   created_at: Date
-  title: string
+  /** title of the manual quiz; the course title comes from the learning module */
+  quiz_title: string | null
 }
 
 const ASSIGNMENT_SELECT = `
-  SELECT a.id, a.class_id, a.kind, a.course_id, a.quiz_id, a.due_at, a.created_at,
-         COALESCE(c.title, q.title, 'Usunięte zadanie') AS title
+  SELECT a.id, a.class_id, a.kind, a.course_id, a.quiz_id, a.due_at, a.created_at, q.title AS quiz_title
   FROM assignments a
-  LEFT JOIN courses c ON c.id = a.course_id
   LEFT JOIN quizzes q ON q.id = a.quiz_id`
 
-const toAssignment = (r: AssignmentRow): AssignmentItem => ({
+const toAssignment = (r: AssignmentRow, courseTitle: string | undefined): AssignmentItem => ({
   id: r.id,
   classId: r.class_id,
   kind: r.kind,
   courseId: r.course_id,
   quizId: r.quiz_id,
-  title: r.title,
+  title: courseTitle ?? r.quiz_title ?? 'Usunięte zadanie',
   dueAt: r.due_at?.toISOString() ?? null,
   createdAt: r.created_at.toISOString(),
 })
+
+/** Maps rows to items; course titles are fetched once for the whole list (no query per row). */
+async function toAssignments(rows: AssignmentRow[]): Promise<AssignmentItem[]> {
+  const titles = await courseTitles(rows.flatMap((r) => (r.course_id ? [r.course_id] : [])))
+  return rows.map((r) => toAssignment(r, r.course_id ? titles.get(r.course_id) : undefined))
+}
 
 export async function listAssignments(classId: string): Promise<AssignmentItem[]> {
   const { rows } = await pool().query<AssignmentRow>(
     `${ASSIGNMENT_SELECT} WHERE a.class_id = $1 ORDER BY a.due_at NULLS LAST, a.created_at DESC`,
     [classId],
   )
-  return rows.map(toAssignment)
+  return toAssignments(rows)
 }
 
 export async function createAssignment(
@@ -50,16 +56,16 @@ export async function createAssignment(
   // the referenced course / manual quiz must exist (generated quizzes are personal, not assignable)
   const exists =
     input.kind === 'course'
-      ? await pool().query('SELECT 1 FROM courses WHERE id = $1', [input.courseId])
-      : await pool().query("SELECT 1 FROM quizzes WHERE id = $1 AND kind = 'manual'", [input.quizId])
-  if (exists.rows.length === 0) return null
+      ? input.courseId !== undefined && (await courseExists(input.courseId))
+      : (await pool().query("SELECT 1 FROM quizzes WHERE id = $1 AND kind = 'manual'", [input.quizId])).rows.length > 0
+  if (!exists) return null
   const { rows } = await pool().query<{ id: string }>(
     `INSERT INTO assignments (class_id, kind, course_id, quiz_id, due_at, created_by)
      VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
     [classId, input.kind, input.courseId ?? null, input.quizId ?? null, input.dueAt ?? null, createdBy],
   )
   const list = await pool().query<AssignmentRow>(`${ASSIGNMENT_SELECT} WHERE a.id = $1`, [rows[0].id])
-  return toAssignment(list.rows[0])
+  return (await toAssignments(list.rows))[0]
 }
 
 export async function setAssignmentDue(classId: string, assignmentId: string, dueAt: string | null) {
@@ -92,15 +98,8 @@ export async function loadFacts(userIds: string[]): Promise<Map<string, UserFact
   )
   if (userIds.length === 0) return facts
 
-  const totals = await pool().query<{ course_id: string; total: number }>(
-    'SELECT course_id, COUNT(*)::int AS total FROM lessons GROUP BY course_id',
-  )
-  const lessons = await pool().query<{ user_id: string; course_id: string; done: number }>(
-    `SELECT lp.user_id, l.course_id, COUNT(*)::int AS done
-     FROM lesson_progress lp JOIN lessons l ON l.id = lp.lesson_id
-     WHERE lp.user_id = ANY($1::text[]) GROUP BY lp.user_id, l.course_id`,
-    [userIds],
-  )
+  const totals = await lessonTotalsByCourse()
+  const lessons = await lessonsDoneByUser(userIds)
   const attempts = await pool().query<{
     user_id: string
     quiz_id: string | null
@@ -112,8 +111,11 @@ export async function loadFacts(userIds: string[]): Promise<Map<string, UserFact
      FROM quiz_attempts WHERE user_id = ANY($1::text[]) GROUP BY user_id, quiz_id, course_id`,
     [userIds],
   )
-  for (const f of facts.values()) for (const t of totals.rows) f.totalLessons.set(t.course_id, t.total)
-  for (const r of lessons.rows) facts.get(r.user_id)?.lessonsByCourse.set(r.course_id, r.done)
+  for (const f of facts.values()) for (const [courseId, total] of totals) f.totalLessons.set(courseId, total)
+  for (const [userId, byCourse] of lessons) {
+    const f = facts.get(userId)
+    if (f) f.lessonsByCourse = byCourse
+  }
   for (const r of attempts.rows) {
     const f = facts.get(r.user_id)
     if (!f) continue
@@ -151,9 +153,10 @@ export async function myAssignments(userId: string): Promise<MyAssignment[]> {
     [userId],
   )
   const facts = (await loadFacts([userId])).get(userId)!
+  const items = await toAssignments(rows)
   const now = Date.now()
-  return rows.map((r) => {
-    const item = toAssignment(r)
+  return rows.map((r, i) => {
+    const item = items[i]
     const { status, detail } = judge(item, facts)
     return {
       ...item,
