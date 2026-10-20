@@ -5,6 +5,8 @@ import {
   CLEANUP_TIME_BUDGET_MS,
   cronGuard,
   orderOldestFirst,
+  ownerFilterFromEnv,
+  ownerScopeParam,
   pendingCutoff,
   takeBatch,
   unreferencedCutoff,
@@ -78,4 +80,20 @@ test('cron guard: a missing or wrong header is unauthorized', () => {
 test('cron guard: the exact Bearer header is accepted', () => {
   assert.equal(cronGuard('e2e-cron-secret', 'Bearer e2e-cron-secret'), 'ok')
   assert.equal(cronGuard('s'.repeat(48), `Bearer ${'s'.repeat(48)}`), 'ok')
+})
+
+test('the owner filter is read as data: unset, empty and whitespace-only mean no filter', () => {
+  for (const raw of [undefined, '', '   ', '\t\n']) assert.equal(ownerFilterFromEnv(raw), undefined, JSON.stringify(raw))
+  assert.equal(ownerFilterFromEnv('mcp-e2e'), 'mcp-e2e')
+  assert.equal(ownerFilterFromEnv('  mcp-e2e \n'), 'mcp-e2e')
+  // LIKE wildcards are kept as ordinary characters (the SQL binds the text, it is not a pattern)
+  assert.equal(ownerFilterFromEnv('a%_b'), 'a%_b')
+})
+
+test('the scope of the daily run becomes one bind parameter: the text, or null for every author', () => {
+  assert.equal(ownerScopeParam({ ownerContains: 'mcp-e2e' }), 'mcp-e2e')
+  assert.equal(ownerScopeParam({}), null)
+  assert.equal(ownerScopeParam({ ownerContains: undefined }), null)
+  // an empty text is no filter either (position('' in owner_id) would match every owner)
+  assert.equal(ownerScopeParam({ ownerContains: '' }), null)
 })

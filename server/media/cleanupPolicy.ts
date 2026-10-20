@@ -36,6 +36,27 @@ export function takeBatch<T extends { createdAt: string; id: string }>(rows: rea
 export const withinBudget = (startedAt: number, now: number, budgetMs: number = CLEANUP_TIME_BUDGET_MS): boolean => now - startedAt < budgetMs
 
 /**
+ * The e2e-only owner filter of the daily run (`MEDIA_CLEANUP_OWNER_FILTER`, read by cronRoute.ts). Unset, empty or
+ * whitespace-only means "no filter" (production: every author). Otherwise the trimmed text; it is compared as data
+ * (a parameter of the SQL, never a LIKE pattern), so `%` or `_` in it are ordinary characters.
+ */
+export function ownerFilterFromEnv(raw: string | undefined): string | undefined {
+  const trimmed = raw?.trim() ?? ''
+  return trimmed === '' ? undefined : trimmed
+}
+
+/**
+ * Scope of the daily run's selections. `ownerContains` (only set by the e2e, through MEDIA_CLEANUP_OWNER_FILTER)
+ * keeps the rows whose owner id contains that text; absent or empty means every author.
+ */
+export interface StaleScope {
+  ownerContains?: string
+}
+
+/** The bind parameter of the owner scope: the text, or null (no filter). Never a LIKE pattern, never in the SQL text. */
+export const ownerScopeParam = (scope: StaleScope): string | null => scope.ownerContains || null
+
+/**
  * Guard of the cron endpoint (`GET /api/media/cleanup`). `disabled`: CRON_SECRET is unset or blank, so the endpoint
  * must look absent (404) and never run. `unauthorized`: the Authorization header is not exactly `Bearer <secret>`.
  * Both sides are hashed first, so the comparison takes the same time whatever the lengths are (timingSafeEqual).

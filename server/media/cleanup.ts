@@ -14,7 +14,7 @@
  */
 import { pool } from '../db'
 import type { PoolClient } from '../db'
-import { CLEANUP_BATCH_SIZE, CLEANUP_TIME_BUDGET_MS, pendingCutoff, unreferencedCutoff, withinBudget } from './cleanupPolicy'
+import { CLEANUP_BATCH_SIZE, CLEANUP_TIME_BUDGET_MS, pendingCutoff, type StaleScope, unreferencedCutoff, withinBudget } from './cleanupPolicy'
 import * as repo from './repo'
 import type { MediaRow } from './repo'
 import { mediaRuntime, type MediaRuntime, warnStorageFailure } from './service'
@@ -85,8 +85,16 @@ async function removeBatch(runtime: MediaRuntime, rows: readonly MediaRow[], sta
   return counts
 }
 
-/** One daily run. `now` is injected for the cut-offs; the time budget is measured from the real clock. */
-export async function runMediaCleanup(now: Date = new Date()): Promise<CleanupOutcome> {
+/** Options of one daily run. `ownerContains` is the e2e-only scope (see cleanupPolicy.ownerFilterFromEnv). */
+export interface CleanupOptions {
+  ownerContains?: string
+}
+
+/**
+ * One daily run. `now` is injected for the cut-offs; the time budget is measured from the real clock. With
+ * `ownerContains` only the owners whose id contains that text are considered (the e2e); without it every author is.
+ */
+export async function runMediaCleanup(now: Date = new Date(), options: CleanupOptions = {}): Promise<CleanupOutcome> {
   const startedAt = Date.now()
   let runtime: MediaRuntime
   try {
@@ -96,14 +104,19 @@ export async function runMediaCleanup(now: Date = new Date()): Promise<CleanupOu
     return { skipped: 'storage-not-configured', pendingRemoved: 0, unreferencedRemoved: 0, failed: 0, remaining: 0, durationMs: Date.now() - startedAt }
   }
 
+  const scope: StaleScope = options.ownerContains ? { ownerContains: options.ownerContains } : {}
+  if (scope.ownerContains) {
+    // a test setting; in production it must never be set (docs/vercel.md)
+    console.warn(JSON.stringify({ level: 'warn', event: 'media.cleanup.owner_filter', ownerContains: scope.ownerContains }))
+  }
   const pendingBefore = pendingCutoff(now)
   const unreferencedBefore = unreferencedCutoff(now)
-  const pending = await repo.stalePendingOf(null, pendingBefore, CLEANUP_BATCH_SIZE)
+  const pending = await repo.stalePendingOf(null, pendingBefore, CLEANUP_BATCH_SIZE, pool(), scope)
   const pendingCounts = await removeBatch(runtime, pending, startedAt, 'pending')
-  const unreferenced = await repo.unreferencedReadyBefore(unreferencedBefore, CLEANUP_BATCH_SIZE)
+  const unreferenced = await repo.unreferencedReadyBefore(unreferencedBefore, CLEANUP_BATCH_SIZE, pool(), scope)
   const readyCounts = await removeBatch(runtime, unreferenced, startedAt, 'unreferenced')
 
-  const remaining = await repo.countStale(pendingBefore, unreferencedBefore)
+  const remaining = await repo.countStale(pendingBefore, unreferencedBefore, pool(), scope)
   const result: CleanupResult = {
     pendingRemoved: pendingCounts.removed,
     unreferencedRemoved: readyCounts.removed,

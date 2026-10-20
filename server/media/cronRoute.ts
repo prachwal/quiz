@@ -10,7 +10,7 @@
  */
 import type { RequestHandler } from 'express'
 import { runMediaCleanup } from './cleanup'
-import { cronGuard } from './cleanupPolicy'
+import { cronGuard, ownerFilterFromEnv } from './cleanupPolicy'
 
 export const mediaCleanupRoute: RequestHandler = async (req, res, next) => {
   const decision = cronGuard(process.env.CRON_SECRET, req.get('authorization'))
@@ -23,7 +23,9 @@ export const mediaCleanupRoute: RequestHandler = async (req, res, next) => {
     return
   }
   try {
-    res.json(await runMediaCleanup())
+    // MEDIA_CLEANUP_OWNER_FILTER: e2e only, read from the server environment here (never from the request)
+    const ownerContains = ownerFilterFromEnv(process.env.MEDIA_CLEANUP_OWNER_FILTER)
+    res.json(await runMediaCleanup(new Date(), ownerContains === undefined ? {} : { ownerContains }))
   } catch (error) {
     next(error)
   }

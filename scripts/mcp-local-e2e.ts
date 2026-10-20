@@ -25,6 +25,9 @@ const check = (name: string, ok: boolean, detail?: unknown) => {
 }
 
 const P = 'mcp-e2e' // every row this test creates is keyed by this prefix, so cleanup is exact
+// owner id of the one row this test puts under ANOTHER author for the daily cleanup scope check: it must NOT contain P,
+// and nothing else in the suite uses this prefix, so the global cleanup can remove it exactly (starts_with)
+const FOREIGN_PREFIX = 'someone-else-keep-'
 const TEACHER = `teacher|${P}`
 const OTHER = `teacher|${P}-other`
 const ADMIN = `admin|${P}`
@@ -73,6 +76,9 @@ async function cleanup() {
   await db.query(`DELETE FROM media_refs WHERE owner_kind = 'quiz' AND owner_id IN (SELECT id::text FROM quizzes WHERE title LIKE 'MCP E2E%')`)
   await db.query('DELETE FROM media_refs WHERE media_id IN (SELECT id FROM media WHERE owner_id LIKE $1)', [`%${P}%`])
   await db.query('DELETE FROM media WHERE owner_id LIKE $1', [`%${P}%`])
+  // the foreign-author row of the cleanup scope check (a crashed run leaves it behind; this removes it)
+  await db.query('DELETE FROM media_refs WHERE media_id IN (SELECT id FROM media WHERE starts_with(owner_id, $1))', [FOREIGN_PREFIX])
+  await db.query('DELETE FROM media WHERE starts_with(owner_id, $1)', [FOREIGN_PREFIX])
   // lesson intros: references first, then the throwaway course (its lessons and lesson_verbs cascade)
   await db.query(
     `DELETE FROM media_refs WHERE owner_kind = 'lesson' AND owner_id IN (SELECT id::text FROM lessons WHERE title LIKE $1 OR course_id IN (SELECT id FROM courses WHERE slug LIKE $1))`,
@@ -802,21 +808,39 @@ try {
   const oldReady = await readyRow(32, '25 hours')
   const oldReferenced = await readyRow(33, '25 hours', `${P}-cron-quiz`)
   const freshReady = await readyRow(34, null)
-  const countSql = (sql: string) => pool().query<{ n: number }>(sql).then((r) => r.rows[0].n)
-  const preStalePending = await countSql(`SELECT COUNT(*)::int AS n FROM media WHERE status = 'pending' AND created_at < now() - interval '1 hour'`)
-  const preUnreferenced = await countSql(`SELECT COUNT(*)::int AS n FROM media AS m WHERE status = 'ready' AND created_at < now() - interval '24 hours' AND NOT EXISTS (SELECT 1 FROM media_refs AS r WHERE r.media_id = m.id)`)
+  // A row of ANOTHER author (owner id without P), 2 days old, unreferenced and ready: the daily run is scoped to the
+  // test owners (MEDIA_CLEANUP_OWNER_FILTER), so it must survive the run with its object. Inserted with plain SQL.
+  if (process.env.MEDIA_CLEANUP_OWNER_FILTER !== P) throw new Error(`MEDIA_CLEANUP_OWNER_FILTER must be ${P} (scripts/mcp-local-e2e.sh sets it)`)
+  const foreignId = randomUUID()
+  const foreignKey = `media/2026/${foreignId}.png`
+  const foreignBytes = pngBytes(41, 41, 1)
+  const foreignOwner = `${FOREIGN_PREFIX}${foreignId}`
+  await pool().query(
+    `INSERT INTO media (id, key, content_type, size_bytes, width, height, sha256, status, source, owner_id, created_at, ready_at)
+     VALUES ($1::uuid, $2, 'image/png', $3, 41, 41, $4, 'ready', 'script', $5, now() - interval '2 days', now() - interval '2 days')`,
+    [foreignId, foreignKey, foreignBytes.length, sha(foreignBytes), foreignOwner],
+  )
+  await storage.put(foreignKey, foreignBytes, { contentType: 'image/png' })
+
+  // the pre-run counts are scoped the same way as the run (owner id contains P)
+  const countSql = (sql: string) => pool().query<{ n: number }>(sql, [P]).then((r) => r.rows[0].n)
+  const preStalePending = await countSql(`SELECT COUNT(*)::int AS n FROM media WHERE status = 'pending' AND created_at < now() - interval '1 hour' AND position($1::text IN owner_id) > 0`)
+  const preUnreferenced = await countSql(`SELECT COUNT(*)::int AS n FROM media AS m WHERE status = 'ready' AND created_at < now() - interval '24 hours' AND position($1::text IN m.owner_id) > 0 AND NOT EXISTS (SELECT 1 FROM media_refs AS r WHERE r.media_id = m.id)`)
+  const foreignEligible = (await pool().query<{ n: number }>(`SELECT COUNT(*)::int AS n FROM media AS m WHERE m.id = $1::uuid AND m.status = 'ready' AND m.created_at < now() - interval '1 day' AND NOT EXISTS (SELECT 1 FROM media_refs AS r WHERE r.media_id = m.id)`, [foreignId])).rows[0].n
+  check('the foreign row is ready, unreferenced and older than a day before the run', foreignEligible === 1)
 
   const run1 = await cronGet(`Bearer ${process.env.CRON_SECRET}`)
   const body1 = (await run1.json()) as any
   check('cron with the secret -> 200', run1.status === 200, body1)
   check('cron response: counts, failed, remaining, durationMs (no skipped)', typeof body1.pendingRemoved === 'number' && typeof body1.unreferencedRemoved === 'number' && body1.failed === 0 && body1.remaining === 0 && typeof body1.durationMs === 'number' && body1.skipped === undefined, body1)
-  check('cron pendingRemoved matches the stale pending rows of all authors', body1.pendingRemoved === Math.min(preStalePending, 200), { body1, preStalePending })
-  check('cron unreferencedRemoved matches the unreferenced ready rows of all authors', body1.unreferencedRemoved === Math.min(preUnreferenced, 200), { body1, preUnreferenced })
+  check('cron pendingRemoved matches the stale pending rows of the test owners', body1.pendingRemoved === Math.min(preStalePending, 200), { body1, preStalePending })
+  check('cron unreferencedRemoved matches the unreferenced ready rows of the test owners', body1.unreferencedRemoved === Math.min(preUnreferenced, 200), { body1, preUnreferenced })
   check('cron removed the stale pending row and its object', (await media.get(oldPending.body.mediaId)) === null && (await storage.head(oldPendingKey)) === null)
   check('cron removed the unreferenced ready row and its object', (await media.get(oldReady.id)) === null && (await storage.head(oldReady.key)) === null)
   check('cron kept the old ready row that has a reference (row and object)', (await media.get(oldReferenced.id)) !== null && (await storage.head(oldReferenced.key)) !== null)
   check('cron kept the fresh ready row (row and object)', (await media.get(freshReady.id)) !== null && (await storage.head(freshReady.key)) !== null)
   check('cron kept the fresh pending row of author A', (await media.get(freshA.body.mediaId)) !== null)
+  check('cron kept the FOREIGN unreferenced ready row and its object (scope)', (await media.get(foreignId)) !== null && (await storage.head(foreignKey)) !== null, { foreignId })
   const run2 = (await (await cronGet(`Bearer ${process.env.CRON_SECRET}`)).json()) as any
   check('second cron run removes nothing', body1.remaining === 0 && run2.pendingRemoved === 0 && run2.unreferencedRemoved === 0 && run2.failed === 0, run2)
   check('a referenced file is still referenced after the cron', (await media.referencesOf(oldReferenced.id)).length === 1)
@@ -825,6 +849,10 @@ try {
   await storage.remove(oldReferenced.key)
   await pool().query(`DELETE FROM media WHERE id = $1::uuid`, [freshReady.id])
   await storage.remove(freshReady.key)
+  // the foreign row is ours: removed explicitly by id (the global cleanup in finally covers a crashed run)
+  await pool().query(`DELETE FROM media WHERE id = $1::uuid`, [foreignId])
+  await storage.remove(foreignKey)
+  check('foreign row removed explicitly', (await media.get(foreignId)) === null)
 
   for (const c of [tTeacher, tAdminWrite, tAdmin, tOther, tPlain, writer2, quotaClient, adminBoth]) await c.close()
 } catch (error) {

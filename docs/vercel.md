@@ -95,6 +95,8 @@ projektu. Zmiana zmiennej wymaga ponownego wdrożenia. **Cron nie działa na dep
 Ręczne wywołanie produkcji: `curl -H "Authorization: Bearer $CRON_SECRET" https://quiz-vercel-rho.vercel.app/api/media/cleanup`.
 Co robi jednorazowy przebieg, opisuje [Media-Storage-Plan](Media-Storage-Plan.md) (S1).
 
+`MEDIA_CLEANUP_OWNER_FILTER` zawęża przebieg do właścicieli, których `owner_id` zawiera podany tekst (`npm run test:mcp` ustawia `mcp-e2e`). Zmienna jest tylko dla testu e2e: only for the e2e test; never set it in Production. Gdy jest ustawiona, serwer loguje ostrzeżenie `media.cleanup.owner_filter`.
+
 ## Weryfikacja
 
 ```bash

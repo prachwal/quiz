@@ -18,6 +18,9 @@ export MEDIA_PUBLIC_BASE_URL=https://media.test
 export MEDIA_URL_FETCH=false
 # CRON_SECRET guards GET /api/media/cleanup (the daily run); the e2e checks the guard with this value.
 export CRON_SECRET=e2e-cron-secret
+# MEDIA_CLEANUP_OWNER_FILTER scopes the daily cleanup to the test owners (every e2e owner id contains "mcp-e2e"), so
+# the shared database's other authors' unreferenced files are never removed by this test. The e2e checks it is set.
+export MEDIA_CLEANUP_OWNER_FILTER=mcp-e2e
 MEDIA_DIR="$(mktemp -d)"
 export MEDIA_MEMORY_DIR="$MEDIA_DIR"
 

@@ -6,6 +6,7 @@
 import type { PoolClient } from '../db'
 import { pool } from '../db'
 import { type MediaContentType, type MediaOwnerKind, MEDIA_OWNER_KINDS, type MediaSource } from './constants'
+import { ownerScopeParam, type StaleScope } from './cleanupPolicy'
 
 export type MediaStatus = 'pending' | 'ready'
 
@@ -252,6 +253,7 @@ export async function stalePendingOf(
   olderThan: Date,
   limit = 200,
   db: Db = pool(),
+  scope: StaleScope = {},
 ): Promise<MediaRow[]> {
   const { rows } = await db.query<RawMediaRow>(
     `SELECT ${MEDIA_COLUMNS}
@@ -259,39 +261,44 @@ export async function stalePendingOf(
       WHERE status = 'pending'
         AND created_at < $2
         AND ($1::text IS NULL OR owner_id = $1)
+        AND ($4::text IS NULL OR position($4::text IN owner_id) > 0)
       ORDER BY created_at, id
       LIMIT $3`,
-    [ownerId, olderThan.toISOString(), Math.min(Math.max(Math.trunc(limit), 1), 1000)],
+    [ownerId, olderThan.toISOString(), Math.min(Math.max(Math.trunc(limit), 1), 1000), ownerScopeParam(scope)],
   )
   return rows.map(toRow)
 }
 
 /** `ready` rows created before `olderThan` that no reference points to, oldest first, at most `limit`. */
-export async function unreferencedReadyBefore(olderThan: Date, limit = 200, db: Db = pool()): Promise<MediaRow[]> {
+export async function unreferencedReadyBefore(olderThan: Date, limit = 200, db: Db = pool(), scope: StaleScope = {}): Promise<MediaRow[]> {
   const { rows } = await db.query<RawMediaRow>(
     `SELECT ${MEDIA_COLUMNS}
        FROM media AS m
       WHERE m.status = 'ready'
         AND m.created_at < $1
+        AND ($3::text IS NULL OR position($3::text IN m.owner_id) > 0)
         AND NOT EXISTS (SELECT 1 FROM media_refs AS r WHERE r.media_id = m.id)
       ORDER BY m.created_at, m.id
       LIMIT $2`,
-    [olderThan.toISOString(), Math.min(Math.max(Math.trunc(limit), 1), 1000)],
+    [olderThan.toISOString(), Math.min(Math.max(Math.trunc(limit), 1), 1000), ownerScopeParam(scope)],
   )
   return rows.map(toRow)
 }
 
 /** How many rows the daily run would still remove (stale pending + unreferenced ready), for the run's `remaining`. */
-export async function countStale(pendingBefore: Date, unreferencedBefore: Date, db: Db = pool()): Promise<number> {
+export async function countStale(pendingBefore: Date, unreferencedBefore: Date, db: Db = pool(), scope: StaleScope = {}): Promise<number> {
   const { rows } = await db.query<{ total: number }>(
     `SELECT (
-        (SELECT COUNT(*) FROM media WHERE status = 'pending' AND created_at < $1)
+        (SELECT COUNT(*) FROM media
+          WHERE status = 'pending' AND created_at < $1
+            AND ($3::text IS NULL OR position($3::text IN owner_id) > 0))
         +
         (SELECT COUNT(*) FROM media AS m
           WHERE m.status = 'ready' AND m.created_at < $2
+            AND ($3::text IS NULL OR position($3::text IN m.owner_id) > 0)
             AND NOT EXISTS (SELECT 1 FROM media_refs AS r WHERE r.media_id = m.id))
       )::int AS total`,
-    [pendingBefore.toISOString(), unreferencedBefore.toISOString()],
+    [pendingBefore.toISOString(), unreferencedBefore.toISOString(), ownerScopeParam(scope)],
   )
   return rows[0]?.total ?? 0
 }

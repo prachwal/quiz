@@ -63398,6 +63398,25 @@ var MEDIA_PRESIGN_SECONDS = 15 * 60;
 var MEDIA_PENDING_MAX_AGE_MS = 60 * 60 * 1e3;
 var MEDIA_UNREFERENCED_MAX_AGE_MS = 24 * 60 * 60 * 1e3;
 
+// server/media/cleanupPolicy.ts
+import { createHash as createHash2, timingSafeEqual } from "node:crypto";
+var CLEANUP_BATCH_SIZE = 200;
+var CLEANUP_TIME_BUDGET_MS = 2e4;
+var pendingCutoff = (now) => new Date(now.getTime() - MEDIA_PENDING_MAX_AGE_MS);
+var unreferencedCutoff = (now) => new Date(now.getTime() - MEDIA_UNREFERENCED_MAX_AGE_MS);
+var withinBudget = (startedAt, now, budgetMs = CLEANUP_TIME_BUDGET_MS) => now - startedAt < budgetMs;
+function ownerFilterFromEnv(raw) {
+  const trimmed = raw?.trim() ?? "";
+  return trimmed === "" ? void 0 : trimmed;
+}
+var ownerScopeParam = (scope) => scope.ownerContains || null;
+function cronGuard(secret, authorization) {
+  if (secret === void 0 || secret.trim() === "") return "disabled";
+  if (authorization === void 0) return "unauthorized";
+  const digest = (value2) => createHash2("sha256").update(value2).digest();
+  return timingSafeEqual(digest(authorization), digest(`Bearer ${secret}`)) ? "ok" : "unauthorized";
+}
+
 // server/media/repo.ts
 var MediaRefError = class extends Error {
   code = "MEDIA_REF";
@@ -63527,42 +63546,47 @@ async function remove(id, db = pool()) {
     throw error62;
   }
 }
-async function stalePendingOf(ownerId, olderThan, limit = 200, db = pool()) {
+async function stalePendingOf(ownerId, olderThan, limit = 200, db = pool(), scope = {}) {
   const { rows } = await db.query(
     `SELECT ${MEDIA_COLUMNS}
        FROM media
       WHERE status = 'pending'
         AND created_at < $2
         AND ($1::text IS NULL OR owner_id = $1)
+        AND ($4::text IS NULL OR position($4::text IN owner_id) > 0)
       ORDER BY created_at, id
       LIMIT $3`,
-    [ownerId, olderThan.toISOString(), Math.min(Math.max(Math.trunc(limit), 1), 1e3)]
+    [ownerId, olderThan.toISOString(), Math.min(Math.max(Math.trunc(limit), 1), 1e3), ownerScopeParam(scope)]
   );
   return rows.map(toRow);
 }
-async function unreferencedReadyBefore(olderThan, limit = 200, db = pool()) {
+async function unreferencedReadyBefore(olderThan, limit = 200, db = pool(), scope = {}) {
   const { rows } = await db.query(
     `SELECT ${MEDIA_COLUMNS}
        FROM media AS m
       WHERE m.status = 'ready'
         AND m.created_at < $1
+        AND ($3::text IS NULL OR position($3::text IN m.owner_id) > 0)
         AND NOT EXISTS (SELECT 1 FROM media_refs AS r WHERE r.media_id = m.id)
       ORDER BY m.created_at, m.id
       LIMIT $2`,
-    [olderThan.toISOString(), Math.min(Math.max(Math.trunc(limit), 1), 1e3)]
+    [olderThan.toISOString(), Math.min(Math.max(Math.trunc(limit), 1), 1e3), ownerScopeParam(scope)]
   );
   return rows.map(toRow);
 }
-async function countStale(pendingBefore, unreferencedBefore, db = pool()) {
+async function countStale(pendingBefore, unreferencedBefore, db = pool(), scope = {}) {
   const { rows } = await db.query(
     `SELECT (
-        (SELECT COUNT(*) FROM media WHERE status = 'pending' AND created_at < $1)
+        (SELECT COUNT(*) FROM media
+          WHERE status = 'pending' AND created_at < $1
+            AND ($3::text IS NULL OR position($3::text IN owner_id) > 0))
         +
         (SELECT COUNT(*) FROM media AS m
           WHERE m.status = 'ready' AND m.created_at < $2
+            AND ($3::text IS NULL OR position($3::text IN m.owner_id) > 0)
             AND NOT EXISTS (SELECT 1 FROM media_refs AS r WHERE r.media_id = m.id))
       )::int AS total`,
-    [pendingBefore.toISOString(), unreferencedBefore.toISOString()]
+    [pendingBefore.toISOString(), unreferencedBefore.toISOString(), ownerScopeParam(scope)]
   );
   return rows[0]?.total ?? 0;
 }
@@ -77220,11 +77244,11 @@ var MemoryStorageDriver = class {
 };
 
 // server/media/sigv4.ts
-import { createHash as createHash2, createHmac } from "node:crypto";
+import { createHash as createHash3, createHmac } from "node:crypto";
 var ALGORITHM = "AWS4-HMAC-SHA256";
 var UNSIGNED_PAYLOAD = "UNSIGNED-PAYLOAD";
 function sha256Hex(data) {
-  return createHash2("sha256").update(data).digest("hex");
+  return createHash3("sha256").update(data).digest("hex");
 }
 var EMPTY_PAYLOAD_SHA256 = sha256Hex("");
 function uriEncode(value2, encodeSlash = true) {
@@ -77445,20 +77469,6 @@ function getStorage(env = process.env) {
 // server/media/limits.ts
 function withinDailyLimits(today, sizeBytes) {
   return today.files < MEDIA_DAILY_FILES && today.bytes + sizeBytes <= MEDIA_DAILY_BYTES;
-}
-
-// server/media/cleanupPolicy.ts
-import { createHash as createHash3, timingSafeEqual } from "node:crypto";
-var CLEANUP_BATCH_SIZE = 200;
-var CLEANUP_TIME_BUDGET_MS = 2e4;
-var pendingCutoff = (now) => new Date(now.getTime() - MEDIA_PENDING_MAX_AGE_MS);
-var unreferencedCutoff = (now) => new Date(now.getTime() - MEDIA_UNREFERENCED_MAX_AGE_MS);
-var withinBudget = (startedAt, now, budgetMs = CLEANUP_TIME_BUDGET_MS) => now - startedAt < budgetMs;
-function cronGuard(secret, authorization) {
-  if (secret === void 0 || secret.trim() === "") return "disabled";
-  if (authorization === void 0) return "unauthorized";
-  const digest = (value2) => createHash3("sha256").update(value2).digest();
-  return timingSafeEqual(digest(authorization), digest(`Bearer ${secret}`)) ? "ok" : "unauthorized";
 }
 
 // server/media/uploads.ts
@@ -79108,7 +79118,7 @@ async function removeBatch(runtime, rows, startedAt, origin) {
   }
   return counts;
 }
-async function runMediaCleanup(now = /* @__PURE__ */ new Date()) {
+async function runMediaCleanup(now = /* @__PURE__ */ new Date(), options = {}) {
   const startedAt = Date.now();
   let runtime;
   try {
@@ -79116,13 +79126,17 @@ async function runMediaCleanup(now = /* @__PURE__ */ new Date()) {
   } catch {
     return { skipped: "storage-not-configured", pendingRemoved: 0, unreferencedRemoved: 0, failed: 0, remaining: 0, durationMs: Date.now() - startedAt };
   }
+  const scope = options.ownerContains ? { ownerContains: options.ownerContains } : {};
+  if (scope.ownerContains) {
+    console.warn(JSON.stringify({ level: "warn", event: "media.cleanup.owner_filter", ownerContains: scope.ownerContains }));
+  }
   const pendingBefore = pendingCutoff(now);
   const unreferencedBefore = unreferencedCutoff(now);
-  const pending = await stalePendingOf(null, pendingBefore, CLEANUP_BATCH_SIZE);
+  const pending = await stalePendingOf(null, pendingBefore, CLEANUP_BATCH_SIZE, pool(), scope);
   const pendingCounts = await removeBatch(runtime, pending, startedAt, "pending");
-  const unreferenced = await unreferencedReadyBefore(unreferencedBefore, CLEANUP_BATCH_SIZE);
+  const unreferenced = await unreferencedReadyBefore(unreferencedBefore, CLEANUP_BATCH_SIZE, pool(), scope);
   const readyCounts = await removeBatch(runtime, unreferenced, startedAt, "unreferenced");
-  const remaining = await countStale(pendingBefore, unreferencedBefore);
+  const remaining = await countStale(pendingBefore, unreferencedBefore, pool(), scope);
   const result = {
     pendingRemoved: pendingCounts.removed,
     unreferencedRemoved: readyCounts.removed,
@@ -79146,7 +79160,8 @@ var mediaCleanupRoute = async (req, res, next) => {
     return;
   }
   try {
-    res.json(await runMediaCleanup());
+    const ownerContains = ownerFilterFromEnv(process.env.MEDIA_CLEANUP_OWNER_FILTER);
+    res.json(await runMediaCleanup(/* @__PURE__ */ new Date(), ownerContains === void 0 ? {} : { ownerContains }));
   } catch (error62) {
     next(error62);
   }
