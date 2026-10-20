@@ -24,7 +24,7 @@ updated: 2026-10-20
 | Cloze | F1–F4 (znacznik, znaki typograficzne, limity, przecinek), D1 (końcowa kropka w lukach) | |
 | Uwagi z przeglądu | `key` w graczu, TLS i pula, zabezpieczenie `test:mcp`, odsyłacz do `quiz_schema`, kolejność w `ordering`/`matching` ujawniała odpowiedź, `withShownOrders` liczył nietknięte pytania, brak limitu długości `id` w `config` (faza 0) | nic |
 | Podział nauki | nic | kroki 1–8 |
-| Obrazy (S3) | M1 kod gotowy (migracja do zastosowania); M0 czeka na człowieka (CLI Neona) | M0 (człowiek), M2–M6, L1–L2, S1–S2 |
+| Obrazy (S3) | M1 kod gotowy (migracja do zastosowania); M2–M5 i L1 (wstęp lekcji) zrobione 2026-10-20 | M0 (człowiek), M6, L2, S1–S2 |
 
 ## Zasady kolejności
 
@@ -114,7 +114,7 @@ Rozpoczyna się po rozstrzygnięciu M0.
 | 4.5 | ✅ **M5** narzędzia MCP do wysyłania (`media_upload`, `media_upload_from_url`, …) — zrobione 2026-10-20 (`f8cfd4a` … `a8b891e`; pobieranie z adresu za bramką `MEDIA_URL_FETCH`, domyślnie wyłączone) | najpierw testy `ssrf`; wydanie 2 narzędzi |
 | 4.6 | **M6** wysyłanie w edytorze (`ImageUpload`) | po M4 |
 | 4.7 | ✅ **Podział, krok 5:** klasy czytają postęp lekcji przez API nauki (zrobione 2026-10-20) | przed L1, żeby narzędzia lekcji lądowały na ustalonym API |
-| 4.8 | **L1** wstęp lekcji, **L2** ilustracje czasowników | `lesson_get`/`lesson_update`/`verb_set_image` w wydaniu 3 narzędzi |
+| 4.8 | ✅ **L1** wstęp lekcji (zrobione 2026-10-20: slajd „Wstęp” od obrazu albo >140 znaków, `lesson_get`/`lesson_update`); **L2** ilustracje czasowników — otwarte | `verb_set_image` w L2; narzędzia lekcji są już w wydaniu 2.3.0 (51) |
 | 4.9 | **S1** sprzątanie (Cron), **S2** dokumentacja i `.env.example` | na końcu |
 
 ### Faza 5 — przeniesienie plików (około 2–3 dni)
@@ -127,7 +127,7 @@ Rozpoczyna się po rozstrzygnięciu M0.
 
 ## Licznik narzędzi MCP
 
-Plany podają przyrosty, nie liczby bezwzględne, bo zależą od kolejności faz. Przy kolejności z tego dokumentu: przed fazą 3 było 27 → **po fazie 3 jest 42** (stan 2026-10-20, sprawdzany przez `npm run test:mcp`) → po M5 **49** (stan 2026-10-20: 49 zweryfikowanych przez `npm run test:mcp`) → po L1 **51** → po L2 **52**. Każdy commit, który dodaje narzędzia, aktualizuje asercję w `scripts/mcp-local-e2e.ts` i liczbę w `docs/mcp-clients.md`.
+Plany podają przyrosty, nie liczby bezwzględne, bo zależą od kolejności faz. Przy kolejności z tego dokumentu: przed fazą 3 było 27 → **po fazie 3 jest 42** (stan 2026-10-20, sprawdzany przez `npm run test:mcp`) → po M5 **49** (stan 2026-10-20: 49 zweryfikowanych przez `npm run test:mcp`) → po L1 **51** (stan 2026-10-20: `lesson_get` i `lesson_update` w wersji serwera 2.3.0) → po L2 **52**. Każdy commit, który dodaje narzędzia, aktualizuje asercję w `scripts/mcp-local-e2e.ts` i liczbę w `docs/mcp-clients.md`.
 
 ## Zacommitowany bundle `api/index.mjs`
 
