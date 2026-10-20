@@ -1,12 +1,7 @@
 import type { Router } from 'express'
 import { z } from 'zod'
-import {
-  auth0UserId,
-  blockedInput,
-  feedbackInput,
-  feedbackStatusInput,
-  rolesInput,
-} from '../../src/shared/quiz/schema'
+import { auth0UserId, feedbackInput } from '../../src/shared/platform/schema'
+import { blockedInput, feedbackStatusInput, rolesInput } from '../../src/shared/quiz/schema'
 import * as admin from '../adminRepo'
 import * as appSettings from '../appSettingsRepo'
 import * as auth0 from '../auth0Management'

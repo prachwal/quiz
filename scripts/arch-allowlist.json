@@ -26,12 +26,6 @@
       "reason": "do naprawy w 5.C"
     },
     {
-      "from": "server/mcp/tools/shared.ts",
-      "to": "src/shared/quiz/schema.ts",
-      "pair": "mcp-platform -> shared-quizzes",
-      "reason": "do naprawy w 5.C"
-    },
-    {
       "from": "server/routes/learning.ts",
       "to": "server/progressRepo.ts",
       "pair": "learning -> progress",
@@ -53,30 +47,6 @@
       "from": "server/routes/quizzes.ts",
       "to": "server/reviewsRepo.ts",
       "pair": "quizzes -> progress",
-      "reason": "do naprawy w 5.C"
-    },
-    {
-      "from": "server/routes/tokens.ts",
-      "to": "src/shared/quiz/schema.ts",
-      "pair": "platform -> shared-quizzes",
-      "reason": "do naprawy w 5.C"
-    },
-    {
-      "from": "src/features/auth/ApiTokens.tsx",
-      "to": "src/shared/quiz/schema.ts",
-      "pair": "f-platform -> shared-quizzes",
-      "reason": "do naprawy w 5.C"
-    },
-    {
-      "from": "src/features/auth/api.ts",
-      "to": "src/shared/quiz/schema.ts",
-      "pair": "f-platform -> shared-quizzes",
-      "reason": "do naprawy w 5.C"
-    },
-    {
-      "from": "src/features/feedback/api.ts",
-      "to": "src/shared/quiz/schema.ts",
-      "pair": "f-platform -> shared-quizzes",
       "reason": "do naprawy w 5.C"
     },
     {

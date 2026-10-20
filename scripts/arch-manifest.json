@@ -31,7 +31,7 @@
     ] },
     { "module": "mcp-platform", "match": ["server/mcp/context.ts", "server/mcp/tools/shared.ts"] },
     { "module": "shared-media", "match": ["src/shared/media/**"] },
-    { "module": "shared-platform", "match": ["src/shared/quiz/auth0Id.ts", "src/shared/quiz/maskEmail.ts", "src/shared/quiz/scoreBands.ts"] },
+    { "module": "shared-platform", "match": ["src/shared/quiz/auth0Id.ts", "src/shared/quiz/maskEmail.ts", "src/shared/quiz/scoreBands.ts", "src/shared/platform/**"] },
     { "module": "shared-quizzes", "match": [
       "src/shared/quiz/engine.ts", "src/shared/quiz/schema.ts", "src/shared/quiz/sampling.ts",
       "src/shared/quiz/itemStats.ts", "src/shared/quiz/quizStats.ts", "src/shared/quiz/questionsSnapshot.ts",

@@ -8,8 +8,6 @@ import {
   classInput,
   profileInput,
   reviewSessionInput,
-  feedbackInput,
-  tokenInput,
   optionInput,
   answerInput,
   gradeInput,
@@ -22,6 +20,7 @@ import {
   POPULARITIES,
   QUIZ_VARIANTS,
 } from '../src/shared/quiz/schema.ts'
+import { feedbackInput, tokenInput } from '../src/shared/platform/schema.ts'
 
 test('quizInput accepts a minimal valid quiz', () => {
   const parsed = quizInput.parse({

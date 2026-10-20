@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { auth0UserId } from '../../../src/shared/quiz/schema'
+import { auth0UserId } from '../../../src/shared/platform/schema'
 import { audit, text } from '../context'
 
 /** Schemas shared by the class_*, student_* and assignment_* tools (their guards are in ./classGuards.ts). */

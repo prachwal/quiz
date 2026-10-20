@@ -75059,89 +75059,7 @@ async function refusing(work) {
 // src/shared/quiz/auth0Id.ts
 var AUTH0_ID_PATTERN = /^[\w-]+(\|[\w.-]+)+$/;
 
-// src/shared/quiz/schema.ts
-var optionInput = external_exports.object({
-  text: external_exports.string().trim().min(1, "Tre\u015B\u0107 opcji jest wymagana").max(500),
-  isCorrect: external_exports.boolean()
-});
-var questionInput = external_exports.object({
-  type: external_exports.enum(QUESTION_TYPES),
-  prompt: external_exports.string().trim().min(1, "Tre\u015B\u0107 pytania jest wymagana").max(2e3),
-  explanation: external_exports.string().trim().max(2e3).default(""),
-  points: external_exports.number().int().min(1).max(100).default(1),
-  /** Answers for the four option-based types; empty for types that use `config`. */
-  options: external_exports.array(optionInput).max(20).default([]),
-  /** Per-type payload (numeric tolerances, ordering items, matching pairs, cloze gaps). */
-  config: external_exports.unknown().optional(),
-  /** Irregular verb the question is about (set by quiz generators; feeds spaced repetition). */
-  verbId: external_exports.number().int().positive().optional()
-}).superRefine((question, ctx) => {
-  const def = questionTypes[question.type];
-  if (!def.usesOptions && question.options.length > 0) {
-    ctx.addIssue({ code: "custom", message: "Ten typ pytania nie u\u017Cywa opcji", path: ["options"] });
-  }
-  if (def.usesOptions && question.config !== void 0) {
-    ctx.addIssue({ code: "custom", message: "Ten typ pytania nie u\u017Cywa konfiguracji", path: ["config"] });
-  }
-  if (question.config !== void 0 && question.config !== null) {
-    if (typeof question.config !== "object") {
-      ctx.addIssue({ code: "custom", message: "Konfiguracja musi by\u0107 obiektem", path: ["config"] });
-    } else if (JSON.stringify(question.config).length > 2e4) {
-      ctx.addIssue({ code: "custom", message: "Konfiguracja jest zbyt du\u017Ca", path: ["config"] });
-    }
-  }
-  for (const issue2 of imageFieldErrors(question)) ctx.addIssue({ code: "custom", message: issue2.message, path: issue2.path });
-  const error62 = def.validate(question);
-  if (error62) ctx.addIssue({ code: "custom", message: error62, path: [def.usesOptions ? "options" : "config"] });
-});
-var DIFFICULTIES = ["easy", "medium", "hard"];
-var POPULARITIES = ["core", "common", "rare"];
-var QUIZ_VARIANTS = ["mixed", "typing", "choice", "translation"];
-var quizInputShape = external_exports.object({
-  difficulty: external_exports.enum(DIFFICULTIES).nullish(),
-  /** School subject used to group quizzes; null = unassigned. */
-  subject: external_exports.enum(SUBJECTS).nullish(),
-  /** null = follow the player's setting, true/false = override it */
-  shuffleQuestions: external_exports.boolean().nullish(),
-  shuffleOptions: external_exports.boolean().default(false),
-  sampleSize: external_exports.union([external_exports.literal(10), external_exports.literal(20), external_exports.literal(30)]).nullish(),
-  title: external_exports.string().trim().min(1, "Tytu\u0142 jest wymagany").max(200),
-  description: external_exports.string().trim().max(2e3).default(""),
-  questions: external_exports.array(questionInput).min(1, "Dodaj co najmniej jedno pytanie").max(100)
-});
-var quizInput = quizInputShape.superRefine((quiz, ctx) => {
-  if (quizImageCount(quiz.questions) > MEDIA_MAX_REFERENCES_PER_QUIZ) {
-    ctx.addIssue({
-      code: "custom",
-      message: `Quiz mo\u017Ce mie\u0107 najwy\u017Cej ${MEDIA_MAX_REFERENCES_PER_QUIZ} obraz\xF3w w tre\u015Bci`,
-      path: ["questions"]
-    });
-  }
-});
-var answerInput = external_exports.object({
-  optionIds: external_exports.array(external_exports.string()).max(20).optional(),
-  text: external_exports.string().max(2e3).optional(),
-  /** ordering: element ids in the order the player arranged them. */
-  order: external_exports.array(external_exports.string().max(64)).max(50).optional(),
-  /** matching: pair id -> chosen right-hand id. */
-  pairs: external_exports.record(external_exports.string().max(64), external_exports.string().max(64)).optional(),
-  /** cloze: gap number -> text typed by the player. */
-  gaps: external_exports.record(external_exports.string().max(8), external_exports.string().max(500)).optional()
-});
-var gradeInput = external_exports.object({
-  answers: external_exports.record(external_exports.string(), answerInput),
-  /** The questions the player was shown (quizzes that draw a sample from a larger pool). */
-  questionIds: external_exports.array(external_exports.string()).max(100).optional()
-});
-var generateInput = external_exports.object({
-  count: external_exports.number().int().min(5).max(50).default(10),
-  difficulty: external_exports.enum(DIFFICULTIES).optional(),
-  popularity: external_exports.enum(POPULARITIES).optional(),
-  /** mixed: typing + choice, typing: all open, choice: all multiple choice, translation: PL -> EN base form */
-  variant: external_exports.enum(QUIZ_VARIANTS).default("mixed"),
-  /** Practice only the verbs the user struggles with (difficulty/popularity filters are ignored). */
-  onlyWeak: external_exports.boolean().default(false)
-});
+// src/shared/platform/schema.ts
 var tokenInput = external_exports.object({
   name: external_exports.string().trim().min(1, "Nazwa tokenu jest wymagana").max(80),
   /** null = never expires */
@@ -75167,33 +75085,7 @@ var feedbackInput = external_exports.object({
     requestId: shortText(80)
   }).default({})
 });
-var feedbackStatusInput = external_exports.object({ status: external_exports.enum(["new", "in_progress", "done"]) });
-var rolesInput = external_exports.object({ roles: external_exports.array(external_exports.enum(["admin", "teacher", "student"])).max(3) });
-var blockedInput = external_exports.object({ blocked: external_exports.boolean() });
-var profileInput = external_exports.object({
-  dailyGoal: external_exports.number().int().min(1).max(200).optional(),
-  timezone: external_exports.string().trim().min(1).max(64).optional()
-}).refine((v) => v.dailyGoal !== void 0 || v.timezone !== void 0, "Podaj cel dzienny lub stref\u0119 czasow\u0105");
-var reviewSessionInput = external_exports.object({ count: external_exports.number().int().min(1).max(30).default(10) });
-var retryWrongInput = external_exports.object({ questionIds: external_exports.array(external_exports.string().uuid()).min(1).max(60) });
-var classInput = external_exports.object({ name: external_exports.string().trim().min(2, "Nazwa klasy (min. 2 znaki)").max(80) });
-var classPatchInput = external_exports.object({ name: classInput.shape.name.optional(), joiningOpen: external_exports.boolean().optional() }).refine((v) => v.name !== void 0 || v.joiningOpen !== void 0, "Podaj nazw\u0119 lub stan zapis\xF3w");
 var auth0UserId = external_exports.string().trim().min(3).max(200).regex(AUTH0_ID_PATTERN, "Niepoprawny identyfikator Auth0");
-var percent = external_exports.number().int().min(1).max(100);
-var appSettingsInput = external_exports.object({
-  scoreThresholds: external_exports.object({ low: percent, high: percent }).refine((t) => t.low < t.high, { message: "Pr\xF3g czerwony musi by\u0107 ni\u017Cszy ni\u017C zielony", path: ["high"] })
-});
-var addMemberInput = external_exports.object({ userId: auth0UserId });
-var assignmentPatchInput = external_exports.object({ dueAt: external_exports.string().datetime().nullable() });
-var joinInput = external_exports.object({
-  code: external_exports.string().trim().toUpperCase().regex(/^[A-Z0-9]{6}$/, "Kod klasy ma 6 znak\xF3w")
-});
-var assignmentInput = external_exports.object({
-  kind: external_exports.enum(["course", "quiz"]),
-  courseId: external_exports.string().uuid().optional(),
-  quizId: external_exports.string().uuid().optional(),
-  dueAt: external_exports.string().datetime().nullish()
-}).refine((v) => v.kind === "course" ? Boolean(v.courseId) : Boolean(v.quizId), "Wybierz kurs lub quiz");
 
 // server/classes/classes.ts
 import { randomInt } from "node:crypto";
@@ -76097,6 +75989,116 @@ async function weakVerbDetails(userId, limit) {
     ] : [];
   });
 }
+
+// src/shared/quiz/schema.ts
+var optionInput = external_exports.object({
+  text: external_exports.string().trim().min(1, "Tre\u015B\u0107 opcji jest wymagana").max(500),
+  isCorrect: external_exports.boolean()
+});
+var questionInput = external_exports.object({
+  type: external_exports.enum(QUESTION_TYPES),
+  prompt: external_exports.string().trim().min(1, "Tre\u015B\u0107 pytania jest wymagana").max(2e3),
+  explanation: external_exports.string().trim().max(2e3).default(""),
+  points: external_exports.number().int().min(1).max(100).default(1),
+  /** Answers for the four option-based types; empty for types that use `config`. */
+  options: external_exports.array(optionInput).max(20).default([]),
+  /** Per-type payload (numeric tolerances, ordering items, matching pairs, cloze gaps). */
+  config: external_exports.unknown().optional(),
+  /** Irregular verb the question is about (set by quiz generators; feeds spaced repetition). */
+  verbId: external_exports.number().int().positive().optional()
+}).superRefine((question, ctx) => {
+  const def = questionTypes[question.type];
+  if (!def.usesOptions && question.options.length > 0) {
+    ctx.addIssue({ code: "custom", message: "Ten typ pytania nie u\u017Cywa opcji", path: ["options"] });
+  }
+  if (def.usesOptions && question.config !== void 0) {
+    ctx.addIssue({ code: "custom", message: "Ten typ pytania nie u\u017Cywa konfiguracji", path: ["config"] });
+  }
+  if (question.config !== void 0 && question.config !== null) {
+    if (typeof question.config !== "object") {
+      ctx.addIssue({ code: "custom", message: "Konfiguracja musi by\u0107 obiektem", path: ["config"] });
+    } else if (JSON.stringify(question.config).length > 2e4) {
+      ctx.addIssue({ code: "custom", message: "Konfiguracja jest zbyt du\u017Ca", path: ["config"] });
+    }
+  }
+  for (const issue2 of imageFieldErrors(question)) ctx.addIssue({ code: "custom", message: issue2.message, path: issue2.path });
+  const error62 = def.validate(question);
+  if (error62) ctx.addIssue({ code: "custom", message: error62, path: [def.usesOptions ? "options" : "config"] });
+});
+var DIFFICULTIES = ["easy", "medium", "hard"];
+var POPULARITIES = ["core", "common", "rare"];
+var QUIZ_VARIANTS = ["mixed", "typing", "choice", "translation"];
+var quizInputShape = external_exports.object({
+  difficulty: external_exports.enum(DIFFICULTIES).nullish(),
+  /** School subject used to group quizzes; null = unassigned. */
+  subject: external_exports.enum(SUBJECTS).nullish(),
+  /** null = follow the player's setting, true/false = override it */
+  shuffleQuestions: external_exports.boolean().nullish(),
+  shuffleOptions: external_exports.boolean().default(false),
+  sampleSize: external_exports.union([external_exports.literal(10), external_exports.literal(20), external_exports.literal(30)]).nullish(),
+  title: external_exports.string().trim().min(1, "Tytu\u0142 jest wymagany").max(200),
+  description: external_exports.string().trim().max(2e3).default(""),
+  questions: external_exports.array(questionInput).min(1, "Dodaj co najmniej jedno pytanie").max(100)
+});
+var quizInput = quizInputShape.superRefine((quiz, ctx) => {
+  if (quizImageCount(quiz.questions) > MEDIA_MAX_REFERENCES_PER_QUIZ) {
+    ctx.addIssue({
+      code: "custom",
+      message: `Quiz mo\u017Ce mie\u0107 najwy\u017Cej ${MEDIA_MAX_REFERENCES_PER_QUIZ} obraz\xF3w w tre\u015Bci`,
+      path: ["questions"]
+    });
+  }
+});
+var answerInput = external_exports.object({
+  optionIds: external_exports.array(external_exports.string()).max(20).optional(),
+  text: external_exports.string().max(2e3).optional(),
+  /** ordering: element ids in the order the player arranged them. */
+  order: external_exports.array(external_exports.string().max(64)).max(50).optional(),
+  /** matching: pair id -> chosen right-hand id. */
+  pairs: external_exports.record(external_exports.string().max(64), external_exports.string().max(64)).optional(),
+  /** cloze: gap number -> text typed by the player. */
+  gaps: external_exports.record(external_exports.string().max(8), external_exports.string().max(500)).optional()
+});
+var gradeInput = external_exports.object({
+  answers: external_exports.record(external_exports.string(), answerInput),
+  /** The questions the player was shown (quizzes that draw a sample from a larger pool). */
+  questionIds: external_exports.array(external_exports.string()).max(100).optional()
+});
+var generateInput = external_exports.object({
+  count: external_exports.number().int().min(5).max(50).default(10),
+  difficulty: external_exports.enum(DIFFICULTIES).optional(),
+  popularity: external_exports.enum(POPULARITIES).optional(),
+  /** mixed: typing + choice, typing: all open, choice: all multiple choice, translation: PL -> EN base form */
+  variant: external_exports.enum(QUIZ_VARIANTS).default("mixed"),
+  /** Practice only the verbs the user struggles with (difficulty/popularity filters are ignored). */
+  onlyWeak: external_exports.boolean().default(false)
+});
+var feedbackStatusInput = external_exports.object({ status: external_exports.enum(["new", "in_progress", "done"]) });
+var rolesInput = external_exports.object({ roles: external_exports.array(external_exports.enum(["admin", "teacher", "student"])).max(3) });
+var blockedInput = external_exports.object({ blocked: external_exports.boolean() });
+var profileInput = external_exports.object({
+  dailyGoal: external_exports.number().int().min(1).max(200).optional(),
+  timezone: external_exports.string().trim().min(1).max(64).optional()
+}).refine((v) => v.dailyGoal !== void 0 || v.timezone !== void 0, "Podaj cel dzienny lub stref\u0119 czasow\u0105");
+var reviewSessionInput = external_exports.object({ count: external_exports.number().int().min(1).max(30).default(10) });
+var retryWrongInput = external_exports.object({ questionIds: external_exports.array(external_exports.string().uuid()).min(1).max(60) });
+var classInput = external_exports.object({ name: external_exports.string().trim().min(2, "Nazwa klasy (min. 2 znaki)").max(80) });
+var classPatchInput = external_exports.object({ name: classInput.shape.name.optional(), joiningOpen: external_exports.boolean().optional() }).refine((v) => v.name !== void 0 || v.joiningOpen !== void 0, "Podaj nazw\u0119 lub stan zapis\xF3w");
+var percent = external_exports.number().int().min(1).max(100);
+var appSettingsInput = external_exports.object({
+  scoreThresholds: external_exports.object({ low: percent, high: percent }).refine((t) => t.low < t.high, { message: "Pr\xF3g czerwony musi by\u0107 ni\u017Cszy ni\u017C zielony", path: ["high"] })
+});
+var addMemberInput = external_exports.object({ userId: auth0UserId });
+var assignmentPatchInput = external_exports.object({ dueAt: external_exports.string().datetime().nullable() });
+var joinInput = external_exports.object({
+  code: external_exports.string().trim().toUpperCase().regex(/^[A-Z0-9]{6}$/, "Kod klasy ma 6 znak\xF3w")
+});
+var assignmentInput = external_exports.object({
+  kind: external_exports.enum(["course", "quiz"]),
+  courseId: external_exports.string().uuid().optional(),
+  quizId: external_exports.string().uuid().optional(),
+  dueAt: external_exports.string().datetime().nullish()
+}).refine((v) => v.kind === "course" ? Boolean(v.courseId) : Boolean(v.quizId), "Wybierz kurs lub quiz");
 
 // src/shared/quiz/scoreBands.ts
 var DEFAULT_SCORE_THRESHOLDS = { low: 50, high: 80 };

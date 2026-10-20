@@ -1,5 +1,5 @@
 import type { Router } from 'express'
-import { tokenInput } from '../../src/shared/quiz/schema'
+import { tokenInput } from '../../src/shared/platform/schema'
 import * as tokens from '../apiTokens'
 import { MANAGE_CLASSES, WRITE_QUIZZES, hasPermission, requireJwt } from '../auth'
 import { HttpError, idSchema, userOf } from '../http'
