@@ -64,6 +64,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Skill: `.agents/skills/obsidian/SKILL.md` (symlink w `.claude/skills/obsidian`).
 - Przy zmianach architektury aktualizuj `CLAUDE.md` i odpowiednie notatki w `docs/`.
 
+## Media cleanup
+
+- `GET /api/media/cleanup` is public but guarded by `CRON_SECRET` (unset = 404, wrong header = 401), mounted before the auth gate in `server/app.ts`; Vercel Cron calls it daily (`vercel.json` `crons`, not on Preview). It removes `pending` rows older than 1 h and unreferenced `ready` rows older than 24 h (max 200 of each kind per run, 20 s budget; rows are locked and references re-checked before the object is removed). Rules in `server/media/cleanupPolicy.ts`, the run in `server/media/cleanup.ts`. Starting a browser upload also removes that author's own stale `pending` rows (`removeStalePendingOf`). Add `CRON_SECRET` with `vercel env add` and redeploy (`docs/vercel.md`).
+- `MEDIA_CLEANUP_OWNER_FILTER` (read from the server environment in `server/media/cronRoute.ts`, never from a request) narrows the run to owners whose id contains the text; `npm run test:mcp` sets it to `mcp-e2e` so the e2e never deletes real files. It logs `media.cleanup.owner_filter` when active; never set it in Production.
+
+## Working with subagents (Sonnet plans, Haiku codes)
+
+- Implementation steps are delegated to the project agent `haiku-coder` (`.claude/agents/haiku-coder.md`, `model: haiku`) or to any agent started with `model: "haiku"`; the main session writes the spec and verifies the result. One commit per step, trailer `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`.
+- A good spec names: the files and docs to read first, the exact contracts, the commits to make, the checks before each commit, what is forbidden, and the report to return. The agent must end with `SubagentHandback`.
+- The database is one shared Neon instance: migrations are written by agents but applied by the owner (`node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/migrate.mjs`; each migration needs its own approval), `npm run test:mcp` is serialised with `flock /tmp/claude-1000/mcp-e2e.lock` and never run by two agents at once, and tests never reach the real Auth0 Management write endpoints.
+- Parallel agents run in separate worktrees (`isolation: "worktree"`) on disjoint files; the worktree starts from `main`, so the spec must move it to `vercel-neon`, symlink `node_modules` and copy `.env*` (gitignored). They do not edit `docs/Roadmap.md`, `CLAUDE.md` or commit `api/index.mjs` (rebuild it after merging with `npm run build:api`; never resolve it by hand).
+- After each report the main session re-runs lint, `tsc`, tests and, when allowed, `test:mcp`, and reads the risky parts of the diff (SQL, auth, deletes).
 
 ## Gotchas
 
