@@ -175,6 +175,8 @@ export interface LessonDetail {
   prevLessonId: string | null
   nextLessonId: string | null
   verbs: IrregularVerb[]
+  /** images of the intro; present only when the intro has an image that resolves (see withMedia) */
+  media?: MediaMap
 }
 
 export interface ApiTokenSummary {

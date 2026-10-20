@@ -5,8 +5,10 @@ import type {
   LessonDetail,
   PopularityCode,
 } from '../src/shared/quiz/types'
+import { extractMediaIds } from '../src/shared/media/richText'
 import { listVerbs } from './irregularVerbs'
 import { pool } from './db'
+import { syncRefs } from './media/repo'
 
 interface CourseRow {
   id: string
@@ -217,4 +219,58 @@ export async function lessonVerbIds(lessonId: string): Promise<number[]> {
     [lessonId],
   )
   return rows.map((r) => r.verb_id)
+}
+
+export interface LessonText {
+  title: string
+  intro: string
+}
+
+/**
+ * Changes the title and/or the intro of one lesson. The intro's images are synced in the same transaction, so a
+ * refused image (MediaRefError) leaves the lesson as it was. Null when the lesson is not in that course.
+ */
+export async function updateLesson(
+  courseId: string,
+  lessonId: string,
+  patch: { title?: string; intro?: string },
+): Promise<{ before: LessonText; after: LessonText } | null> {
+  const client = await pool().connect()
+  try {
+    await client.query('BEGIN')
+    const current = await client.query<LessonText>(
+      'SELECT title, intro FROM lessons WHERE id = $1 AND course_id = $2 FOR UPDATE',
+      [lessonId, courseId],
+    )
+    const row = current.rows[0]
+    if (!row) {
+      await client.query('ROLLBACK')
+      return null
+    }
+    const before = { title: row.title, intro: row.intro }
+    const after = { title: patch.title ?? row.title, intro: patch.intro ?? row.intro }
+    await client.query('UPDATE lessons SET title = $2, intro = $3 WHERE id = $1', [lessonId, after.title, after.intro])
+    if (patch.intro !== undefined) await syncRefs('lesson', lessonId, extractMediaIds(after.intro), client)
+    await client.query('COMMIT')
+    return { before, after }
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined)
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
+/** Lessons of every course in one query (id, position, title), grouped by course id. */
+export async function listLessonBriefs(): Promise<Map<string, { id: string; position: number; title: string }[]>> {
+  const { rows } = await pool().query<{ id: string; course_id: string; position: number; title: string }>(
+    'SELECT id, course_id, position, title FROM lessons ORDER BY course_id, position',
+  )
+  const byCourse = new Map<string, { id: string; position: number; title: string }[]>()
+  for (const r of rows) {
+    const list = byCourse.get(r.course_id) ?? []
+    list.push({ id: r.id, position: r.position, title: r.title })
+    byCourse.set(r.course_id, list)
+  }
+  return byCourse
 }

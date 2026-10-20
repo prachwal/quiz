@@ -17,14 +17,23 @@ export function registerAssignmentTools(server: McpServer, ctx: Ctx, guards: Cla
     'course_list',
     {
       title: 'Lista kursów',
-      description: 'Kursy, które można przydzielić klasie (id, tytuł, liczba lekcji i czasowników).',
+      description: 'Kursy, które można przydzielić klasie (id, tytuł, liczba lekcji i czasowników). lessonList: lekcje kursu z id (do lesson_get i lesson_update).',
       inputSchema: {},
       annotations: { readOnlyHint: true },
     },
-    async () =>
-      canReadClasses(v)
-        ? text((await courses.listCourses(null)).map((c) => ({ id: c.id, title: c.title, lessons: c.lessonCount, verbs: c.verbCount })))
-        : needTeacherOrAdmin(),
+    async () => {
+      if (!canReadClasses(v)) return needTeacherOrAdmin()
+      const [list, lessons] = await Promise.all([courses.listCourses(null), courses.listLessonBriefs()])
+      return text(
+        list.map((c) => ({
+          id: c.id,
+          title: c.title,
+          lessons: c.lessonCount,
+          verbs: c.verbCount,
+          lessonList: lessons.get(c.id) ?? [],
+        })),
+      )
+    },
   )
 
   server.registerTool(

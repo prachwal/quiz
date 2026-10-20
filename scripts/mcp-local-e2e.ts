@@ -14,6 +14,7 @@ import * as adminRepo from '../server/adminRepo'
 import * as appSettings from '../server/appSettingsRepo'
 import * as media from '../server/media/repo'
 import { getStorage } from '../server/media/driver'
+import { listVerbs } from '../server/irregularVerbs'
 
 type Result = { err: boolean; data: any }
 let passed = 0
@@ -72,6 +73,13 @@ async function cleanup() {
   await db.query(`DELETE FROM media_refs WHERE owner_kind = 'quiz' AND owner_id IN (SELECT id::text FROM quizzes WHERE title LIKE 'MCP E2E%')`)
   await db.query('DELETE FROM media_refs WHERE media_id IN (SELECT id FROM media WHERE owner_id LIKE $1)', [`%${P}%`])
   await db.query('DELETE FROM media WHERE owner_id LIKE $1', [`%${P}%`])
+  // lesson intros: references first, then the throwaway course (its lessons and lesson_verbs cascade)
+  await db.query(
+    `DELETE FROM media_refs WHERE owner_kind = 'lesson' AND owner_id IN (SELECT id::text FROM lessons WHERE title LIKE $1 OR course_id IN (SELECT id FROM courses WHERE slug LIKE $1))`,
+    [`${P}%`],
+  )
+  await db.query('DELETE FROM courses WHERE slug LIKE $1', [`${P}%`])
+  await db.query('DELETE FROM lessons WHERE title LIKE $1', [`${P}%`])
   await db.query("DELETE FROM quizzes WHERE title LIKE 'MCP E2E%'")
   await db.query('DELETE FROM user_profiles WHERE user_id LIKE $1', [`%${P}%`])
   await db.query('DELETE FROM api_tokens WHERE user_id LIKE $1', [`%${P}%`])
@@ -102,8 +110,8 @@ try {
   const getOk = await fetch(`${base}/mcp`, { headers: { Authorization: `Bearer ${await token(PLAIN, [])}` } })
   check('GET /mcp -> 405', getOk.status === 405, getOk.status)
   const names = (await tPlain.listTools()).tools.map((t) => t.name).sort()
-  check('49 tools listed', names.length === 49, names.length)
-  for (const required of ['quiz_create', 'class_create', 'student_search', 'student_add', 'class_analyze', 'assignment_create', 'attempt_list', 'attempt_get', 'quiz_stats', 'user_results', 'user_analysis', 'user_list', 'user_get', 'user_search', 'user_roles_set', 'user_block', 'class_transfer', 'audit_list', 'feedback_list', 'feedback_update', 'settings_get', 'settings_set', 'system_stats', 'media_upload', 'media_upload_from_url', 'media_create_upload', 'media_complete', 'media_list', 'media_get', 'media_delete'])
+  check('51 tools listed', names.length === 51, names.length)
+  for (const required of ['quiz_create', 'class_create', 'student_search', 'student_add', 'class_analyze', 'assignment_create', 'attempt_list', 'attempt_get', 'quiz_stats', 'user_results', 'user_analysis', 'user_list', 'user_get', 'user_search', 'user_roles_set', 'user_block', 'class_transfer', 'audit_list', 'feedback_list', 'feedback_update', 'settings_get', 'settings_set', 'system_stats', 'media_upload', 'media_upload_from_url', 'media_create_upload', 'media_complete', 'media_list', 'media_get', 'media_delete', 'lesson_get', 'lesson_update'])
     check(`tool ${required} exists`, names.includes(required))
 
   // ---- quizzes ---------------------------------------------------------------------------
@@ -275,10 +283,10 @@ try {
 
   // ---- assignments -----------------------------------------------------------------------
   ok('course_list', await call(tTeacher, 'course_list', {}), (d) => d.length > 0 && !!d[0].id)
-  const courseId = (await call(tTeacher, 'course_list', {})).data[0].id as string
+  const assignCourseId = (await call(tTeacher, 'course_list', {})).data[0].id as string
   const quizAssignment = await call(tTeacher, 'assignment_create', { classId, kind: 'quiz', targetId: quizId, dueAt: '2026-01-01T00:00:00Z' })
   ok('assignment_create (quiz, overdue)', quizAssignment, (d) => d.kind === 'quiz' && d.title === 'MCP E2E quiz 2')
-  ok('assignment_create (course)', await call(tTeacher, 'assignment_create', { classId, kind: 'course', targetId: courseId }), (d) => d.kind === 'course' && d.dueAt === null)
+  ok('assignment_create (course)', await call(tTeacher, 'assignment_create', { classId, kind: 'course', targetId: assignCourseId }), (d) => d.kind === 'course' && d.dueAt === null)
   denied('assignment_create unknown quiz', await call(tTeacher, 'assignment_create', { classId, kind: 'quiz', targetId: '00000000-0000-4000-8000-000000000000' }), 'Nie znaleziono')
   denied('assignment_create by other teacher', await call(tOther, 'assignment_create', { classId, kind: 'quiz', targetId: quizId }), 'Nie znaleziono klasy')
   const assignmentId: string = quizAssignment.data.id
@@ -489,6 +497,53 @@ try {
 
   check('media audit never holds the bytes', (await pool().query("SELECT COUNT(*)::int AS n FROM admin_audit_log WHERE details::text LIKE $1", [`%${smallB64.slice(0, 24)}%`])).rows[0].n === 0)
 
+  // ---- lesson intro with images (Media-Storage-Plan L1): a throwaway course and lesson, never seeded rows ----
+  const courseRow = await pool().query<{ id: string }>(
+    'INSERT INTO courses (slug, title, description) VALUES ($1, $2, $3) RETURNING id',
+    [`${P}-course-${randomUUID()}`, `${P} kurs`, 'test'],
+  )
+  const courseId = courseRow.rows[0].id
+  const lessonRow = await pool().query<{ id: string }>(
+    "INSERT INTO lessons (course_id, position, title, intro) VALUES ($1, 1, $2, '') RETURNING id",
+    [courseId, `${P} lekcja`],
+  )
+  const lessonId = lessonRow.rows[0].id
+  const [firstVerb] = (await listVerbs()).slice(0, 1)
+  await pool().query('INSERT INTO lesson_verbs (lesson_id, verb_id, position) VALUES ($1, $2, 1)', [lessonId, firstVerb.id])
+  const lessonImgId = randomUUID()
+  await mediaRow(lessonImgId, 'ready')
+  const lessonPath = `/courses/${courseId}/lessons/${lessonId}`
+  const lessonRefs = async () =>
+    (await pool().query<{ id: string }>(`SELECT media_id::text AS id FROM media_refs WHERE owner_kind = 'lesson' AND owner_id = $1`, [lessonId])).rows.map((r) => r.id)
+  const lessonIntro = `Dziś o czasownikach. ${img('Tabela form', lessonImgId)} Zapamiętaj trzy formy.`
+
+  denied('lesson_get without write', await call(tPlain, 'lesson_get', { courseId, lessonId }), 'write:quizzes')
+  denied('lesson_update without write', await call(tPlain, 'lesson_update', { courseId, lessonId, title: 'x' }), 'write:quizzes')
+  ok('lesson_update intro with a ready image', await call(tAdminWrite, 'lesson_update', { courseId, lessonId, intro: lessonIntro }), (d) =>
+    d.intro === lessonIntro && d.referencedMedia.length === 1 && d.referencedMedia[0] === lessonImgId && d.title === `${P} lekcja`)
+  ok('lesson_get shows the intro, the verb and the referenced image', await call(tAdminWrite, 'lesson_get', { courseId, lessonId }), (d) =>
+    d.intro === lessonIntro && d.referencedMedia.includes(lessonImgId) && d.verbs.length === 1 && d.verbs[0].id === firstVerb.id && typeof d.verbs[0].base === 'string')
+  check('media_refs: the lesson holds the image reference', JSON.stringify(await lessonRefs()) === JSON.stringify([lessonImgId]), await lessonRefs())
+  const restLesson = await rest(lessonPath, { method: 'GET', bearer: plainBearer })
+  check('GET lesson -> 200 with the media map (url, width, height)', restLesson.status === 200 && mediaOf(restLesson.body)?.[lessonImgId]?.url === `https://media.test/media/2026/${lessonImgId}.png` && mediaOf(restLesson.body)?.[lessonImgId]?.width === 800 && mediaOf(restLesson.body)?.[lessonImgId]?.height === 450, restLesson.body)
+  check('GET lesson keeps the intro as stored', restLesson.body?.intro === lessonIntro, restLesson.body?.intro)
+  ok('course_list lists the lesson ids', await call(tAdmin, 'course_list', {}), (d) => Array.isArray(d) && d.some((c: any) => c.id === courseId && c.lessonList.some((l: any) => l.id === lessonId)))
+
+  denied('lesson_update with an unknown media id', await call(tAdminWrite, 'lesson_update', { courseId, lessonId, intro: `x ${img('y', randomUUID())}` }), 'nieistniejące')
+  denied('lesson_update with a pending media id', await call(tAdminWrite, 'lesson_update', { courseId, lessonId, intro: `x ${img('y', pendingId)}` }), 'jeszcze niewysłane')
+  denied('lesson_update with an external https image', await call(tAdminWrite, 'lesson_update', { courseId, lessonId, intro: 'x ![y](https://example.com/a.png)' }), 'zewnętrznego adresu')
+  denied('lesson_update with no fields', await call(tAdminWrite, 'lesson_update', { courseId, lessonId }), 'Podaj')
+  denied('lesson_update intro over 2000 characters', await call(tAdminWrite, 'lesson_update', { courseId, lessonId, intro: 'a'.repeat(2001) }), 'najwyżej 2000')
+  check('refused updates left the intro and the references alone', JSON.stringify(await lessonRefs()) === JSON.stringify([lessonImgId]))
+
+  ok('lesson_update intro without images clears the references', await call(tAdminWrite, 'lesson_update', { courseId, lessonId, intro: 'Krótki wstęp bez obrazów.' }), (d) => d.referencedMedia.length === 0)
+  check('media_refs: the lesson row is gone after the update without the image', (await lessonRefs()).length === 0, await lessonRefs())
+  const restPlain = await rest(lessonPath, { method: 'GET', bearer: plainBearer })
+  check('GET lesson without images has no media key (JSON unchanged)', restPlain.status === 200 && !('media' in restPlain.body) && restPlain.body?.intro === 'Krótki wstęp bez obrazów.', Object.keys(restPlain.body ?? {}))
+  ok('lesson_update title only', await call(tAdminWrite, 'lesson_update', { courseId, lessonId, title: `${P} lekcja 2` }), (d) => d.title === `${P} lekcja 2` && d.intro === 'Krótki wstęp bez obrazów.')
+  denied('lesson_update title over 120 characters', await call(tAdminWrite, 'lesson_update', { courseId, lessonId, title: 'x'.repeat(121) }))
+  denied('lesson_update of a lesson outside the course', await call(tAdminWrite, 'lesson_update', { courseId: randomUUID(), lessonId, title: 'x' }), 'Nie znaleziono lekcji')
+
   // ---- audit trail: every successful change is logged, reads and refusals are not ---------
   const audit = await pool().query<{ tool: string }>(
     "SELECT details->>'tool' AS tool FROM admin_audit_log WHERE action = 'mcp.call' AND actor_id LIKE $1 ORDER BY created_at",
@@ -503,6 +558,8 @@ try {
     // removes the row, so it is a change too
     'media_upload', 'media_upload', 'quiz_create', 'quiz_delete', 'media_delete', 'media_create_upload', 'media_complete',
     'media_create_upload', 'media_complete', 'media_create_upload', 'media_complete',
+    // lesson section: successful updates only (intro with image, intro without images, title)
+    'lesson_update', 'lesson_update', 'lesson_update',
   ]
   check('audit log has exactly the successful changes', JSON.stringify(logged) === JSON.stringify(expected), { logged })
 

@@ -1615,14 +1615,14 @@ var require_safer = __commonJS({
     }
     safer.Buffer.prototype = Buffer2.prototype;
     if (!Safer.from || Safer.from === Uint8Array.from) {
-      Safer.from = function(value2, encodingOrOffset, length) {
+      Safer.from = function(value2, encodingOrOffset, length2) {
         if (typeof value2 === "number") {
           throw new TypeError('The "value" argument must not be of type number. Received type ' + typeof value2);
         }
         if (value2 && typeof value2.length === "undefined") {
           throw new TypeError("The first argument must be one of type string, Buffer, ArrayBuffer, Array, or Array-like Object. Received type " + typeof value2);
         }
-        return Buffer2(value2, encodingOrOffset, length);
+        return Buffer2(value2, encodingOrOffset, length2);
       };
     }
     if (!Safer.alloc) {
@@ -5468,12 +5468,12 @@ var require_raw_body = __commonJS({
       }
       var encoding = opts.encoding !== true ? opts.encoding : "utf-8";
       var limit = bytes.parse(opts.limit);
-      var length = opts.length != null && !isNaN(opts.length) ? parseInt(opts.length, 10) : null;
+      var length2 = opts.length != null && !isNaN(opts.length) ? parseInt(opts.length, 10) : null;
       if (done) {
-        return readStream(stream, encoding, length, limit, wrap(done));
+        return readStream(stream, encoding, length2, limit, wrap(done));
       }
       return new Promise(function executor(resolve, reject) {
-        readStream(stream, encoding, length, limit, function onRead(err, buf) {
+        readStream(stream, encoding, length2, limit, function onRead(err, buf) {
           if (err) return reject(err);
           resolve(buf);
         });
@@ -5485,13 +5485,13 @@ var require_raw_body = __commonJS({
         stream.pause();
       }
     }
-    function readStream(stream, encoding, length, limit, callback) {
+    function readStream(stream, encoding, length2, limit, callback) {
       var complete = false;
       var sync = true;
-      if (limit !== null && length !== null && length > limit) {
+      if (limit !== null && length2 !== null && length2 > limit) {
         return done(createError(413, "request entity too large", {
-          expected: length,
-          length,
+          expected: length2,
+          length: length2,
           limit,
           type: "entity.too.large"
         }));
@@ -5544,8 +5544,8 @@ var require_raw_body = __commonJS({
         if (complete) return;
         done(createError(400, "request aborted", {
           code: "ECONNABORTED",
-          expected: length,
-          length,
+          expected: length2,
+          length: length2,
           received,
           type: "request.aborted"
         }));
@@ -5568,10 +5568,10 @@ var require_raw_body = __commonJS({
       function onEnd(err) {
         if (complete) return;
         if (err) return done(err);
-        if (length !== null && received !== length) {
+        if (length2 !== null && received !== length2) {
           done(createError(400, "request size did not match content length", {
-            expected: length,
-            length,
+            expected: length2,
+            length: length2,
             received,
             type: "request.size.invalid"
           }));
@@ -15664,18 +15664,18 @@ var require_read = __commonJS({
           return;
         }
       }
-      let length;
+      let length2;
       const opts = options;
       let stream;
       const verify = opts.verify;
       try {
         stream = contentstream(req, debug, opts.inflate);
-        length = stream.length;
+        length2 = stream.length;
         stream.length = void 0;
       } catch (err) {
         return next(err);
       }
-      opts.length = length;
+      opts.length = length2;
       opts.encoding = verify ? null : encoding;
       if (opts.encoding === null && encoding !== null && !iconv.encodingExists(encoding)) {
         return next(createError(415, 'unsupported charset "' + encoding.toUpperCase() + '"', {
@@ -15733,7 +15733,7 @@ var require_read = __commonJS({
     }
     function contentstream(req, debug, inflate) {
       const encoding = (req.headers["content-encoding"] || "identity").toLowerCase();
-      const length = req.headers["content-length"];
+      const length2 = req.headers["content-length"];
       debug('content-encoding "%s"', encoding);
       if (inflate === false && encoding !== "identity") {
         throw createError(415, "content encoding unsupported", {
@@ -15742,7 +15742,7 @@ var require_read = __commonJS({
         });
       }
       if (encoding === "identity") {
-        req.length = length;
+        req.length = length2;
         return req;
       }
       const stream = createDecompressionStream(encoding, debug);
@@ -19864,11 +19864,11 @@ var require_ipaddr = __commonJS({
         }
       };
       ipaddr.fromByteArray = function(bytes) {
-        var length;
-        length = bytes.length;
-        if (length === 4) {
+        var length2;
+        length2 = bytes.length;
+        if (length2 === 4) {
           return new ipaddr.IPv4(bytes);
-        } else if (length === 16) {
+        } else if (length2 === 16) {
           return new ipaddr.IPv6(bytes);
         } else {
           throw new Error("ipaddr: the binary input is neither an IPv6 nor IPv4 address");
@@ -20084,15 +20084,15 @@ var require_utils3 = __commonJS({
       return types2.map(exports.normalizeType);
     };
     function acceptParams(str) {
-      var length = str.length;
+      var length2 = str.length;
       var colonIndex = str.indexOf(";");
-      var index = colonIndex === -1 ? length : colonIndex;
+      var index = colonIndex === -1 ? length2 : colonIndex;
       var ret = { value: str.slice(0, index).trim(), quality: 1, params: {} };
-      while (index < length) {
+      while (index < length2) {
         var splitIndex = str.indexOf("=", index);
         if (splitIndex === -1) break;
         var colonIndex = str.indexOf(";", index);
-        var endIndex = colonIndex === -1 ? length : colonIndex;
+        var endIndex = colonIndex === -1 ? length2 : colonIndex;
         if (splitIndex > endIndex) {
           index = str.lastIndexOf(";", splitIndex - 1) + 1;
           continue;
@@ -24076,7 +24076,7 @@ var require_buffer_utils = __commonJS({
     exports.decoder = new TextDecoder();
     var MAX_INT32 = 2 ** 32;
     function concat(...buffers) {
-      const size = buffers.reduce((acc, { length }) => acc + length, 0);
+      const size = buffers.reduce((acc, { length: length2 }) => acc + length2, 0);
       const buf = new Uint8Array(size);
       let i = 0;
       buffers.forEach((buffer) => {
@@ -26227,8 +26227,8 @@ var require_decrypt3 = __commonJS({
       if (typeof jwe !== "string") {
         throw new errors_js_1.JWEInvalid("Compact JWE must be a string or Uint8Array");
       }
-      const { 0: protectedHeader, 1: encryptedKey, 2: iv, 3: ciphertext, 4: tag, length } = jwe.split(".");
-      if (length !== 5) {
+      const { 0: protectedHeader, 1: encryptedKey, 2: iv, 3: ciphertext, 4: tag, length: length2 } = jwe.split(".");
+      if (length2 !== 5) {
         throw new errors_js_1.JWEInvalid("Invalid Compact JWE");
       }
       const decrypted = await (0, decrypt_js_1.flattenedDecrypt)({
@@ -26308,27 +26308,27 @@ var require_asn1_sequence_decoder = __commonJS({
         }
       }
       decodeLength() {
-        let length = this.buffer[this.offset++];
-        if (length & 128) {
-          const nBytes = length & ~128;
-          length = 0;
+        let length2 = this.buffer[this.offset++];
+        if (length2 & 128) {
+          const nBytes = length2 & ~128;
+          length2 = 0;
           for (let i = 0; i < nBytes; i++)
-            length = length << 8 | this.buffer[this.offset + i];
+            length2 = length2 << 8 | this.buffer[this.offset + i];
           this.offset += nBytes;
         }
-        return length;
+        return length2;
       }
       unsignedInteger() {
         if (this.buffer[this.offset++] !== tagInteger) {
           throw new TypeError();
         }
-        let length = this.decodeLength();
+        let length2 = this.decodeLength();
         if (this.buffer[this.offset] === 0) {
           this.offset++;
-          length--;
+          length2--;
         }
-        const result = this.buffer.slice(this.offset, this.offset + length);
-        this.offset += length;
+        const result = this.buffer.slice(this.offset, this.offset + length2);
+        this.offset += length2;
         return result;
       }
       end() {
@@ -27044,11 +27044,11 @@ var require_node_key = __commonJS({
         case (flags_js_1.rsaPssParams && "PS512"):
           if (key.asymmetricKeyType === "rsa-pss") {
             const { hashAlgorithm, mgf1HashAlgorithm, saltLength } = key.asymmetricKeyDetails;
-            const length = parseInt(alg.slice(-3), 10);
-            if (hashAlgorithm !== void 0 && (hashAlgorithm !== `sha${length}` || mgf1HashAlgorithm !== hashAlgorithm)) {
+            const length2 = parseInt(alg.slice(-3), 10);
+            if (hashAlgorithm !== void 0 && (hashAlgorithm !== `sha${length2}` || mgf1HashAlgorithm !== hashAlgorithm)) {
               throw new TypeError(`Invalid key for this operation, its RSA-PSS parameters do not meet the requirements of "alg" ${alg}`);
             }
-            if (saltLength !== void 0 && saltLength > length >> 3) {
+            if (saltLength !== void 0 && saltLength > length2 >> 3) {
               throw new TypeError(`Invalid key for this operation, its RSA-PSS parameter saltLength does not meet the requirements of "alg" ${alg}`);
             }
           } else if (key.asymmetricKeyType !== "rsa") {
@@ -27344,8 +27344,8 @@ var require_verify3 = __commonJS({
       if (typeof jws !== "string") {
         throw new errors_js_1.JWSInvalid("Compact JWS must be a string or Uint8Array");
       }
-      const { 0: protectedHeader, 1: payload, 2: signature2, length } = jws.split(".");
-      if (length !== 3) {
+      const { 0: protectedHeader, 1: payload, 2: signature2, length: length2 } = jws.split(".");
+      if (length2 !== 3) {
         throw new errors_js_1.JWSInvalid("Invalid Compact JWS");
       }
       const verified = await (0, verify_js_1.flattenedVerify)({ payload, protected: protectedHeader, signature: signature2 }, key, options);
@@ -28184,10 +28184,10 @@ var require_local = __commonJS({
           }
           return candidate;
         });
-        const { 0: jwk, length } = candidates;
-        if (length === 0) {
+        const { 0: jwk, length: length2 } = candidates;
+        if (length2 === 0) {
           throw new errors_js_1.JWKSNoMatchingKey();
-        } else if (length !== 1) {
+        } else if (length2 !== 1) {
           const error62 = new errors_js_1.JWKSMultipleMatchingKeys();
           const { _cached } = this;
           error62[Symbol.asyncIterator] = async function* () {
@@ -28372,8 +28372,8 @@ var require_unsecured = __commonJS({
         if (typeof jwt2 !== "string") {
           throw new errors_js_1.JWTInvalid("Unsecured JWT must be a string");
         }
-        const { 0: encodedHeader, 1: encodedPayload, 2: signature2, length } = jwt2.split(".");
-        if (length !== 3 || signature2 !== "") {
+        const { 0: encodedHeader, 1: encodedPayload, 2: signature2, length: length2 } = jwt2.split(".");
+        if (length2 !== 3 || signature2 !== "") {
           throw new errors_js_1.JWTInvalid("Invalid Unsecured JWT");
         }
         let header;
@@ -28458,10 +28458,10 @@ var require_decode_jwt = __commonJS({
     function decodeJwt(jwt2) {
       if (typeof jwt2 !== "string")
         throw new errors_js_1.JWTInvalid("JWTs must use Compact JWS serialization, JWT must be a string");
-      const { 1: payload, length } = jwt2.split(".");
-      if (length === 5)
+      const { 1: payload, length: length2 } = jwt2.split(".");
+      if (length2 === 5)
         throw new errors_js_1.JWTInvalid("Only JWTs using Compact JWS serialization can be decoded");
-      if (length !== 3)
+      if (length2 !== 3)
         throw new errors_js_1.JWTInvalid("Invalid JWT");
       if (!payload)
         throw new errors_js_1.JWTInvalid("JWTs must contain a payload");
@@ -28498,7 +28498,7 @@ var require_generate = __commonJS({
     var errors_js_1 = require_errors();
     var generate = (0, util_1.promisify)(crypto_1.generateKeyPair);
     async function generateSecret(alg, options) {
-      let length;
+      let length2;
       switch (alg) {
         case "HS256":
         case "HS384":
@@ -28506,7 +28506,7 @@ var require_generate = __commonJS({
         case "A128CBC-HS256":
         case "A192CBC-HS384":
         case "A256CBC-HS512":
-          length = parseInt(alg.slice(-3), 10);
+          length2 = parseInt(alg.slice(-3), 10);
           break;
         case "A128KW":
         case "A192KW":
@@ -28517,12 +28517,12 @@ var require_generate = __commonJS({
         case "A128GCM":
         case "A192GCM":
         case "A256GCM":
-          length = parseInt(alg.slice(1, 4), 10);
+          length2 = parseInt(alg.slice(1, 4), 10);
           break;
         default:
           throw new errors_js_1.JOSENotSupported('Invalid or unsupported JWK "alg" (Algorithm) Parameter value');
       }
-      return (0, crypto_1.createSecretKey)((0, random_js_1.default)(new Uint8Array(length >> 3)));
+      return (0, crypto_1.createSecretKey)((0, random_js_1.default)(new Uint8Array(length2 >> 3)));
     }
     exports.generateSecret = generateSecret;
     async function generateKeyPair(alg, options) {
@@ -28850,7 +28850,7 @@ var require_dist4 = __commonJS({
     });
     var decoder = new util2.TextDecoder();
     var concat = (...buffers) => {
-      const size = buffers.reduce((acc, { length }) => acc + length, 0);
+      const size = buffers.reduce((acc, { length: length2 }) => acc + length2, 0);
       const buf = new Uint8Array(size);
       let i = 0;
       buffers.forEach((buffer) => {
@@ -29654,8 +29654,8 @@ var require_dist4 = __commonJS({
         const auth3 = headers.authorization;
         let fromHeader;
         if (typeof auth3 === "string") {
-          const { length } = auth3.split(" ");
-          if (length !== 2) {
+          const { length: length2 } = auth3.split(" ");
+          if (length2 !== 2) {
             throw new InvalidRequestError("", false);
           }
           const match = auth3.match(TOKEN_RE);
@@ -30728,18 +30728,18 @@ var require_binaryParsers = __commonJS({
         offset += 32;
       }
       var parseElement = function(elementType2) {
-        var length = parseBits(value2, 32, offset);
+        var length2 = parseBits(value2, 32, offset);
         offset += 32;
-        if (length == 4294967295) {
+        if (length2 == 4294967295) {
           return null;
         }
         var result;
         if (elementType2 == 23 || elementType2 == 20) {
-          result = parseBits(value2, length * 8, offset);
-          offset += length * 8;
+          result = parseBits(value2, length2 * 8, offset);
+          offset += length2 * 8;
           return result;
         } else if (elementType2 == 25) {
-          result = value2.toString(this.encoding, offset >> 3, (offset += length << 3) >> 3);
+          result = value2.toString(this.encoding, offset >> 3, (offset += length2 << 3) >> 3);
           return result;
         } else {
           console.log("ERROR: ElementType not implemented: " + elementType2);
@@ -31152,8 +31152,8 @@ var require_utils5 = __commonJS({
     var webCrypto = nodeCrypto.webcrypto || globalThis.crypto;
     var subtleCrypto = webCrypto.subtle;
     var textEncoder = new TextEncoder();
-    function randomBytes2(length) {
-      return webCrypto.getRandomValues(Buffer.alloc(length));
+    function randomBytes2(length2) {
+      return webCrypto.getRandomValues(Buffer.alloc(length2));
     }
     async function md5(string4) {
       try {
@@ -31194,15 +31194,15 @@ var require_cert_signatures = __commonJS({
       return new Error("SASL channel binding: " + msg + " when parsing public certificate " + cert.toString("base64"));
     }
     function readASN1Length(data, index) {
-      let length = data[index++];
-      if (length < 128) return { length, index };
-      const lengthBytes = length & 127;
+      let length2 = data[index++];
+      if (length2 < 128) return { length: length2, index };
+      const lengthBytes = length2 & 127;
       if (lengthBytes > 4) throw x509Error("bad length", data);
-      length = 0;
+      length2 = 0;
       for (let i = 0; i < lengthBytes; i++) {
-        length = length << 8 | data[index++];
+        length2 = length2 << 8 | data[index++];
       }
-      return { length, index };
+      return { length: length2, index };
     }
     function readASN1OID(data, index) {
       if (data[index++] !== 6) throw x509Error("non-OID data", data);
@@ -32191,24 +32191,24 @@ var require_messages = __commonJS({
       length: 4
     };
     var DatabaseError2 = class extends Error {
-      constructor(message, length, name) {
+      constructor(message, length2, name) {
         super(message);
-        this.length = length;
+        this.length = length2;
         this.name = name;
       }
     };
     exports.DatabaseError = DatabaseError2;
     var CopyDataMessage = class {
-      constructor(length, chunk) {
-        this.length = length;
+      constructor(length2, chunk) {
+        this.length = length2;
         this.chunk = chunk;
         this.name = "copyData";
       }
     };
     exports.CopyDataMessage = CopyDataMessage;
     var CopyResponse = class {
-      constructor(length, name, binary, columnCount) {
-        this.length = length;
+      constructor(length2, name, binary, columnCount) {
+        this.length = length2;
         this.name = name;
         this.binary = binary;
         this.columnTypes = new Array(columnCount);
@@ -32228,8 +32228,8 @@ var require_messages = __commonJS({
     };
     exports.Field = Field;
     var RowDescriptionMessage = class {
-      constructor(length, fieldCount) {
-        this.length = length;
+      constructor(length2, fieldCount) {
+        this.length = length2;
         this.fieldCount = fieldCount;
         this.name = "rowDescription";
         this.fields = new Array(this.fieldCount);
@@ -32237,8 +32237,8 @@ var require_messages = __commonJS({
     };
     exports.RowDescriptionMessage = RowDescriptionMessage;
     var ParameterDescriptionMessage = class {
-      constructor(length, parameterCount) {
-        this.length = length;
+      constructor(length2, parameterCount) {
+        this.length = length2;
         this.parameterCount = parameterCount;
         this.name = "parameterDescription";
         this.dataTypeIDs = new Array(this.parameterCount);
@@ -32246,8 +32246,8 @@ var require_messages = __commonJS({
     };
     exports.ParameterDescriptionMessage = ParameterDescriptionMessage;
     var ParameterStatusMessage = class {
-      constructor(length, parameterName, parameterValue) {
-        this.length = length;
+      constructor(length2, parameterName, parameterValue) {
+        this.length = length2;
         this.parameterName = parameterName;
         this.parameterValue = parameterValue;
         this.name = "parameterStatus";
@@ -32255,16 +32255,16 @@ var require_messages = __commonJS({
     };
     exports.ParameterStatusMessage = ParameterStatusMessage;
     var AuthenticationMD5Password = class {
-      constructor(length, salt) {
-        this.length = length;
+      constructor(length2, salt) {
+        this.length = length2;
         this.salt = salt;
         this.name = "authenticationMD5Password";
       }
     };
     exports.AuthenticationMD5Password = AuthenticationMD5Password;
     var BackendKeyDataMessage = class {
-      constructor(length, processID, secretKey) {
-        this.length = length;
+      constructor(length2, processID, secretKey) {
+        this.length = length2;
         this.processID = processID;
         this.secretKey = secretKey;
         this.name = "backendKeyData";
@@ -32272,8 +32272,8 @@ var require_messages = __commonJS({
     };
     exports.BackendKeyDataMessage = BackendKeyDataMessage;
     var NotificationResponseMessage = class {
-      constructor(length, processId, channel, payload) {
-        this.length = length;
+      constructor(length2, processId, channel, payload) {
+        this.length = length2;
         this.processId = processId;
         this.channel = channel;
         this.payload = payload;
@@ -32282,24 +32282,24 @@ var require_messages = __commonJS({
     };
     exports.NotificationResponseMessage = NotificationResponseMessage;
     var ReadyForQueryMessage = class {
-      constructor(length, status) {
-        this.length = length;
+      constructor(length2, status) {
+        this.length = length2;
         this.status = status;
         this.name = "readyForQuery";
       }
     };
     exports.ReadyForQueryMessage = ReadyForQueryMessage;
     var CommandCompleteMessage = class {
-      constructor(length, text2) {
-        this.length = length;
+      constructor(length2, text2) {
+        this.length = length2;
         this.text = text2;
         this.name = "commandComplete";
       }
     };
     exports.CommandCompleteMessage = CommandCompleteMessage;
     var DataRowMessage = class {
-      constructor(length, fields) {
-        this.length = length;
+      constructor(length2, fields) {
+        this.length = length2;
         this.fields = fields;
         this.name = "dataRow";
         this.fieldCount = fields.length;
@@ -32307,8 +32307,8 @@ var require_messages = __commonJS({
     };
     exports.DataRowMessage = DataRowMessage;
     var NoticeMessage = class {
-      constructor(length, message) {
-        this.length = length;
+      constructor(length2, message) {
+        this.length = length2;
         this.message = message;
         this.name = "notice";
       }
@@ -32409,8 +32409,8 @@ var require_buffer_writer = __commonJS({
       join(code) {
         if (code) {
           this.buffer[this.headerPosition] = code;
-          const length = this.offset - (this.headerPosition + 1);
-          this.buffer.writeInt32BE(length, this.headerPosition + 1);
+          const length2 = this.offset - (this.headerPosition + 1);
+          this.buffer.writeInt32BE(length2, this.headerPosition + 1);
         }
         return this.buffer.slice(code ? 0 : 5, this.offset);
       }
@@ -32445,8 +32445,8 @@ var require_serializer = __commonJS({
       }
       writer.addCString("client_encoding").addCString("UTF8");
       const bodyBuffer = writer.addCString("").flush();
-      const length = bodyBuffer.length + 4;
-      return new buffer_writer_1.Writer().addInt32(length).add(bodyBuffer).flush();
+      const length2 = bodyBuffer.length + 4;
+      return new buffer_writer_1.Writer().addInt32(length2).add(bodyBuffer).flush();
     };
     var requestSsl = () => {
       const response = Buffer.allocUnsafe(8);
@@ -32680,9 +32680,9 @@ var require_buffer_reader = __commonJS({
         this.offset += 4;
         return result;
       }
-      string(length) {
-        const result = this.buffer.toString(this.encoding, this.offset, this.offset + length);
-        this.offset += length;
+      string(length2) {
+        const result = this.buffer.toString(this.encoding, this.offset, this.offset + length2);
+        this.offset += length2;
         return result;
       }
       cstring() {
@@ -32693,9 +32693,9 @@ var require_buffer_reader = __commonJS({
         this.offset = end;
         return this.buffer.toString(this.encoding, start, end - 1);
       }
-      bytes(length) {
-        const result = this.buffer.slice(this.offset, this.offset + length);
-        this.offset += length;
+      bytes(length2) {
+        const result = this.buffer.slice(this.offset, this.offset + length2);
+        this.offset += length2;
         return result;
       }
     };
@@ -32733,10 +32733,10 @@ var require_parser = __commonJS({
         let offset = this.bufferOffset;
         while (offset + HEADER_LENGTH <= bufferFullLength) {
           const code = this.buffer[offset];
-          const length = this.buffer.readUInt32BE(offset + CODE_LENGTH);
-          const fullMessageLength = CODE_LENGTH + length;
+          const length2 = this.buffer.readUInt32BE(offset + CODE_LENGTH);
+          const fullMessageLength = CODE_LENGTH + length2;
           if (fullMessageLength + offset <= bufferFullLength) {
-            const message = this.handlePacket(offset + HEADER_LENGTH, code, length, this.buffer);
+            const message = this.handlePacket(offset + HEADER_LENGTH, code, length2, this.buffer);
             callback(message);
             offset += fullMessageLength;
           } else {
@@ -32779,7 +32779,7 @@ var require_parser = __commonJS({
           this.bufferLength = buffer.byteLength;
         }
       }
-      handlePacket(offset, code, length, bytes) {
+      handlePacket(offset, code, length2, bytes) {
         const { reader } = this;
         reader.setBuffer(offset, bytes);
         let message;
@@ -32821,7 +32821,7 @@ var require_parser = __commonJS({
             message = parseNotificationMessage(reader);
             break;
           case 82:
-            message = parseAuthenticationResponse(reader, length);
+            message = parseAuthenticationResponse(reader, length2);
             break;
           case 83:
             message = parseParameterStatusMessage(reader);
@@ -32848,13 +32848,13 @@ var require_parser = __commonJS({
             message = parseCopyOutMessage(reader);
             break;
           case 100:
-            message = parseCopyData(reader, length);
+            message = parseCopyData(reader, length2);
             break;
           default:
-            return new messages_1.DatabaseError("received invalid response: " + code.toString(16), length, "error");
+            return new messages_1.DatabaseError("received invalid response: " + code.toString(16), length2, "error");
         }
         reader.setBuffer(0, emptyBuffer);
-        message.length = length;
+        message.length = length2;
         return message;
       }
     };
@@ -32867,8 +32867,8 @@ var require_parser = __commonJS({
       const text2 = reader.cstring();
       return new messages_1.CommandCompleteMessage(LATEINIT_LENGTH, text2);
     };
-    var parseCopyData = (reader, length) => {
-      const chunk = reader.bytes(length - 4);
+    var parseCopyData = (reader, length2) => {
+      const chunk = reader.bytes(length2 - 4);
       return new messages_1.CopyDataMessage(LATEINIT_LENGTH, chunk);
     };
     var parseCopyInMessage = (reader) => parseCopyMessage(reader, "copyInResponse");
@@ -32933,11 +32933,11 @@ var require_parser = __commonJS({
       const secretKey = reader.int32();
       return new messages_1.BackendKeyDataMessage(LATEINIT_LENGTH, processID, secretKey);
     };
-    var parseAuthenticationResponse = (reader, length) => {
+    var parseAuthenticationResponse = (reader, length2) => {
       const code = reader.int32();
       const message = {
         name: "authenticationOk",
-        length
+        length: length2
       };
       switch (code) {
         case 0:
@@ -32969,11 +32969,11 @@ var require_parser = __commonJS({
           break;
         case 11:
           message.name = "authenticationSASLContinue";
-          message.data = reader.string(length - 8);
+          message.data = reader.string(length2 - 8);
           break;
         case 12:
           message.name = "authenticationSASLFinal";
-          message.data = reader.string(length - 8);
+          message.data = reader.string(length2 - 8);
           break;
         default:
           throw new Error("Unknown authenticationOk message type " + code);
@@ -37297,11 +37297,11 @@ var require_fast_deep_equal = __commonJS({
       if (a === b) return true;
       if (a && b && typeof a == "object" && typeof b == "object") {
         if (a.constructor !== b.constructor) return false;
-        var length, i, keys;
+        var length2, i, keys;
         if (Array.isArray(a)) {
-          length = a.length;
-          if (length != b.length) return false;
-          for (i = length; i-- !== 0; )
+          length2 = a.length;
+          if (length2 != b.length) return false;
+          for (i = length2; i-- !== 0; )
             if (!equal(a[i], b[i])) return false;
           return true;
         }
@@ -37309,11 +37309,11 @@ var require_fast_deep_equal = __commonJS({
         if (a.valueOf !== Object.prototype.valueOf) return a.valueOf() === b.valueOf();
         if (a.toString !== Object.prototype.toString) return a.toString() === b.toString();
         keys = Object.keys(a);
-        length = keys.length;
-        if (length !== Object.keys(b).length) return false;
-        for (i = length; i-- !== 0; )
+        length2 = keys.length;
+        if (length2 !== Object.keys(b).length) return false;
+        for (i = length2; i-- !== 0; )
           if (!Object.prototype.hasOwnProperty.call(b, keys[i])) return false;
-        for (i = length; i-- !== 0; ) {
+        for (i = length2; i-- !== 0; ) {
           var key = keys[i];
           if (!equal(a[key], b[key])) return false;
         }
@@ -40318,11 +40318,11 @@ var require_ucs2length = __commonJS({
     Object.defineProperty(exports, "__esModule", { value: true });
     function ucs2length(str) {
       const len = str.length;
-      let length = 0;
+      let length2 = 0;
       let pos = 0;
       let value2;
       while (pos < len) {
-        length++;
+        length2++;
         value2 = str.charCodeAt(pos++);
         if (value2 >= 55296 && value2 <= 56319 && pos < len) {
           value2 = str.charCodeAt(pos);
@@ -40330,7 +40330,7 @@ var require_ucs2length = __commonJS({
             pos++;
         }
       }
-      return length;
+      return length2;
     }
     exports.default = ucs2length;
     ucs2length.code = 'require("ajv/dist/runtime/ucs2length").default';
@@ -43389,10 +43389,10 @@ function promiseAllObject(promisesObj) {
     return resolvedObj;
   });
 }
-function randomString(length = 10) {
+function randomString(length2 = 10) {
   const chars = "abcdefghijklmnopqrstuvwxyz";
   let str = "";
-  for (let i = 0; i < length; i++) {
+  for (let i = 0; i < length2; i++) {
     str += chars[Math.floor(Math.random() * chars.length)];
   }
   return str;
@@ -44540,8 +44540,8 @@ var ulid = /^[0-7][0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{25}$/;
 var xid = /^[0-9a-vA-V]{20}$/;
 var ksuid = /^[A-Za-z0-9]{27}$/;
 var nanoid = /^[a-zA-Z0-9_-]{21}$/;
-function nanoidOfLength(length) {
-  return new RegExp(`^[a-zA-Z0-9_-]{${length}}$`);
+function nanoidOfLength(length2) {
+  return new RegExp(`^[a-zA-Z0-9_-]{${length2}}$`);
 }
 var duration = /^P(?:(\d+W)|(?!.*W)(?=\d|T\d)(\d+Y)?(\d+M)?(\d+D)?(T(?=\d)(\d+H)?(\d+M)?(\d+([.,]\d+)?S)?)?)$/;
 var extendedDuration = /^[-+]?P(?!$)(?:(?:[-+]?\d+Y)|(?:[-+]?\d+[.,]\d+Y$))?(?:(?:[-+]?\d+M)|(?:[-+]?\d+[.,]\d+M$))?(?:(?:[-+]?\d+W)|(?:[-+]?\d+[.,]\d+W$))?(?:(?:[-+]?\d+D)|(?:[-+]?\d+[.,]\d+D$))?(?:T(?=[\d+-])(?:(?:[-+]?\d+H)|(?:[-+]?\d+[.,]\d+H$))?(?:(?:[-+]?\d+M)|(?:[-+]?\d+[.,]\d+M$))?(?:[-+]?\d+(?:[.,]\d+)?S)?)??$/;
@@ -44619,8 +44619,8 @@ var hex = /^[0-9a-fA-F]*$/;
 function fixedBase64(bodyLength, padding) {
   return new RegExp(`^[A-Za-z0-9+/]{${bodyLength}}${padding}$`);
 }
-function fixedBase64url(length) {
-  return new RegExp(`^[A-Za-z0-9_-]{${length}}$`);
+function fixedBase64url(length2) {
+  return new RegExp(`^[A-Za-z0-9_-]{${length2}}$`);
 }
 var md5_hex = /^[0-9a-fA-F]{32}$/;
 var md5_base64 = /* @__PURE__ */ fixedBase64(22, "==");
@@ -44883,8 +44883,8 @@ var $ZodCheckMaxLength = /* @__PURE__ */ $constructor("$ZodCheckMaxLength", (ins
   inst._zod.check = (payload) => {
     const input2 = payload.value;
     const units = input2.length;
-    const length = typeof input2 === "string" && units > def.maximum ? codePointLength(input2) : units;
-    if (length <= def.maximum)
+    const length2 = typeof input2 === "string" && units > def.maximum ? codePointLength(input2) : units;
+    if (length2 <= def.maximum)
       return;
     const origin = getLengthableOrigin(input2);
     payload.issues.push({
@@ -44905,8 +44905,8 @@ var $ZodCheckMinLength = /* @__PURE__ */ $constructor("$ZodCheckMinLength", (ins
   inst._zod.check = (payload) => {
     const input2 = payload.value;
     const units = input2.length;
-    const length = typeof input2 === "string" && units >= def.minimum && units < def.minimum * 2 ? codePointLength(input2) : units;
-    if (length >= def.minimum)
+    const length2 = typeof input2 === "string" && units >= def.minimum && units < def.minimum * 2 ? codePointLength(input2) : units;
+    if (length2 >= def.minimum)
       return;
     const origin = getLengthableOrigin(input2);
     payload.issues.push({
@@ -44927,11 +44927,11 @@ var $ZodCheckLengthEquals = /* @__PURE__ */ $constructor("$ZodCheckLengthEquals"
   inst._zod.check = (payload) => {
     const input2 = payload.value;
     const units = input2.length;
-    const length = typeof input2 === "string" && units >= def.length && units <= def.length * 2 ? codePointLength(input2) : units;
-    if (length === def.length)
+    const length2 = typeof input2 === "string" && units >= def.length && units <= def.length * 2 ? codePointLength(input2) : units;
+    if (length2 === def.length)
       return;
     const origin = getLengthableOrigin(input2);
-    const tooBig = length > def.length;
+    const tooBig = length2 > def.length;
     payload.issues.push({
       origin,
       ...tooBig ? { code: "too_big", maximum: def.length } : { code: "too_small", minimum: def.length },
@@ -45623,11 +45623,11 @@ var $ZodE164 = /* @__PURE__ */ $constructor("$ZodE164", (inst, def) => {
 });
 var CC_SANITIZE = /[- ]/g;
 function isLuhnAlgo(digits) {
-  let length = digits.length;
+  let length2 = digits.length;
   let bit = 1;
   let sum = 0;
-  while (length) {
-    const value2 = digits.charCodeAt(--length) - 48;
+  while (length2) {
+    const value2 = digits.charCodeAt(--length2) - 48;
     bit ^= 1;
     sum += bit ? [0, 2, 4, 6, 8, 1, 3, 5, 7, 9][value2] : value2;
   }
@@ -57701,11 +57701,11 @@ function _minLength(minimum, params) {
   });
 }
 // @__NO_SIDE_EFFECTS__
-function _length(length, params) {
+function _length(length2, params) {
   return new $ZodCheckLengthEquals({
     check: "length_equals",
     ...normalizeParams(params),
-    length
+    length: length2
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -62393,8 +62393,8 @@ var parseDevRoles = (value2) => {
 };
 var sameSecret = (a, b) => {
   let diff = a.length ^ b.length;
-  const length = Math.max(a.length, b.length);
-  for (let i = 0; i < length; i++) diff |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0);
+  const length2 = Math.max(a.length, b.length);
+  for (let i = 0; i < length2; i++) diff |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0);
   return diff === 0;
 };
 function devIdentity(env, credential) {
@@ -62674,17 +62674,17 @@ function createGradeRegistry() {
       if (!afterSave.includes(hook)) afterSave.push(hook);
     },
     async run(ctx, save, onHookError) {
-      let courseId = null;
+      let courseId2 = null;
       let passed = null;
       let response = {};
       for (const hook of beforeSave) {
         const outcome = await hook(ctx);
         if (!outcome) continue;
-        if (outcome.courseId !== void 0) courseId = outcome.courseId;
+        if (outcome.courseId !== void 0) courseId2 = outcome.courseId;
         if (outcome.passed !== void 0) passed = outcome.passed;
         if (outcome.response) response = { ...response, ...outcome.response };
       }
-      const attemptId = await save({ courseId, passed });
+      const attemptId = await save({ courseId: courseId2, passed });
       for (const [index, hook] of afterSave.entries()) {
         try {
           await hook({ ...ctx, attemptId });
@@ -63422,298 +63422,6 @@ async function generateIrregularVerbsQuiz(options) {
   return { quiz, difficulty: options.difficulty ?? null };
 }
 
-// server/coursesRepo.ts
-var COURSE_SELECT = `
-  SELECT c.id, c.slug, c.title, c.description, c.pass_percent, d.code AS difficulty, p.code AS popularity,
-         (SELECT COUNT(*)::int FROM lessons l WHERE l.course_id = c.id) AS lesson_count,
-         (SELECT COUNT(*)::int FROM lesson_progress lp JOIN lessons l ON l.id = lp.lesson_id
-           WHERE l.course_id = c.id AND lp.user_id IS NOT DISTINCT FROM $1) AS completed_lessons,
-         (SELECT COUNT(*)::int FROM lesson_verbs lv JOIN lessons l ON l.id = lv.lesson_id
-           WHERE l.course_id = c.id) AS verb_count,
-         (SELECT MAX(a.percent) FROM quiz_attempts a
-           WHERE a.course_id = c.id AND a.user_id IS NOT DISTINCT FROM $1) AS best_percent,
-         EXISTS (SELECT 1 FROM quiz_attempts a
-           WHERE a.course_id = c.id AND a.user_id IS NOT DISTINCT FROM $1 AND a.passed) AS passed
-  FROM courses c
-  LEFT JOIN difficulty_levels d ON d.id = c.difficulty_id
-  LEFT JOIN popularity_tiers p ON p.id = c.popularity_id`;
-var toSummary2 = (row) => ({
-  id: row.id,
-  slug: row.slug,
-  title: row.title,
-  description: row.description,
-  difficulty: row.difficulty,
-  popularity: row.popularity,
-  passPercent: row.pass_percent,
-  lessonCount: row.lesson_count,
-  completedLessons: row.completed_lessons,
-  verbCount: row.verb_count,
-  bestPercent: row.best_percent,
-  passed: row.passed
-});
-async function listCourses(userId) {
-  const { rows } = await pool().query(`${COURSE_SELECT} ORDER BY c.position, c.title`, [userId]);
-  return rows.map(toSummary2);
-}
-async function getCourse(id, userId) {
-  const { rows } = await pool().query(`${COURSE_SELECT} WHERE c.id = $2`, [userId, id]);
-  if (!rows[0]) return null;
-  const lessons = await pool().query(
-    `SELECT l.id, l.position, l.title,
-            (SELECT COUNT(*)::int FROM lesson_verbs lv WHERE lv.lesson_id = l.id) AS verb_count,
-            EXISTS (SELECT 1 FROM lesson_progress lp
-                    WHERE lp.lesson_id = l.id AND lp.user_id IS NOT DISTINCT FROM $2) AS completed
-     FROM lessons l WHERE l.course_id = $1 ORDER BY l.position`,
-    [id, userId]
-  );
-  return {
-    ...toSummary2(rows[0]),
-    lessons: lessons.rows.map((l) => ({
-      id: l.id,
-      position: l.position,
-      title: l.title,
-      verbCount: l.verb_count,
-      completed: l.completed
-    }))
-  };
-}
-async function getLesson(courseId, lessonId, userId) {
-  const db = pool();
-  const lesson = await db.query(
-    `SELECT l.id, l.course_id, l.position, l.title, l.intro, c.title AS course_title,
-            EXISTS (SELECT 1 FROM lesson_progress lp
-                    WHERE lp.lesson_id = l.id AND lp.user_id IS NOT DISTINCT FROM $3) AS completed
-     FROM lessons l JOIN courses c ON c.id = l.course_id
-     WHERE l.id = $2 AND l.course_id = $1`,
-    [courseId, lessonId, userId]
-  );
-  const row = lesson.rows[0];
-  if (!row) return null;
-  const neighbours = await db.query(
-    `SELECT id, position FROM lessons WHERE course_id = $1 AND position IN ($2, $3)`,
-    [courseId, row.position - 1, row.position + 1]
-  );
-  const verbIds = await db.query(
-    "SELECT verb_id FROM lesson_verbs WHERE lesson_id = $1 ORDER BY position",
-    [lessonId]
-  );
-  const ids = verbIds.rows.map((v) => v.verb_id);
-  const verbs = await listVerbs({ ids });
-  const byId = new Map(verbs.map((v) => [v.id, v]));
-  return {
-    id: row.id,
-    courseId: row.course_id,
-    courseTitle: row.course_title,
-    position: row.position,
-    title: row.title,
-    intro: row.intro,
-    completed: row.completed,
-    prevLessonId: neighbours.rows.find((n) => n.position === row.position - 1)?.id ?? null,
-    nextLessonId: neighbours.rows.find((n) => n.position === row.position + 1)?.id ?? null,
-    verbs: ids.flatMap((id) => byId.get(id) ?? [])
-  };
-}
-async function completeLesson(courseId, lessonId, userId) {
-  const lesson = await pool().query("SELECT 1 FROM lessons WHERE id = $1 AND course_id = $2", [
-    lessonId,
-    courseId
-  ]);
-  if (lesson.rows.length === 0) return { found: false, created: false };
-  const inserted = await pool().query(
-    "INSERT INTO lesson_progress (user_id, lesson_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
-    [userId, lessonId]
-  );
-  return { found: true, created: (inserted.rowCount ?? 0) > 0 };
-}
-async function courseVerbIds(courseId) {
-  const { rows } = await pool().query(
-    `SELECT DISTINCT lv.verb_id FROM lesson_verbs lv JOIN lessons l ON l.id = lv.lesson_id
-     WHERE l.course_id = $1`,
-    [courseId]
-  );
-  return rows.map((r) => r.verb_id);
-}
-async function coursePassInfo(courseId) {
-  const { rows } = await pool().query(
-    "SELECT id, title, pass_percent FROM courses WHERE id = $1",
-    [courseId]
-  );
-  return rows[0] ? { id: rows[0].id, title: rows[0].title, passPercent: rows[0].pass_percent } : null;
-}
-async function lessonTotalsByCourse() {
-  const { rows } = await pool().query(
-    "SELECT course_id, COUNT(*)::int AS total FROM lessons GROUP BY course_id"
-  );
-  return new Map(rows.map((r) => [r.course_id, r.total]));
-}
-async function lessonsDoneByUser(userIds) {
-  const result = /* @__PURE__ */ new Map();
-  if (userIds.length === 0) return result;
-  const { rows } = await pool().query(
-    `SELECT lp.user_id, l.course_id, COUNT(*)::int AS done
-     FROM lesson_progress lp JOIN lessons l ON l.id = lp.lesson_id
-     WHERE lp.user_id = ANY($1::text[]) GROUP BY lp.user_id, l.course_id`,
-    [userIds]
-  );
-  for (const r of rows) {
-    const byCourse = result.get(r.user_id) ?? /* @__PURE__ */ new Map();
-    byCourse.set(r.course_id, r.done);
-    result.set(r.user_id, byCourse);
-  }
-  return result;
-}
-async function lessonsCompletedCount(userId) {
-  const { rows } = await pool().query("SELECT COUNT(*)::int AS n FROM lesson_progress WHERE user_id = $1", [userId]);
-  return rows[0]?.n ?? 0;
-}
-async function courseExists(courseId) {
-  const { rows } = await pool().query("SELECT 1 FROM courses WHERE id = $1", [courseId]);
-  return rows.length > 0;
-}
-async function courseTitles(ids) {
-  const unique = [...new Set(ids)];
-  if (unique.length === 0) return /* @__PURE__ */ new Map();
-  const { rows } = await pool().query(
-    "SELECT id, title FROM courses WHERE id = ANY($1::uuid[])",
-    [unique]
-  );
-  return new Map(rows.map((r) => [r.id, r.title]));
-}
-async function lessonVerbIds(lessonId) {
-  const { rows } = await pool().query(
-    "SELECT verb_id FROM lesson_verbs WHERE lesson_id = $1 ORDER BY position",
-    [lessonId]
-  );
-  return rows.map((r) => r.verb_id);
-}
-
-// src/shared/quiz/streaks.ts
-function localDay(instant, timeZone) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).formatToParts(instant);
-  const get2 = (type) => parts.find((part) => part.type === type)?.value ?? "";
-  return `${get2("year")}-${get2("month")}-${get2("day")}`;
-}
-function isValidTimeZone(timeZone) {
-  try {
-    new Intl.DateTimeFormat("en", { timeZone });
-    return true;
-  } catch {
-    return false;
-  }
-}
-var DAY_MS = 864e5;
-var dayNumber = (day) => {
-  const [y, m, d] = day.split("-").map(Number);
-  return Math.round(Date.UTC(y, m - 1, d) / DAY_MS);
-};
-function shiftDay(day, n) {
-  return new Date((dayNumber(day) + n) * DAY_MS).toISOString().slice(0, 10);
-}
-function computeStreaks(activeDays, today) {
-  const days = [...new Set(activeDays)].map(dayNumber).sort((a, b) => a - b);
-  const todayN = dayNumber(today);
-  let longest = 0;
-  let run2 = 0;
-  let previous = Number.NaN;
-  for (const n of days) {
-    run2 = n === previous + 1 ? run2 + 1 : 1;
-    longest = Math.max(longest, run2);
-    previous = n;
-  }
-  const set2 = new Set(days);
-  const activeToday = set2.has(todayN);
-  let cursor = activeToday ? todayN : todayN - 1;
-  let current = 0;
-  while (set2.has(cursor)) {
-    current++;
-    cursor--;
-  }
-  return { current, longest, activeToday };
-}
-var isActiveDay = (activity) => activity.answered >= 1 || activity.lessons >= 1;
-function lastSevenDays(byDay, today) {
-  return Array.from({ length: 7 }, (_, i) => {
-    const day = shiftDay(today, i - 6);
-    return byDay.get(day) ?? { day, answered: 0, correct: 0, lessons: 0 };
-  });
-}
-
-// server/progressRepo.ts
-async function getProfile(userId) {
-  const { rows } = await pool().query(
-    "SELECT daily_goal, timezone FROM user_profiles WHERE user_id = $1",
-    [userId]
-  );
-  return rows[0] ?? { daily_goal: 10, timezone: "UTC" };
-}
-async function updateProfile(userId, patch) {
-  const timezone = patch.timezone && isValidTimeZone(patch.timezone) ? patch.timezone : void 0;
-  await pool().query(
-    `INSERT INTO user_profiles (user_id, daily_goal, timezone)
-     VALUES ($1, COALESCE($2::int, 10), COALESCE($3::text, 'UTC'))
-     ON CONFLICT (user_id) DO UPDATE SET
-       daily_goal = COALESCE($2::int, user_profiles.daily_goal),
-       timezone = COALESCE($3::text, user_profiles.timezone),
-       updated_at = now()`,
-    [userId, patch.dailyGoal ?? null, timezone ?? null]
-  );
-}
-async function recordActivity(userId, delta) {
-  const { timezone } = await getProfile(userId);
-  const day = localDay(/* @__PURE__ */ new Date(), timezone);
-  await pool().query(
-    `INSERT INTO daily_activity (user_id, day, answered, correct, lessons_completed)
-     VALUES ($1, $2::date, $3, $4, $5)
-     ON CONFLICT (user_id, day) DO UPDATE SET
-       answered = daily_activity.answered + EXCLUDED.answered,
-       correct = daily_activity.correct + EXCLUDED.correct,
-       lessons_completed = daily_activity.lessons_completed + EXCLUDED.lessons_completed`,
-    [userId, day, delta.answered ?? 0, delta.correct ?? 0, delta.lessons ?? 0]
-  );
-}
-async function getSummary(userId) {
-  const profile = await getProfile(userId);
-  const today = localDay(/* @__PURE__ */ new Date(), profile.timezone);
-  const { rows } = await pool().query(
-    `SELECT to_char(day, 'YYYY-MM-DD') AS day, answered, correct, lessons_completed
-     FROM daily_activity WHERE user_id = $1 ORDER BY day`,
-    [userId]
-  );
-  const byDay = new Map(
-    rows.map((r) => [r.day, { day: r.day, answered: r.answered, correct: r.correct, lessons: r.lessons_completed }])
-  );
-  const streaks = computeStreaks(
-    [...byDay.values()].filter(isActiveDay).map((a) => a.day),
-    today
-  );
-  const week = lastSevenDays(byDay, today);
-  return {
-    timezone: profile.timezone,
-    dailyGoal: profile.daily_goal,
-    currentStreak: streaks.current,
-    longestStreak: streaks.longest,
-    today: week[6],
-    last7: week
-  };
-}
-async function syncIdentity(userId, identity) {
-  if (!identity.name && !identity.email) return;
-  await pool().query(
-    `INSERT INTO user_profiles (user_id, display_name, email) VALUES ($1, $2, $3)
-     ON CONFLICT (user_id) DO UPDATE SET
-       display_name = COALESCE($2, user_profiles.display_name),
-       email = COALESCE($3, user_profiles.email)
-     WHERE user_profiles.display_name IS DISTINCT FROM COALESCE($2, user_profiles.display_name)
-        OR user_profiles.email IS DISTINCT FROM COALESCE($3, user_profiles.email)`,
-    [userId, identity.name ?? null, identity.email ?? null]
-  );
-}
-
 // server/media/constants.ts
 var MEDIA_CONTENT_TYPES = ["image/png", "image/jpeg", "image/webp"];
 var MEDIA_OWNER_KINDS = ["quiz", "lesson", "verb"];
@@ -63913,6 +63621,336 @@ async function syncRefs(ownerKind, ownerId, mediaIds, client) {
   } finally {
     own2.release();
   }
+}
+
+// server/coursesRepo.ts
+var COURSE_SELECT = `
+  SELECT c.id, c.slug, c.title, c.description, c.pass_percent, d.code AS difficulty, p.code AS popularity,
+         (SELECT COUNT(*)::int FROM lessons l WHERE l.course_id = c.id) AS lesson_count,
+         (SELECT COUNT(*)::int FROM lesson_progress lp JOIN lessons l ON l.id = lp.lesson_id
+           WHERE l.course_id = c.id AND lp.user_id IS NOT DISTINCT FROM $1) AS completed_lessons,
+         (SELECT COUNT(*)::int FROM lesson_verbs lv JOIN lessons l ON l.id = lv.lesson_id
+           WHERE l.course_id = c.id) AS verb_count,
+         (SELECT MAX(a.percent) FROM quiz_attempts a
+           WHERE a.course_id = c.id AND a.user_id IS NOT DISTINCT FROM $1) AS best_percent,
+         EXISTS (SELECT 1 FROM quiz_attempts a
+           WHERE a.course_id = c.id AND a.user_id IS NOT DISTINCT FROM $1 AND a.passed) AS passed
+  FROM courses c
+  LEFT JOIN difficulty_levels d ON d.id = c.difficulty_id
+  LEFT JOIN popularity_tiers p ON p.id = c.popularity_id`;
+var toSummary2 = (row) => ({
+  id: row.id,
+  slug: row.slug,
+  title: row.title,
+  description: row.description,
+  difficulty: row.difficulty,
+  popularity: row.popularity,
+  passPercent: row.pass_percent,
+  lessonCount: row.lesson_count,
+  completedLessons: row.completed_lessons,
+  verbCount: row.verb_count,
+  bestPercent: row.best_percent,
+  passed: row.passed
+});
+async function listCourses(userId) {
+  const { rows } = await pool().query(`${COURSE_SELECT} ORDER BY c.position, c.title`, [userId]);
+  return rows.map(toSummary2);
+}
+async function getCourse(id, userId) {
+  const { rows } = await pool().query(`${COURSE_SELECT} WHERE c.id = $2`, [userId, id]);
+  if (!rows[0]) return null;
+  const lessons = await pool().query(
+    `SELECT l.id, l.position, l.title,
+            (SELECT COUNT(*)::int FROM lesson_verbs lv WHERE lv.lesson_id = l.id) AS verb_count,
+            EXISTS (SELECT 1 FROM lesson_progress lp
+                    WHERE lp.lesson_id = l.id AND lp.user_id IS NOT DISTINCT FROM $2) AS completed
+     FROM lessons l WHERE l.course_id = $1 ORDER BY l.position`,
+    [id, userId]
+  );
+  return {
+    ...toSummary2(rows[0]),
+    lessons: lessons.rows.map((l) => ({
+      id: l.id,
+      position: l.position,
+      title: l.title,
+      verbCount: l.verb_count,
+      completed: l.completed
+    }))
+  };
+}
+async function getLesson(courseId2, lessonId2, userId) {
+  const db = pool();
+  const lesson = await db.query(
+    `SELECT l.id, l.course_id, l.position, l.title, l.intro, c.title AS course_title,
+            EXISTS (SELECT 1 FROM lesson_progress lp
+                    WHERE lp.lesson_id = l.id AND lp.user_id IS NOT DISTINCT FROM $3) AS completed
+     FROM lessons l JOIN courses c ON c.id = l.course_id
+     WHERE l.id = $2 AND l.course_id = $1`,
+    [courseId2, lessonId2, userId]
+  );
+  const row = lesson.rows[0];
+  if (!row) return null;
+  const neighbours = await db.query(
+    `SELECT id, position FROM lessons WHERE course_id = $1 AND position IN ($2, $3)`,
+    [courseId2, row.position - 1, row.position + 1]
+  );
+  const verbIds = await db.query(
+    "SELECT verb_id FROM lesson_verbs WHERE lesson_id = $1 ORDER BY position",
+    [lessonId2]
+  );
+  const ids = verbIds.rows.map((v) => v.verb_id);
+  const verbs = await listVerbs({ ids });
+  const byId = new Map(verbs.map((v) => [v.id, v]));
+  return {
+    id: row.id,
+    courseId: row.course_id,
+    courseTitle: row.course_title,
+    position: row.position,
+    title: row.title,
+    intro: row.intro,
+    completed: row.completed,
+    prevLessonId: neighbours.rows.find((n) => n.position === row.position - 1)?.id ?? null,
+    nextLessonId: neighbours.rows.find((n) => n.position === row.position + 1)?.id ?? null,
+    verbs: ids.flatMap((id) => byId.get(id) ?? [])
+  };
+}
+async function completeLesson(courseId2, lessonId2, userId) {
+  const lesson = await pool().query("SELECT 1 FROM lessons WHERE id = $1 AND course_id = $2", [
+    lessonId2,
+    courseId2
+  ]);
+  if (lesson.rows.length === 0) return { found: false, created: false };
+  const inserted = await pool().query(
+    "INSERT INTO lesson_progress (user_id, lesson_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+    [userId, lessonId2]
+  );
+  return { found: true, created: (inserted.rowCount ?? 0) > 0 };
+}
+async function courseVerbIds(courseId2) {
+  const { rows } = await pool().query(
+    `SELECT DISTINCT lv.verb_id FROM lesson_verbs lv JOIN lessons l ON l.id = lv.lesson_id
+     WHERE l.course_id = $1`,
+    [courseId2]
+  );
+  return rows.map((r) => r.verb_id);
+}
+async function coursePassInfo(courseId2) {
+  const { rows } = await pool().query(
+    "SELECT id, title, pass_percent FROM courses WHERE id = $1",
+    [courseId2]
+  );
+  return rows[0] ? { id: rows[0].id, title: rows[0].title, passPercent: rows[0].pass_percent } : null;
+}
+async function lessonTotalsByCourse() {
+  const { rows } = await pool().query(
+    "SELECT course_id, COUNT(*)::int AS total FROM lessons GROUP BY course_id"
+  );
+  return new Map(rows.map((r) => [r.course_id, r.total]));
+}
+async function lessonsDoneByUser(userIds) {
+  const result = /* @__PURE__ */ new Map();
+  if (userIds.length === 0) return result;
+  const { rows } = await pool().query(
+    `SELECT lp.user_id, l.course_id, COUNT(*)::int AS done
+     FROM lesson_progress lp JOIN lessons l ON l.id = lp.lesson_id
+     WHERE lp.user_id = ANY($1::text[]) GROUP BY lp.user_id, l.course_id`,
+    [userIds]
+  );
+  for (const r of rows) {
+    const byCourse = result.get(r.user_id) ?? /* @__PURE__ */ new Map();
+    byCourse.set(r.course_id, r.done);
+    result.set(r.user_id, byCourse);
+  }
+  return result;
+}
+async function lessonsCompletedCount(userId) {
+  const { rows } = await pool().query("SELECT COUNT(*)::int AS n FROM lesson_progress WHERE user_id = $1", [userId]);
+  return rows[0]?.n ?? 0;
+}
+async function courseExists(courseId2) {
+  const { rows } = await pool().query("SELECT 1 FROM courses WHERE id = $1", [courseId2]);
+  return rows.length > 0;
+}
+async function courseTitles(ids) {
+  const unique = [...new Set(ids)];
+  if (unique.length === 0) return /* @__PURE__ */ new Map();
+  const { rows } = await pool().query(
+    "SELECT id, title FROM courses WHERE id = ANY($1::uuid[])",
+    [unique]
+  );
+  return new Map(rows.map((r) => [r.id, r.title]));
+}
+async function lessonVerbIds(lessonId2) {
+  const { rows } = await pool().query(
+    "SELECT verb_id FROM lesson_verbs WHERE lesson_id = $1 ORDER BY position",
+    [lessonId2]
+  );
+  return rows.map((r) => r.verb_id);
+}
+async function updateLesson(courseId2, lessonId2, patch) {
+  const client = await pool().connect();
+  try {
+    await client.query("BEGIN");
+    const current = await client.query(
+      "SELECT title, intro FROM lessons WHERE id = $1 AND course_id = $2 FOR UPDATE",
+      [lessonId2, courseId2]
+    );
+    const row = current.rows[0];
+    if (!row) {
+      await client.query("ROLLBACK");
+      return null;
+    }
+    const before = { title: row.title, intro: row.intro };
+    const after = { title: patch.title ?? row.title, intro: patch.intro ?? row.intro };
+    await client.query("UPDATE lessons SET title = $2, intro = $3 WHERE id = $1", [lessonId2, after.title, after.intro]);
+    if (patch.intro !== void 0) await syncRefs("lesson", lessonId2, extractMediaIds(after.intro), client);
+    await client.query("COMMIT");
+    return { before, after };
+  } catch (error62) {
+    await client.query("ROLLBACK").catch(() => void 0);
+    throw error62;
+  } finally {
+    client.release();
+  }
+}
+async function listLessonBriefs() {
+  const { rows } = await pool().query(
+    "SELECT id, course_id, position, title FROM lessons ORDER BY course_id, position"
+  );
+  const byCourse = /* @__PURE__ */ new Map();
+  for (const r of rows) {
+    const list = byCourse.get(r.course_id) ?? [];
+    list.push({ id: r.id, position: r.position, title: r.title });
+    byCourse.set(r.course_id, list);
+  }
+  return byCourse;
+}
+
+// src/shared/quiz/streaks.ts
+function localDay(instant, timeZone) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(instant);
+  const get2 = (type) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${get2("year")}-${get2("month")}-${get2("day")}`;
+}
+function isValidTimeZone(timeZone) {
+  try {
+    new Intl.DateTimeFormat("en", { timeZone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+var DAY_MS = 864e5;
+var dayNumber = (day) => {
+  const [y, m, d] = day.split("-").map(Number);
+  return Math.round(Date.UTC(y, m - 1, d) / DAY_MS);
+};
+function shiftDay(day, n) {
+  return new Date((dayNumber(day) + n) * DAY_MS).toISOString().slice(0, 10);
+}
+function computeStreaks(activeDays, today) {
+  const days = [...new Set(activeDays)].map(dayNumber).sort((a, b) => a - b);
+  const todayN = dayNumber(today);
+  let longest = 0;
+  let run2 = 0;
+  let previous = Number.NaN;
+  for (const n of days) {
+    run2 = n === previous + 1 ? run2 + 1 : 1;
+    longest = Math.max(longest, run2);
+    previous = n;
+  }
+  const set2 = new Set(days);
+  const activeToday = set2.has(todayN);
+  let cursor = activeToday ? todayN : todayN - 1;
+  let current = 0;
+  while (set2.has(cursor)) {
+    current++;
+    cursor--;
+  }
+  return { current, longest, activeToday };
+}
+var isActiveDay = (activity) => activity.answered >= 1 || activity.lessons >= 1;
+function lastSevenDays(byDay, today) {
+  return Array.from({ length: 7 }, (_, i) => {
+    const day = shiftDay(today, i - 6);
+    return byDay.get(day) ?? { day, answered: 0, correct: 0, lessons: 0 };
+  });
+}
+
+// server/progressRepo.ts
+async function getProfile(userId) {
+  const { rows } = await pool().query(
+    "SELECT daily_goal, timezone FROM user_profiles WHERE user_id = $1",
+    [userId]
+  );
+  return rows[0] ?? { daily_goal: 10, timezone: "UTC" };
+}
+async function updateProfile(userId, patch) {
+  const timezone = patch.timezone && isValidTimeZone(patch.timezone) ? patch.timezone : void 0;
+  await pool().query(
+    `INSERT INTO user_profiles (user_id, daily_goal, timezone)
+     VALUES ($1, COALESCE($2::int, 10), COALESCE($3::text, 'UTC'))
+     ON CONFLICT (user_id) DO UPDATE SET
+       daily_goal = COALESCE($2::int, user_profiles.daily_goal),
+       timezone = COALESCE($3::text, user_profiles.timezone),
+       updated_at = now()`,
+    [userId, patch.dailyGoal ?? null, timezone ?? null]
+  );
+}
+async function recordActivity(userId, delta) {
+  const { timezone } = await getProfile(userId);
+  const day = localDay(/* @__PURE__ */ new Date(), timezone);
+  await pool().query(
+    `INSERT INTO daily_activity (user_id, day, answered, correct, lessons_completed)
+     VALUES ($1, $2::date, $3, $4, $5)
+     ON CONFLICT (user_id, day) DO UPDATE SET
+       answered = daily_activity.answered + EXCLUDED.answered,
+       correct = daily_activity.correct + EXCLUDED.correct,
+       lessons_completed = daily_activity.lessons_completed + EXCLUDED.lessons_completed`,
+    [userId, day, delta.answered ?? 0, delta.correct ?? 0, delta.lessons ?? 0]
+  );
+}
+async function getSummary(userId) {
+  const profile = await getProfile(userId);
+  const today = localDay(/* @__PURE__ */ new Date(), profile.timezone);
+  const { rows } = await pool().query(
+    `SELECT to_char(day, 'YYYY-MM-DD') AS day, answered, correct, lessons_completed
+     FROM daily_activity WHERE user_id = $1 ORDER BY day`,
+    [userId]
+  );
+  const byDay = new Map(
+    rows.map((r) => [r.day, { day: r.day, answered: r.answered, correct: r.correct, lessons: r.lessons_completed }])
+  );
+  const streaks = computeStreaks(
+    [...byDay.values()].filter(isActiveDay).map((a) => a.day),
+    today
+  );
+  const week = lastSevenDays(byDay, today);
+  return {
+    timezone: profile.timezone,
+    dailyGoal: profile.daily_goal,
+    currentStreak: streaks.current,
+    longestStreak: streaks.longest,
+    today: week[6],
+    last7: week
+  };
+}
+async function syncIdentity(userId, identity) {
+  if (!identity.name && !identity.email) return;
+  await pool().query(
+    `INSERT INTO user_profiles (user_id, display_name, email) VALUES ($1, $2, $3)
+     ON CONFLICT (user_id) DO UPDATE SET
+       display_name = COALESCE($2, user_profiles.display_name),
+       email = COALESCE($3, user_profiles.email)
+     WHERE user_profiles.display_name IS DISTINCT FROM COALESCE($2, user_profiles.display_name)
+        OR user_profiles.email IS DISTINCT FROM COALESCE($3, user_profiles.email)`,
+    [userId, identity.name ?? null, identity.email ?? null]
+  );
 }
 
 // server/quizRepo.ts
@@ -64265,8 +64303,8 @@ async function dueVerbIds(userId, limit) {
   );
   return rows.map((r) => r.verb_id);
 }
-async function enqueueLessonVerbs(userId, lessonId) {
-  const verbIds = await lessonVerbIds(lessonId);
+async function enqueueLessonVerbs(userId, lessonId2) {
+  const verbIds = await lessonVerbIds(lessonId2);
   if (verbIds.length === 0) return;
   await pool().query(
     `INSERT INTO verb_reviews (user_id, verb_id)
@@ -75078,7 +75116,7 @@ async function loadFacts(userIds) {
      FROM quiz_attempts WHERE user_id = ANY($1::text[]) GROUP BY user_id, quiz_id, course_id`,
     [userIds]
   );
-  for (const f of facts.values()) for (const [courseId, total] of totals) f.totalLessons.set(courseId, total);
+  for (const f of facts.values()) for (const [courseId2, total] of totals) f.totalLessons.set(courseId2, total);
   for (const [userId, byCourse] of lessons) {
     const f = facts.get(userId);
     if (f) f.lessonsByCourse = byCourse;
@@ -77335,15 +77373,15 @@ function sniffJpeg(bytes) {
     if (marker === 1 || marker >= 208 && marker <= 215) continue;
     if (marker === 217 || marker === 218) return null;
     if (pos + 2 > bytes.length) return null;
-    const length = u16be(bytes, pos);
-    if (length < 2) return null;
+    const length2 = u16be(bytes, pos);
+    if (length2 < 2) return null;
     if (SOF_MARKERS.has(marker)) {
       if (pos + 7 > bytes.length) return null;
       const height = u16be(bytes, pos + 3);
       const width = u16be(bytes, pos + 5);
       return width > 0 && height > 0 ? { contentType: "image/jpeg", width, height } : null;
     }
-    pos += length;
+    pos += length2;
   }
   return null;
 }
@@ -77826,11 +77864,23 @@ function registerAssignmentTools(server, ctx, guards) {
     "course_list",
     {
       title: "Lista kurs\xF3w",
-      description: "Kursy, kt\xF3re mo\u017Cna przydzieli\u0107 klasie (id, tytu\u0142, liczba lekcji i czasownik\xF3w).",
+      description: "Kursy, kt\xF3re mo\u017Cna przydzieli\u0107 klasie (id, tytu\u0142, liczba lekcji i czasownik\xF3w). lessonList: lekcje kursu z id (do lesson_get i lesson_update).",
       inputSchema: {},
       annotations: { readOnlyHint: true }
     },
-    async () => canReadClasses(v) ? text((await listCourses(null)).map((c) => ({ id: c.id, title: c.title, lessons: c.lessonCount, verbs: c.verbCount }))) : needTeacherOrAdmin()
+    async () => {
+      if (!canReadClasses(v)) return needTeacherOrAdmin();
+      const [list, lessons] = await Promise.all([listCourses(null), listLessonBriefs()]);
+      return text(
+        list.map((c) => ({
+          id: c.id,
+          title: c.title,
+          lessons: c.lessonCount,
+          verbs: c.verbCount,
+          lessonList: lessons.get(c.id) ?? []
+        }))
+      );
+    }
   );
   server.registerTool(
     "assignment_create",
@@ -78104,6 +78154,87 @@ function registerClassTools(server, ctx) {
   registerClassCrudTools(server, ctx, guards);
   registerStudentTools(server, ctx, guards);
   registerAssignmentTools(server, ctx, guards);
+}
+
+// src/shared/quiz/lessonIntro.ts
+var LESSON_INTRO_MAX_LENGTH = 2e3;
+var LESSON_TITLE_MAX_LENGTH = 120;
+var length = (text2) => Array.from(text2).length;
+function validateLessonIntro(text2) {
+  const problems = [];
+  if (length(text2) > LESSON_INTRO_MAX_LENGTH) {
+    problems.push(`Wst\u0119p lekcji mo\u017Ce mie\u0107 najwy\u017Cej ${LESSON_INTRO_MAX_LENGTH} znak\xF3w.`);
+  }
+  problems.push(...imageSyntaxErrors(text2));
+  return problems;
+}
+
+// server/mcp/lessonTools.ts
+var courseId = external_exports.string().uuid().describe("Id kursu (course_list albo GET /api/courses)");
+var lessonId = external_exports.string().uuid().describe("Id lekcji (course_list, GET /api/courses/:id)");
+function registerLessonTools(server, ctx) {
+  server.registerTool(
+    "lesson_get",
+    {
+      title: "Pobierz lekcj\u0119",
+      description: "Lekcja kursu: tytu\u0142, wst\u0119p (intro) w zapisie przechowywanym, pozycja, czasowniki (tylko id i forma podstawowa) oraz referencedMedia - id obraz\xF3w u\u017Cytych we wst\u0119pie. Sk\u0142adni\u0119 obraz\xF3w opisuje quiz_schema (wst\u0119p dzia\u0142a jak tekst pytania); gotowy zapis ![opis](media:<id>) daje media_upload albo media_upload_from_url. Wymaga write:quizzes.",
+      inputSchema: { courseId, lessonId },
+      annotations: { readOnlyHint: true }
+    },
+    async ({ courseId: course, lessonId: lesson }) => {
+      if (!ctx.canWriteQuizzes) return needQuizWrite();
+      const detail = await getLesson(course, lesson, null);
+      return detail ? text(lessonView(detail)) : failure2("Nie znaleziono lekcji.");
+    }
+  );
+  server.registerTool(
+    "lesson_update",
+    {
+      title: "Zmie\u0144 lekcj\u0119",
+      description: "Zmienia tytu\u0142 (1-120 znak\xF3w) i/lub wst\u0119p lekcji (intro, najwy\u017Cej 2000 znak\xF3w); podaj co najmniej jedno z p\xF3l. Obrazy we wst\u0119pie: zapis ![opis](media:<id>), najwy\u017Cej trzy, bez zewn\u0119trznych adres\xF3w - regu\u0142y sprawd\u017A w quiz_schema, a plik wy\u015Blij przez media_upload albo media_upload_from_url. Pusty wst\u0119p usuwa tekst i obrazy. Wst\u0119p z obrazem albo d\u0142u\u017Cszy ni\u017C 140 znak\xF3w pokazuje si\u0119 uczniom jako pierwszy slajd. Zmiana trafia do audytu. Wymaga write:quizzes.",
+      inputSchema: {
+        courseId,
+        lessonId,
+        title: external_exports.string().min(1).max(LESSON_TITLE_MAX_LENGTH).optional().describe("Nowy tytu\u0142 lekcji"),
+        intro: external_exports.string().optional().describe("Nowy wst\u0119p lekcji (zast\u0119puje poprzedni w ca\u0142o\u015Bci)")
+      },
+      annotations: { idempotentHint: true }
+    },
+    async ({ courseId: course, lessonId: lesson, title, intro }) => {
+      if (!ctx.canWriteQuizzes) return needQuizWrite();
+      if (title === void 0 && intro === void 0) return failure2("Podaj tytu\u0142, wst\u0119p albo oba pola.");
+      if (intro !== void 0) {
+        const problems = validateLessonIntro(intro);
+        if (problems.length) return failure2(problems.join(" "));
+      }
+      let result;
+      try {
+        result = await updateLesson(course, lesson, { title, intro });
+      } catch (error62) {
+        if (error62 instanceof MediaRefError) return failure2(error62.message);
+        throw error62;
+      }
+      if (!result) return failure2("Nie znaleziono lekcji.");
+      const details = { courseId: course };
+      if (title !== void 0) details.titleLength = { before: result.before.title.length, after: result.after.title.length };
+      if (intro !== void 0) details.introLength = { before: result.before.intro.length, after: result.after.intro.length };
+      await audit(ctx, "lesson_update", { id: lesson, label: result.after.title }, details);
+      const detail = await getLesson(course, lesson, null);
+      return detail ? text(lessonView(detail)) : failure2("Nie znaleziono lekcji.");
+    }
+  );
+}
+function lessonView(lesson) {
+  return {
+    courseId: lesson.courseId,
+    courseTitle: lesson.courseTitle,
+    lessonId: lesson.id,
+    position: lesson.position,
+    title: lesson.title,
+    intro: lesson.intro,
+    verbs: lesson.verbs.map((v) => ({ id: v.id, base: v.base })),
+    referencedMedia: extractMediaIds(lesson.intro)
+  };
 }
 
 // data/quiz.schema.json
@@ -78488,10 +78619,11 @@ function buildServer(req) {
   const server = new McpServer({
     name: "quiz",
     title: "Quiz",
-    version: "2.2.0",
+    version: "2.3.0",
     icons: [{ src: "https://quiz-vercel-rho.vercel.app/mcp-icon.png", mimeType: "image/png", sizes: ["1254x1254"] }]
   });
   registerQuizTools(server, ctx);
+  registerLessonTools(server, ctx);
   registerClassTools(server, ctx);
   registerAdminTools(server, ctx);
   registerUserTools(server, ctx);
@@ -78751,6 +78883,41 @@ function registerClassRoutes(router) {
   });
 }
 
+// server/media/mediaMap.ts
+function buildMediaMap(rows, baseUrl) {
+  const map2 = {};
+  for (const row of rows) {
+    map2[row.id] = { url: mediaUrlFor(baseUrl, row.key), width: row.width, height: row.height };
+  }
+  return map2;
+}
+function withMedia(body, media) {
+  return Object.keys(media).length === 0 ? body : { ...body, media };
+}
+var warnedMissingBaseUrl = false;
+async function resolveMediaWith(ids, env, load) {
+  const unique = [...new Set(ids)];
+  if (unique.length === 0) return {};
+  const baseUrl = publicBaseUrlOf(env);
+  if (baseUrl === null) {
+    if (!warnedMissingBaseUrl) {
+      warnedMissingBaseUrl = true;
+      console.warn(
+        JSON.stringify({
+          level: "warn",
+          event: "media.publicBaseUrlMissing",
+          message: "MEDIA_PUBLIC_BASE_URL is not set or invalid; image references are returned without an address"
+        })
+      );
+    }
+    return {};
+  }
+  return buildMediaMap(await load(unique), baseUrl);
+}
+
+// server/media/resolve.ts
+var resolveMedia = (ids, env = process.env) => resolveMediaWith(ids, env, (unique) => getReady(unique));
+
 // server/routes/learning.ts
 var verbQuery = external_exports.object({
   difficulty: external_exports.enum(DIFFICULTIES).optional(),
@@ -78772,14 +78939,14 @@ function registerLearningRoutes(router) {
     res.json(course);
   });
   router.get("/courses/:id/lessons/:lessonId", async (req, res) => {
-    const lessonId = idSchema.safeParse(req.params.lessonId);
-    const lesson = lessonId.success ? await getLesson(parseCourseId(req.params.id), lessonId.data, currentUserId(req)) : null;
+    const lessonId2 = idSchema.safeParse(req.params.lessonId);
+    const lesson = lessonId2.success ? await getLesson(parseCourseId(req.params.id), lessonId2.data, currentUserId(req)) : null;
     if (!lesson) throw new HttpError(404, "Lesson not found");
-    res.json(lesson);
+    res.json(withMedia(lesson, await resolveMedia(extractMediaIds(lesson.intro))));
   });
   router.post("/courses/:id/lessons/:lessonId/complete", async (req, res) => {
-    const lessonId = idSchema.safeParse(req.params.lessonId);
-    const result = lessonId.success ? await completeLesson(parseCourseId(req.params.id), lessonId.data, currentUserId(req)) : null;
+    const lessonId2 = idSchema.safeParse(req.params.lessonId);
+    const result = lessonId2.success ? await completeLesson(parseCourseId(req.params.id), lessonId2.data, currentUserId(req)) : null;
     if (!result?.found) throw new HttpError(404, "Lesson not found");
     if (result.created) {
       await recordActivity(userOf(req), { lessons: 1 });
@@ -78788,14 +78955,14 @@ function registerLearningRoutes(router) {
     res.json({ ok: true });
   });
   router.post("/courses/:id/exam", async (req, res) => {
-    const courseId = parseCourseId(req.params.id);
-    const course = await getCourse(courseId, currentUserId(req));
+    const courseId2 = parseCourseId(req.params.id);
+    const course = await getCourse(courseId2, currentUserId(req));
     if (!course) throw courseNotFound();
     if (course.completedLessons < course.lessonCount) {
       throw new HttpError(409, "Uko\u0144cz wszystkie lekcje, aby przyst\u0105pi\u0107 do egzaminu");
     }
     const { count } = examInput.parse(req.body ?? {});
-    const [pool2, verbIds] = await Promise.all([listVerbs(), courseVerbIds(courseId)]);
+    const [pool2, verbIds] = await Promise.all([listVerbs(), courseVerbIds(courseId2)]);
     const idSet = new Set(verbIds);
     const verbs = randomSample(
       pool2.filter((v) => idSet.has(v.id)),
@@ -78812,7 +78979,7 @@ function registerLearningRoutes(router) {
       kind: "generated",
       source: "course-exam",
       difficulty: course.difficulty,
-      courseId,
+      courseId: courseId2,
       ownerId: currentUserId(req)
     });
     res.status(201).json(await getQuiz(id, false));
@@ -78872,41 +79039,6 @@ function resolveGradedIds(allIds, requested, sampleSize) {
   if (unique.size !== requested.length || requested.length !== sampleSize) return null;
   return requested.every((id) => known.has(id)) ? [...requested] : null;
 }
-
-// server/media/mediaMap.ts
-function buildMediaMap(rows, baseUrl) {
-  const map2 = {};
-  for (const row of rows) {
-    map2[row.id] = { url: mediaUrlFor(baseUrl, row.key), width: row.width, height: row.height };
-  }
-  return map2;
-}
-function withMedia(body, media) {
-  return Object.keys(media).length === 0 ? body : { ...body, media };
-}
-var warnedMissingBaseUrl = false;
-async function resolveMediaWith(ids, env, load) {
-  const unique = [...new Set(ids)];
-  if (unique.length === 0) return {};
-  const baseUrl = publicBaseUrlOf(env);
-  if (baseUrl === null) {
-    if (!warnedMissingBaseUrl) {
-      warnedMissingBaseUrl = true;
-      console.warn(
-        JSON.stringify({
-          level: "warn",
-          event: "media.publicBaseUrlMissing",
-          message: "MEDIA_PUBLIC_BASE_URL is not set or invalid; image references are returned without an address"
-        })
-      );
-    }
-    return {};
-  }
-  return buildMediaMap(await load(unique), baseUrl);
-}
-
-// server/media/resolve.ts
-var resolveMedia = (ids, env = process.env) => resolveMediaWith(ids, env, (unique) => getReady(unique));
 
 // server/sentry.ts
 import * as Sentry from "@sentry/node";

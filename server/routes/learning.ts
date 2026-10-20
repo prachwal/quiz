@@ -1,10 +1,13 @@
 import type { Router } from 'express'
 import { z } from 'zod'
+import { extractMediaIds } from '../../src/shared/media/richText'
 import { DIFFICULTIES, POPULARITIES } from '../../src/shared/quiz/schema'
 import { currentUserId } from '../auth'
 import * as courses from '../coursesRepo'
 import { HttpError, courseNotFound, idSchema, parseCourseId, userOf } from '../http'
 import { buildVerbQuiz, listVerbs, randomSample } from '../irregularVerbs'
+import { withMedia } from '../media/mediaMap'
+import { resolveMedia } from '../media/resolve'
 import * as progress from '../progressRepo'
 import * as repo from '../quizRepo'
 import * as reviews from '../reviewsRepo'
@@ -41,7 +44,8 @@ export function registerLearningRoutes(router: Router) {
       ? await courses.getLesson(parseCourseId(req.params.id), lessonId.data, currentUserId(req))
       : null
     if (!lesson) throw new HttpError(404, 'Lesson not found')
-    res.json(lesson)
+    // the intro's images only; without images there is no `media` key and the JSON is unchanged
+    res.json(withMedia(lesson, await resolveMedia(extractMediaIds(lesson.intro))))
   })
 
   router.post('/courses/:id/lessons/:lessonId/complete', async (req, res) => {

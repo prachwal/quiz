@@ -7,6 +7,7 @@ import { registerUserTools } from './tools/users'
 import { registerOperationTools } from './tools/operations'
 import { registerMediaTools } from './tools/media'
 import { registerClassTools } from './classTools'
+import { registerLessonTools } from './lessonTools'
 import { registerQuizTools } from './quizTools'
 
 /**
@@ -25,10 +26,11 @@ function buildServer(req: Request) {
   const server = new McpServer({
     name: 'quiz',
     title: 'Quiz',
-    version: '2.2.0',
+    version: '2.3.0',
     icons: [{ src: 'https://quiz-vercel-rho.vercel.app/mcp-icon.png', mimeType: 'image/png', sizes: ['1254x1254'] }],
   })
   registerQuizTools(server, ctx)
+  registerLessonTools(server, ctx)
   registerClassTools(server, ctx)
   registerAdminTools(server, ctx)
   registerUserTools(server, ctx)

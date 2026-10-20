@@ -59,6 +59,8 @@ Nazwy mają postać `obiekt_czynność`. Operacje nieodwracalne wymagają `confi
 | `media_list` | pliki autora (admin widzi wszystkie i może podać `ownerId`); `unreferenced`, `limit`, `offset`, `total`, `hasMore` |
 | `media_get` | metadane, adres i `referencedBy` (quizy, które używają pliku, z tytułami) |
 | `media_delete` | usuwa plik (obiekt i wpis); wymaga `confirm: true`; odmawia, gdy quiz go używa, i podaje te quizy |
+| `lesson_get` | lekcja kursu: tytuł, wstęp (`intro`) w zapisie przechowywanym, czasowniki (id i forma podstawowa), `referencedMedia` (id obrazów we wstępie); wymaga `write:quizzes` |
+| `lesson_update` | zmienia tytuł (1–120 znaków) i/lub wstęp (do 2000 znaków; obrazy `![opis](media:<id>)`, najwyżej trzy, bez zewnętrznych adresów); pusty wstęp czyści obrazy; w audycie tylko długości, nie tekst; wymaga `write:quizzes` |
 
 **Klasy** – nauczyciel (`manage:classes`) pracuje na swoich klasach; admin (`manage:users`, logowanie OAuth) ma **podgląd wszystkich klas**, ale nie zmienia cudzych
 
@@ -190,7 +192,7 @@ npm run test:mcp
 
 `MCP_E2E_VIA_DEV=1 npm run test:mcp` powtarza te same sprawdzenia przez zbundlowaną funkcję za proxy `npm run dev:full`, a nie tylko na aplikacji w procesie.
 
-Skrypt uruchamia `scripts/dev-server.mjs`, a gdy port 8888 jest już zajęty, używa działającego serwera i niczego nie zatrzymuje. Oficjalnym klientem MCP wywołuje **wszystkie 49 narzędzi** na prawdziwej aplikacji i bazie: poprawne scenariusze, walidację, odmowy dla innego nauczyciela, admina (tylko podgląd), tokenu bez uprawnień i bez potwierdzenia oraz wpisy w audycie. Dane testowe mają prefiks `mcp-e2e` i są usuwane przed i po teście; kod wyjścia ≠ 0 przy błędzie. Test produkcji (tylko quizy, tymczasowy quiz): `node scripts/mcp-smoke.mjs`.
+Skrypt uruchamia `scripts/dev-server.mjs`, a gdy port 8888 jest już zajęty, używa działającego serwera i niczego nie zatrzymuje. Oficjalnym klientem MCP wywołuje **wszystkie 51 narzędzi** na prawdziwej aplikacji i bazie: poprawne scenariusze, walidację, odmowy dla innego nauczyciela, admina (tylko podgląd), tokenu bez uprawnień i bez potwierdzenia oraz wpisy w audycie. Dane testowe mają prefiks `mcp-e2e` i są usuwane przed i po teście; kod wyjścia ≠ 0 przy błędzie. Test produkcji (tylko quizy, tymczasowy quiz): `node scripts/mcp-smoke.mjs`.
 
 ## Szybki test z linii poleceń
 
