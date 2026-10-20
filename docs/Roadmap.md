@@ -22,7 +22,7 @@ updated: 2026-10-20
 | --- | --- | --- |
 | Narzędzia admina MCP | `itemStats`, `attemptsRepo`, `attempt_list`, `attempt_get` (kroki 1–3) | `quiz_stats`, `user_*`, `audit_list`/`feedback_*`/`settings_*`/`system_stats`, dokumentacja; decyzje D1–D4 |
 | Cloze | F1–F4 (znacznik, znaki typograficzne, limity, przecinek), D1 (końcowa kropka w lukach) | |
-| Uwagi z przeglądu | `key` w graczu, TLS i pula, zabezpieczenie `test:mcp`, odsyłacz do `quiz_schema` | kolejność w `ordering`/`matching` ujawnia odpowiedź, `withShownOrders` liczy nietknięte pytania, brak limitu długości `id` w `config` |
+| Uwagi z przeglądu | `key` w graczu, TLS i pula, zabezpieczenie `test:mcp`, odsyłacz do `quiz_schema`, kolejność w `ordering`/`matching` ujawniała odpowiedź, `withShownOrders` liczył nietknięte pytania, brak limitu długości `id` w `config` (faza 0) | nic |
 | Podział nauki | nic | kroki 1–8 |
 | Obrazy (S3) | nic (plan) | M0–M6, L1–L2, S1–S2 |
 
