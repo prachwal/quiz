@@ -38,8 +38,8 @@ const quiz = {
   sampleSize: null,
 }
 
-vi.mock('../../app/api', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../app/api')>()
+vi.mock('./api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./api')>()
   return {
     ...actual,
     useGetQuizQuery: () => ({ currentData: quiz, error: undefined }),

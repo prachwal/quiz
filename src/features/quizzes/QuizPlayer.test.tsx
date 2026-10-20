@@ -12,8 +12,8 @@ import QuizPlayer from './QuizPlayer'
 
 let mockQuiz: unknown = undefined
 
-vi.mock('../../app/api', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../app/api')>()
+vi.mock('./api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./api')>()
   return {
     ...actual,
     useGetQuizQuery: () => ({ currentData: mockQuiz, error: undefined }),

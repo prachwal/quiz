@@ -1,7 +1,8 @@
 import { AimOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Empty, Flex, Progress, Skeleton, Tag, Typography, App as AntdApp, theme } from 'antd'
 import { useNavigate } from 'react-router-dom'
-import { errorMessage, useGenerateIrregularVerbsQuizMutation, useGetWeakVerbsQuery } from '../../app/api'
+import { errorMessage, useGetWeakVerbsQuery } from '../../app/api'
+import { useGenerateIrregularVerbsQuizMutation } from '../quizzes/api'
 import SpeakButton from '../audio/SpeakButton'
 import { formsText } from '../learn/format'
 

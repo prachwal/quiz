@@ -14,13 +14,8 @@ import { Alert, Button, Card, Empty, Flex, Popconfirm, Segmented, Select, Skelet
 import { useState } from 'react'
 import { useAuth } from '../features/auth/useAuth'
 import { Link, useNavigate } from 'react-router-dom'
-import {
-  errorMessage,
-  useDeleteQuizMutation,
-  useGenerateIrregularVerbsQuizMutation,
-  useGetWeakVerbsQuery,
-  useListQuizzesQuery,
-} from '../app/api'
+import { errorMessage, useGetWeakVerbsQuery } from '../app/api'
+import { useDeleteQuizMutation, useGenerateIrregularVerbsQuizMutation, useListQuizzesQuery } from '../features/quizzes/api'
 import { DifficultyTag, SubjectTag } from '../components/GroupTags'
 import { groupBySubject } from '../shared/quiz/subjectGroups'
 import { difficultyOptions, popularityOptions, subjectOptions } from '../components/groupOptions'

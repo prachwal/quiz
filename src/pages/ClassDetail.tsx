@@ -20,19 +20,8 @@ import {
 import type { TableColumnsType } from 'antd'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import {
-  errorMessage,
-  useArchiveClassMutation,
-  useCreateAssignmentMutation,
-  useDeleteAssignmentMutation,
-  useGetClassQuery,
-  useGetClassReportQuery,
-  useListCoursesQuery,
-  useListQuizzesQuery,
-  useRegenerateClassCodeMutation,
-  useUpdateAssignmentDueMutation,
-  useUpdateClassMutation,
-} from '../app/api'
+import { errorMessage, useArchiveClassMutation, useCreateAssignmentMutation, useDeleteAssignmentMutation, useGetClassQuery, useGetClassReportQuery, useListCoursesQuery, useRegenerateClassCodeMutation, useUpdateAssignmentDueMutation, useUpdateClassMutation } from '../app/api'
+import { useListQuizzesQuery } from '../features/quizzes/api'
 import { PHONE_QUERY, useMediaQuery } from '../app/useMediaQuery'
 import { useAuth } from '../features/auth/useAuth'
 import PageHeader from '../components/PageHeader'

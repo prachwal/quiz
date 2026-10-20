@@ -9,12 +9,8 @@ import {
 import { Button, Card, Flex, Progress, Tag, Typography, App as AntdApp, theme } from 'antd'
 import type { ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import {
-  errorMessage,
-  useGenerateIrregularVerbsQuizMutation,
-  useRetryWrongMutation,
-  useStartReviewMutation,
-} from '../../app/api'
+import { errorMessage, useStartReviewMutation } from '../../app/api'
+import { useGenerateIrregularVerbsQuizMutation, useRetryWrongMutation } from './api'
 import SpeakButton from '../audio/SpeakButton'
 import { recallGenerate, rememberGenerate } from './lastGenerate'
 import { GENERATE_COUNT, REVIEW_COUNT, clampCount } from './counts'

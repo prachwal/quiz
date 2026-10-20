@@ -1,7 +1,8 @@
 import { App as AntdApp } from 'antd'
 import PageHeader from '../components/PageHeader'
 import { useNavigate } from 'react-router-dom'
-import { errorMessage, useCreateQuizMutation } from '../app/api'
+import { errorMessage } from '../app/api'
+import { useCreateQuizMutation } from '../features/quizzes/api'
 import QuizEditor from '../features/quizzes/QuizEditor'
 import { emptyQuiz } from '../features/quizzes/quizDefaults'
 

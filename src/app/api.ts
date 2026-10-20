@@ -1,45 +1,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 import { getAccessToken } from '../features/auth/token'
-import type { Answer } from '../shared/quiz/engine'
-import type { QuizInput } from '../shared/quiz/schema'
-import type { FeedbackInput, GenerateInput, TokenInput } from '../shared/quiz/schema'
-import type {
-  AdminUser,
-  AssignmentItem,
-  ClassDetail,
-  ClassReport,
-  StudentCandidate,
-  AdminStudentListItem,
-  AppSettings,
-  AdminStudentResults,
-  StudentListItem,
-  StudentResults,
-  ClassSummary,
-  MyAssignment,
-  MyClass,
-  ProgressSummary,
-  ReviewSummary,
-  WeakVerb,
-  AdminUsersPage,
-  ApiTokenSummary,
-  AuditEntry,
-  FeedbackItem,
-  FeedbackStatus,
-  ManagedRole,
-  AttemptSummary,
-  CreatedApiToken,
-  CourseDetail,
-  CourseSummary,
-  DifficultyCode,
-  SubjectCode,
-  GradedAttempt,
-  IrregularVerb,
-  LessonDetail,
-  PatternCode,
-  PopularityCode,
-  QuizDetail,
-  QuizSummary,
-} from '../shared/quiz/types'
+import type { FeedbackInput, TokenInput } from '../shared/quiz/schema'
+import type { AdminUser, AssignmentItem, ClassDetail, ClassReport, StudentCandidate, AdminStudentListItem, AppSettings, AdminStudentResults, StudentListItem, StudentResults, ClassSummary, MyAssignment, MyClass, ProgressSummary, ReviewSummary, WeakVerb, AdminUsersPage, ApiTokenSummary, AuditEntry, FeedbackItem, FeedbackStatus, ManagedRole, AttemptSummary, CreatedApiToken, CourseDetail, CourseSummary, DifficultyCode, IrregularVerb, LessonDetail, PatternCode, PopularityCode, QuizDetail } from '../shared/quiz/types'
 
 export const api = createApi({
   reducerPath: 'api',
@@ -53,43 +15,6 @@ export const api = createApi({
   }),
   tagTypes: ['Quiz', 'Attempt', 'Course', 'Token', 'AdminUsers', 'Feedback', 'Audit', 'Progress', 'Review', 'Class', 'MyClass', 'AppSettings'],
   endpoints: (build) => ({
-    listQuizzes: build.query<QuizSummary[], { difficulty?: DifficultyCode; subject?: SubjectCode | 'none'; sort?: 'recent' | 'popular' } | void>({
-      query: (params) => ({ url: 'quizzes', params: params ?? undefined }),
-      providesTags: (result) => [
-        { type: 'Quiz', id: 'LIST' },
-        ...(result ?? []).map(({ id }) => ({ type: 'Quiz' as const, id })),
-      ],
-    }),
-    /** `withAnswers` returns the editor view (correct answers included). */
-    getQuiz: build.query<QuizDetail, { id: string; withAnswers?: boolean }>({
-      query: ({ id, withAnswers }) => `quizzes/${id}${withAnswers ? '?include=answers' : ''}`,
-      providesTags: (_result, _error, { id }) => [{ type: 'Quiz', id }],
-    }),
-    createQuiz: build.mutation<QuizDetail, QuizInput>({
-      query: (body) => ({ url: 'quizzes', method: 'POST', body }),
-      invalidatesTags: [{ type: 'Quiz', id: 'LIST' }],
-    }),
-    updateQuiz: build.mutation<QuizDetail, { id: string; body: QuizInput }>({
-      query: ({ id, body }) => ({ url: `quizzes/${id}`, method: 'PUT', body }),
-      invalidatesTags: (_result, _error, { id }) => [
-        { type: 'Quiz', id },
-        { type: 'Quiz', id: 'LIST' },
-      ],
-    }),
-    deleteQuiz: build.mutation<void, string>({
-      query: (id) => ({ url: `quizzes/${id}`, method: 'DELETE' }),
-      invalidatesTags: (_result, _error, id) => [
-        { type: 'Quiz', id },
-        { type: 'Quiz', id: 'LIST' },
-      ],
-    }),
-    gradeQuiz: build.mutation<GradedAttempt, { id: string; answers: Record<string, Answer>; questionIds?: string[] }>({
-      query: ({ id, answers, questionIds }) => ({ url: `quizzes/${id}/grade`, method: 'POST', body: { answers, questionIds } }),
-      invalidatesTags: ['Attempt', 'Course', 'Progress', 'Review', { type: 'Quiz', id: 'LIST' }],
-    }),
-    generateIrregularVerbsQuiz: build.mutation<QuizDetail, GenerateInput>({
-      query: (body) => ({ url: 'quizzes/generate/irregular-verbs', method: 'POST', body }),
-    }),
     listIrregularVerbs: build.query<
       IrregularVerb[],
       { difficulty?: DifficultyCode; popularity?: PopularityCode; pattern?: PatternCode } | void
@@ -250,13 +175,6 @@ export const api = createApi({
       query: (params) => ({ url: 'progress/weak-verbs', params: params ?? undefined }),
       providesTags: ['Review'],
     }),
-    retryWrong: build.mutation<QuizDetail, { quizId: string; questionIds: string[] }>({
-      query: ({ quizId, questionIds }) => ({
-        url: `quizzes/${quizId}/retry-wrong`,
-        method: 'POST',
-        body: { questionIds },
-      }),
-    }),
     getReviewSummary: build.query<ReviewSummary, void>({
       query: () => 'reviews/summary',
       providesTags: ['Review'],
@@ -302,13 +220,6 @@ export const api = createApi({
 })
 
 export const {
-  useListQuizzesQuery,
-  useGetQuizQuery,
-  useCreateQuizMutation,
-  useUpdateQuizMutation,
-  useDeleteQuizMutation,
-  useGradeQuizMutation,
-  useGenerateIrregularVerbsQuizMutation,
   useListIrregularVerbsQuery,
   useListAttemptsQuery,
   useListTokensQuery,
@@ -345,7 +256,6 @@ export const {
   useLeaveClassMutation,
   useListMyAssignmentsQuery,
   useGetWeakVerbsQuery,
-  useRetryWrongMutation,
   useGetReviewSummaryQuery,
   useStartReviewMutation,
   useGetProgressQuery,

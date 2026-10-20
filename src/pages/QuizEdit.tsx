@@ -1,7 +1,8 @@
 import { Alert, Skeleton, App as AntdApp } from 'antd'
 import PageHeader from '../components/PageHeader'
 import { useNavigate, useParams } from 'react-router-dom'
-import { errorMessage, useGetQuizQuery, useUpdateQuizMutation } from '../app/api'
+import { errorMessage } from '../app/api'
+import { useGetQuizQuery, useUpdateQuizMutation } from '../features/quizzes/api'
 import QuizEditor from '../features/quizzes/QuizEditor'
 import type { QuizInput } from '../shared/quiz/schema'
 
