@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { mediaUrlFor, publicBaseUrlOf, resolveMediaConfig } from '../server/media/config.ts'
+import { mediaUrlFor, publicBaseUrlOf, resolveMediaConfig, urlFetchEnabled } from '../server/media/config.ts'
 import { getStorage } from '../server/media/driver.ts'
 
 const s3Env = {
@@ -98,4 +98,14 @@ test('publicBaseUrlOf needs only MEDIA_PUBLIC_BASE_URL and never throws', () => 
 test('mediaUrlFor joins the base and the stored key without doubling slashes', () => {
   assert.equal(mediaUrlFor('https://media.test', 'dev/media/2026/a.png'), 'https://media.test/dev/media/2026/a.png')
   assert.equal(mediaUrlFor('https://media.test/', 'media/2026/a.webp'), 'https://media.test/media/2026/a.webp')
+})
+
+test('URL fetching is off unless MEDIA_URL_FETCH is exactly "true"', () => {
+  assert.equal(urlFetchEnabled({}), false)
+  assert.equal(urlFetchEnabled({ MEDIA_URL_FETCH: '' }), false)
+  assert.equal(urlFetchEnabled({ MEDIA_URL_FETCH: 'false' }), false)
+  assert.equal(urlFetchEnabled({ MEDIA_URL_FETCH: '1' }), false)
+  assert.equal(urlFetchEnabled({ MEDIA_URL_FETCH: 'TRUE' }), false)
+  assert.equal(urlFetchEnabled({ MEDIA_URL_FETCH: ' true ' }), true)
+  assert.equal(urlFetchEnabled({ MEDIA_URL_FETCH: 'true' }), true)
 })

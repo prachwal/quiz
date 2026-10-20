@@ -119,3 +119,12 @@ export function resolveMediaConfig(env: MediaEnv): MediaConfig {
     },
   }
 }
+
+/**
+ * `MEDIA_URL_FETCH=true` enables `media_upload_from_url` (the server fetches an image from an https address).
+ * Off by default: the pinned fetcher is tested with fakes only, and the owner turns it on after checking the
+ * connection pinning on the real Vercel runtime (Media-Storage-Plan, M5). Any other value keeps it off.
+ */
+export function urlFetchEnabled(env: MediaEnv): boolean {
+  return value(env, 'MEDIA_URL_FETCH') === 'true'
+}
