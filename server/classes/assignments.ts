@@ -1,6 +1,6 @@
 import { isWeak } from '../../src/shared/quiz/weak'
 import type { AssignmentItem, AssignmentStatus, ClassReport, MyAssignment } from '../../src/shared/quiz/types'
-import { pool } from '../quizRepo'
+import { pool } from '../db'
 import { listMembers } from './classes'
 
 /** Assignments of a class (course or manual quiz), the student's own list and the teacher's class report. */

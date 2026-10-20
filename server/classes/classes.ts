@@ -1,6 +1,6 @@
 import { randomInt } from 'node:crypto'
 import type { ClassMember, ClassSummary, MyClass, StudentListItem } from '../../src/shared/quiz/types'
-import { pool } from '../quizRepo'
+import { pool } from '../db'
 
 /** Classes and their members: creation, join codes, the teacher's roster and the student's own classes. */
 

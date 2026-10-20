@@ -109,7 +109,7 @@ Każdy krok to osobny commit; przed commitem `npm run lint`, `npm test`, `npm ru
 
 | # | Krok | Zakres | Ryzyko |
 | --- | --- | --- | --- |
-| 1 | **`pool` do `server/db.ts`** | mechaniczna zmiana 11 importów; `quizRepo` re-eksportuje na czas przejścia | niskie |
+| 1 | **`pool` do `server/db.ts`** (zrobione) | mechaniczna zmiana 11 importów; bez re-eksportu z `quizRepo` | niskie |
 | 2 | **Zdarzenie po ocenie** | `grade` publikuje `onGraded({ quiz, userId, result, attemptId })`; `learning` rejestruje obsługę: `passed` kursu, `reviews.applyResults`, `progress.recordActivity`; `course` w odpowiedzi dokłada `learning` | średnie (kolejność skutków ubocznych, błąd obsługi nie może zgubić zapisanego podejścia) |
 | 3 | **UI quizów bez nauki** | `ResultView` dostaje `outcome?: ReactNode` i `backLink`; `QuizPlay` (poziom routingu) składa je z komponentów `learning`; `QuizPlayer` traci wpisany `/learn/...` | niskie |
 | 4 | **RTK Query na slice'y** | `api.injectEndpoints` w każdym module; baza i tagi zostają w `app/api.ts` | niskie |

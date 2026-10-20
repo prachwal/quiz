@@ -1,7 +1,7 @@
 import { computeStreaks, isActiveDay, isValidTimeZone, lastSevenDays, localDay } from '../src/shared/quiz/streaks'
 import type { DayActivity } from '../src/shared/quiz/streaks'
 import type { ProgressSummary } from '../src/shared/quiz/types'
-import { pool } from './quizRepo'
+import { pool } from './db'
 
 interface ProfileRow {
   daily_goal: number

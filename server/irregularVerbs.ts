@@ -1,5 +1,5 @@
 import type { IrregularVerb, DifficultyCode, PopularityCode, PatternCode } from '../src/shared/quiz/types'
-import { pool } from './quizRepo'
+import { pool } from './db'
 import { buildVerbQuiz, randomSample, type GenerateOptions } from './verbQuizBuilder'
 
 type VerbRow = {

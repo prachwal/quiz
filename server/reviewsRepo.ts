@@ -3,7 +3,7 @@ import type { ReviewState } from '../src/shared/quiz/spaced'
 import type { ReviewSummary } from '../src/shared/quiz/types'
 import { accuracyOf, isWeak, rankWeak } from '../src/shared/quiz/weak'
 import type { VerbStat } from '../src/shared/quiz/weak'
-import { pool } from './quizRepo'
+import { pool } from './db'
 
 export async function getReviewSummary(userId: string): Promise<ReviewSummary> {
   const { rows } = await pool().query<{

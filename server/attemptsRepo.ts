@@ -1,7 +1,7 @@
 import type { StudentAttemptQuestion } from '../src/shared/quiz/types'
 import { questionDetails } from './classes/results'
 import type { AttemptRow } from './classes/results'
-import { pool } from './quizRepo'
+import { pool } from './db'
 
 /**
  * Read path over every saved attempt, for admins: filtered lists, one attempt with its answers and the raw results

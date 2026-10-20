@@ -7,7 +7,7 @@ import type {
   StudentAttemptQuestion,
   StudentResults,
 } from '../../src/shared/quiz/types'
-import { pool } from '../quizRepo'
+import { pool } from '../db'
 import { judge, listAssignments, loadFacts } from './assignments'
 import { listMembers } from './classes'
 

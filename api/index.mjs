@@ -62294,429 +62294,7 @@ var TypeOverrides = import_lib.default.TypeOverrides;
 var defaults = import_lib.default.defaults;
 var esm_default = import_lib.default;
 
-// src/shared/quiz/engine.ts
-var QUESTION_TYPES = ["single", "multiple", "truefalse", "text", "numeric", "ordering", "matching", "cloze"];
-var countCorrect = (options) => options.filter((o) => o.isCorrect).length;
-var ORDERING_MAX_ITEMS = 50;
-var CONFIG_ID_MAX_LENGTH = 64;
-var idTooLong = (id) => [...id].length > CONFIG_ID_MAX_LENGTH;
-var orderingConfig = (config2) => {
-  if (!config2 || typeof config2 !== "object") return null;
-  const { items } = config2;
-  if (!Array.isArray(items) || items.length < 2 || items.length > ORDERING_MAX_ITEMS) return null;
-  const parsed = [];
-  for (const item of items) {
-    if (!item || typeof item !== "object") return null;
-    const { id, text: text2 } = item;
-    if (typeof id !== "string" || !id || typeof text2 !== "string") return null;
-    parsed.push({ id, text: text2 });
-  }
-  return { items: parsed };
-};
-var MATCHING_MAX_PAIRS = 20;
-var matchingConfig = (config2) => {
-  if (!config2 || typeof config2 !== "object") return null;
-  const { pairs } = config2;
-  if (!Array.isArray(pairs) || pairs.length < 2 || pairs.length > MATCHING_MAX_PAIRS) return null;
-  const parsed = [];
-  for (const pair of pairs) {
-    if (!pair || typeof pair !== "object") return null;
-    const { id, rightId, left, right } = pair;
-    if (typeof id !== "string" || !id) return null;
-    if (typeof rightId !== "string" || !rightId) return null;
-    if (typeof left !== "string" || typeof right !== "string") return null;
-    parsed.push({ id, rightId, left, right });
-  }
-  return { pairs: parsed };
-};
-var CLOZE_MAX_GAPS = 8;
-var CLOZE_MAX_VARIANTS = 10;
-var CLOZE_MAX_ANSWER_LENGTH = 200;
-var CLOZE_NUMBER = String.raw`[1-9]\d*`;
-var CLOZE_MARKER = new RegExp(String.raw`\{\{(${CLOZE_NUMBER})\}\}`);
-var CLOZE_MARKER_PLAIN = String.raw`\{\{${CLOZE_NUMBER}\}\}`;
-var clozeMarkers = (prompt) => [...prompt.matchAll(new RegExp(CLOZE_MARKER_PLAIN, "g"))].map((match) => Number(match[0].slice(2, -2)));
-var clozeConfig = (config2) => {
-  if (!config2 || typeof config2 !== "object") return null;
-  const { gaps } = config2;
-  if (!Array.isArray(gaps) || gaps.length < 1 || gaps.length > CLOZE_MAX_GAPS) return null;
-  const parsed = [];
-  for (const gap of gaps) {
-    if (!gap || typeof gap !== "object") return null;
-    const { answers } = gap;
-    if (!Array.isArray(answers) || answers.length < 1) return null;
-    if (answers.some((answer) => typeof answer !== "string")) return null;
-    parsed.push({ answers });
-  }
-  return { gaps: parsed };
-};
-var parseNumeric = (raw) => {
-  const compact = raw.trim().replace(/\u2212/g, "-").replace(/[\s\u00a0\u202f]/g, "");
-  if (!compact) return null;
-  const fraction = /^(-?\d+(?:[.,]\d+)?)\/(\d+(?:[.,]\d+)?)$/.exec(compact);
-  if (fraction) {
-    const numerator = Number(fraction[1].replace(",", "."));
-    const denominator = Number(fraction[2].replace(",", "."));
-    if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator === 0) return null;
-    return numerator / denominator;
-  }
-  const value = Number(compact.replace(",", "."));
-  return Number.isFinite(value) ? value : null;
-};
-var numericConfig = (config2) => {
-  if (!config2 || typeof config2 !== "object") return null;
-  const { answer, tolerance } = config2;
-  if (typeof answer !== "number" || !Number.isFinite(answer)) return null;
-  if (tolerance !== void 0) {
-    if (!tolerance || typeof tolerance !== "object") return null;
-    const { kind, value } = tolerance;
-    if (kind !== "absolute" && kind !== "relative") return null;
-    if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return null;
-  }
-  return { answer, ...tolerance === void 0 ? {} : { tolerance: { kind: tolerance.kind, value: tolerance.value } } };
-};
-var TYPOGRAPHIC = {
-  "\u2018": "'",
-  "\u2019": "'",
-  "\u02BC": "'",
-  "`": "'",
-  "\u201C": '"',
-  "\u201D": '"',
-  "\u201E": '"',
-  "\u2013": "-",
-  "\u2014": "-",
-  "\u2011": "-",
-  "\u2212": "-"
-};
-var TYPOGRAPHIC_PATTERN = new RegExp(`[${Object.keys(TYPOGRAPHIC).join("")}]`, "g");
-var normalizeText = (value) => value.normalize("NFC").trim().replace(/\s+/g, " ").replace(TYPOGRAPHIC_PATTERN, (ch) => TYPOGRAPHIC[ch] ?? ch).toLocaleLowerCase();
-var normalizeGapAnswer = (value) => normalizeText(value).replace(/[.!?]+$/, "");
-var newItemId = () => Math.random().toString(36).slice(2, 10);
-var shuffleWith = (items, rng) => {
-  for (let i = items.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    const swap = items[i];
-    items[i] = items[j];
-    items[j] = swap;
-  }
-  return items;
-};
-var gradeChoice = (question, answer) => {
-  const selected = new Set(answer?.optionIds ?? []);
-  const correct = new Set(question.options.filter((o) => o.isCorrect).map((o) => o.id));
-  if (selected.size !== correct.size) return 0;
-  for (const id of selected) if (!correct.has(id)) return 0;
-  return 1;
-};
-var publicOptions = (question) => question.options.map((o) => ({ id: o.id, text: o.text }));
-var choiceAnswerText = (question, answer) => (answer?.optionIds ?? []).map((id) => question.options.find((o) => o.id === id)?.text).filter((text2) => Boolean(text2)).join(", ");
-var correctOptionTexts = (question) => question.options.filter((o) => o.isCorrect).map((o) => o.text);
-var questionTypeDefs = {
-  single: {
-    label: "Jednokrotny wyb\xF3r",
-    usesOptions: true,
-    defaultOptions: () => [
-      { text: "", isCorrect: true },
-      { text: "", isCorrect: false }
-    ],
-    validate: (q) => q.options.length < 2 ? "Dodaj co najmniej dwie opcje" : countCorrect(q.options) !== 1 ? "Zaznacz dok\u0142adnie jedn\u0105 poprawn\u0105 odpowied\u017A" : null,
-    grade: gradeChoice,
-    playerView: (question) => ({ options: publicOptions(question) }),
-    describe: (question, answer) => ({
-      answerText: choiceAnswerText(question, answer),
-      correctAnswers: correctOptionTexts(question)
-    })
-  },
-  multiple: {
-    label: "Wielokrotny wyb\xF3r",
-    usesOptions: true,
-    defaultOptions: () => [
-      { text: "", isCorrect: true },
-      { text: "", isCorrect: false }
-    ],
-    validate: (q) => q.options.length < 2 ? "Dodaj co najmniej dwie opcje" : countCorrect(q.options) < 1 ? "Zaznacz co najmniej jedn\u0105 poprawn\u0105 odpowied\u017A" : null,
-    grade: gradeChoice,
-    playerView: (question) => ({ options: publicOptions(question) }),
-    describe: (question, answer) => ({
-      answerText: choiceAnswerText(question, answer),
-      correctAnswers: correctOptionTexts(question)
-    })
-  },
-  truefalse: {
-    label: "Prawda / Fa\u0142sz",
-    usesOptions: true,
-    defaultOptions: () => [
-      { text: "Prawda", isCorrect: true },
-      { text: "Fa\u0142sz", isCorrect: false }
-    ],
-    validate: (q) => q.options.length !== 2 || countCorrect(q.options) !== 1 ? "Pytanie Prawda/Fa\u0142sz wymaga dw\xF3ch opcji i jednej poprawnej" : null,
-    grade: gradeChoice,
-    playerView: (question) => ({ options: publicOptions(question) }),
-    describe: (question, answer) => ({
-      answerText: choiceAnswerText(question, answer),
-      correctAnswers: correctOptionTexts(question)
-    })
-  },
-  text: {
-    label: "Odpowied\u017A tekstowa",
-    usesOptions: true,
-    defaultOptions: () => [{ text: "", isCorrect: true }],
-    validate: (q) => q.options.length < 1 || q.options.some((o) => !o.isCorrect) ? "Podaj co najmniej jedn\u0105 akceptowan\u0105 odpowied\u017A" : null,
-    grade: (question, answer) => {
-      const given = normalizeText(answer?.text ?? "");
-      if (!given) return 0;
-      return question.options.some((o) => o.isCorrect && normalizeText(o.text) === given) ? 1 : 0;
-    },
-    // the accepted answers must not leak to the player, so the view carries no options
-    playerView: () => ({ options: [] }),
-    describe: (question, answer) => ({
-      answerText: (answer?.text ?? "").trim(),
-      correctAnswers: correctOptionTexts(question)
-    })
-  },
-  numeric: {
-    label: "Odpowied\u017A liczbowa",
-    usesOptions: false,
-    defaultOptions: () => [],
-    defaultConfig: () => ({ answer: 0 }),
-    validate: (q) => {
-      const config2 = numericConfig(q.config);
-      if (!config2) return "Podaj poprawn\u0105 odpowied\u017A liczbow\u0105";
-      if (config2.tolerance?.kind === "relative" && config2.answer === 0) {
-        return "Dla odpowiedzi 0 u\u017Cyj tolerancji bezwzgl\u0119dnej";
-      }
-      return null;
-    },
-    grade: (question, answer) => {
-      const config2 = numericConfig(question.config);
-      if (!config2) return 0;
-      const value = parseNumeric(answer?.text ?? "");
-      if (value === null) return 0;
-      const tolerance = config2.tolerance === void 0 ? 0 : config2.tolerance.kind === "absolute" ? config2.tolerance.value : Math.abs(config2.answer) * config2.tolerance.value;
-      const epsilon = 1e-9 * Math.max(1, Math.abs(config2.answer));
-      return Math.abs(value - config2.answer) <= tolerance + epsilon ? 1 : 0;
-    },
-    // the expected value and the tolerance must never reach the player
-    playerView: () => ({ options: [] }),
-    describe: (question, answer) => {
-      const config2 = numericConfig(question.config);
-      return {
-        answerText: (answer?.text ?? "").trim(),
-        correctAnswers: config2 ? [String(config2.answer)] : []
-      };
-    }
-  },
-  ordering: {
-    label: "Uporz\u0105dkowanie element\xF3w",
-    usesOptions: false,
-    defaultOptions: () => [],
-    defaultConfig: () => ({
-      items: [
-        { id: newItemId(), text: "" },
-        { id: newItemId(), text: "" }
-      ]
-    }),
-    validate: (q) => {
-      const config2 = orderingConfig(q.config);
-      if (!config2) return "Dodaj co najmniej dwa elementy do uporz\u0105dkowania";
-      if (config2.items.some((item) => !item.text.trim())) return "Uzupe\u0142nij tre\u015B\u0107 wszystkich element\xF3w";
-      if (config2.items.some((item) => idTooLong(item.id))) {
-        return `Identyfikator elementu jest za d\u0142ugi (maks. ${CONFIG_ID_MAX_LENGTH} znaki)`;
-      }
-      if (new Set(config2.items.map((item) => item.id)).size !== config2.items.length) {
-        return "Elementy musz\u0105 mie\u0107 unikalne identyfikatory";
-      }
-      return null;
-    },
-    // 0/1 compared by normalized text, so the answer must be a permutation of every item
-    grade: (question, answer) => {
-      const config2 = orderingConfig(question.config);
-      const submitted = answer?.order;
-      if (!config2 || !submitted || submitted.length !== config2.items.length) return 0;
-      if (new Set(submitted).size !== submitted.length) return 0;
-      const byId = new Map(config2.items.map((item) => [item.id, item.text]));
-      const texts = submitted.map((id) => byId.get(id));
-      if (texts.some((text2) => text2 === void 0)) return 0;
-      return texts.every((text2, i) => normalizeText(text2) === normalizeText(config2.items[i].text)) ? 1 : 0;
-    },
-    // the server shuffles: a client-side shuffle would hand the correct order to the player
-    playerView: (question, rng, withAnswers) => {
-      const config2 = orderingConfig(question.config);
-      if (!config2) return { options: [] };
-      if (withAnswers) return { options: [], config: config2 };
-      const items = shuffleWith([...config2.items], rng);
-      return { options: [], config: { items: items.map(({ id, text: text2 }) => ({ id, text: text2 })) } };
-    },
-    describe: (question, answer) => {
-      const config2 = orderingConfig(question.config);
-      if (!config2) return { answerText: "", correctAnswers: [] };
-      const byId = new Map(config2.items.map((item) => [item.id, item.text]));
-      const given = (answer?.order ?? []).map((id) => byId.get(id)).filter((text2) => Boolean(text2));
-      return {
-        answerText: given.map((text2, i) => `${i + 1}. ${text2}`).join(", "),
-        correctAnswers: [config2.items.map((item) => item.text).join(" \u2192 ")]
-      };
-    }
-  },
-  matching: {
-    label: "Dopasowanie par",
-    usesOptions: false,
-    defaultOptions: () => [],
-    defaultConfig: () => ({
-      pairs: [
-        { id: newItemId(), rightId: newItemId(), left: "", right: "" },
-        { id: newItemId(), rightId: newItemId(), left: "", right: "" }
-      ]
-    }),
-    validate: (q) => {
-      const config2 = matchingConfig(q.config);
-      if (!config2) return "Dodaj co najmniej dwie pary";
-      if (config2.pairs.some((pair) => !pair.left.trim() || !pair.right.trim())) {
-        return "Uzupe\u0142nij obie strony ka\u017Cdej pary";
-      }
-      if (config2.pairs.some((pair) => idTooLong(pair.id) || idTooLong(pair.rightId))) {
-        return `Identyfikator pary jest za d\u0142ugi (maks. ${CONFIG_ID_MAX_LENGTH} znaki)`;
-      }
-      if (new Set(config2.pairs.map((pair) => pair.id)).size !== config2.pairs.length) {
-        return "Pary musz\u0105 mie\u0107 unikalne identyfikatory";
-      }
-      if (new Set(config2.pairs.map((pair) => pair.rightId)).size !== config2.pairs.length) {
-        return "Ka\u017Cda para musi mie\u0107 w\u0142asny kafelek po prawej stronie";
-      }
-      return null;
-    },
-    // proportional: one point per pair, a right tile can be used by a single pair
-    grade: (question, answer) => {
-      const config2 = matchingConfig(question.config);
-      const submitted = answer?.pairs;
-      if (!config2 || !submitted) return 0;
-      const textOfRight = new Map(config2.pairs.map((pair) => [pair.rightId, normalizeText(pair.right)]));
-      const used = /* @__PURE__ */ new Set();
-      let correct = 0;
-      for (const pair of config2.pairs) {
-        const chosen = submitted[pair.id];
-        if (!chosen || used.has(chosen)) continue;
-        const chosenText = textOfRight.get(chosen);
-        if (chosenText === void 0) continue;
-        used.add(chosen);
-        if (chosenText === normalizeText(pair.right)) correct += 1;
-      }
-      return correct / config2.pairs.length;
-    },
-    // lefts keep the author order; rights are shuffled and nothing links them to their left
-    playerView: (question, rng, withAnswers) => {
-      const config2 = matchingConfig(question.config);
-      if (!config2) return { options: [] };
-      if (withAnswers) return { options: [], config: config2 };
-      const rights = shuffleWith(
-        config2.pairs.map((pair) => ({ id: pair.rightId, text: pair.right })),
-        rng
-      );
-      return {
-        options: [],
-        config: { lefts: config2.pairs.map((pair) => ({ id: pair.id, text: pair.left })), rights }
-      };
-    },
-    // one correct answer per pair: the review lists cut/join the array (`slice(0, 3)`, `join(' / ')`)
-    describe: (question, answer) => {
-      const config2 = matchingConfig(question.config);
-      if (!config2) return { answerText: "", correctAnswers: [] };
-      const textOfRight = new Map(config2.pairs.map((pair) => [pair.rightId, pair.right]));
-      const given = config2.pairs.map((pair) => {
-        const chosen = answer?.pairs?.[pair.id];
-        const text2 = chosen ? textOfRight.get(chosen) : void 0;
-        return text2 === void 0 ? null : `${pair.left} \u2192 ${text2}`;
-      }).filter((entry) => entry !== null);
-      return {
-        answerText: given.join("; "),
-        correctAnswers: config2.pairs.map((pair) => `${pair.left} \u2192 ${pair.right}`)
-      };
-    }
-  },
-  cloze: {
-    label: "Uzupe\u0142nianie luk",
-    usesOptions: false,
-    defaultOptions: () => [],
-    defaultConfig: () => ({ gaps: [{ answers: [] }] }),
-    // the markers in the prompt and the gap list must describe the same thing
-    validate: (q) => {
-      const config2 = clozeConfig(q.config);
-      if (!config2) return "Dodaj co najmniej jedn\u0105 luk\u0119";
-      if (config2.gaps.some((gap) => gap.answers.length > CLOZE_MAX_VARIANTS)) {
-        return `Luka mo\u017Ce mie\u0107 najwy\u017Cej ${CLOZE_MAX_VARIANTS} akceptowanych odpowiedzi`;
-      }
-      if (config2.gaps.some((gap) => gap.answers.some((answer) => !answer.trim()))) {
-        return "Usu\u0144 puste akceptowane odpowiedzi";
-      }
-      if (config2.gaps.some((gap) => gap.answers.some((answer) => answer.length > CLOZE_MAX_ANSWER_LENGTH))) {
-        return `Akceptowana odpowied\u017A mo\u017Ce mie\u0107 najwy\u017Cej ${CLOZE_MAX_ANSWER_LENGTH} znak\xF3w`;
-      }
-      const markers = clozeMarkers(q.prompt ?? "");
-      const expected = config2.gaps.map((_, i) => i + 1);
-      if (markers.length !== expected.length || markers.some((marker, i) => marker !== expected[i])) {
-        return `Tre\u015B\u0107 musi zawiera\u0107 znaczniki ${expected.map((n) => `{{${n}}}`).join(", ")} - ka\u017Cdy dok\u0142adnie raz, bez zer wiod\u0105cych`;
-      }
-      return null;
-    },
-    // proportional: every gap is worth the same, any accepted variant counts
-    grade: (question, answer) => {
-      const config2 = clozeConfig(question.config);
-      if (!config2) return 0;
-      const given = answer?.gaps ?? {};
-      let correct = 0;
-      config2.gaps.forEach((gap, i) => {
-        const value = normalizeGapAnswer(given[String(i + 1)] ?? "");
-        if (!value) return;
-        if (gap.answers.some((accepted) => normalizeGapAnswer(accepted) === value)) correct += 1;
-      });
-      return correct / config2.gaps.length;
-    },
-    // the accepted answers never reach the player: the view carries only how many gaps there are
-    playerView: (question, _rng, withAnswers) => {
-      const config2 = clozeConfig(question.config);
-      if (!config2) return { options: [] };
-      return { options: [], config: withAnswers ? config2 : { gaps: config2.gaps.length } };
-    },
-    // one correct answer per gap: the review lists cut/join the array
-    describe: (question, answer) => {
-      const config2 = clozeConfig(question.config);
-      if (!config2) return { answerText: "", correctAnswers: [] };
-      const given = config2.gaps.map((_, i) => ({ number: i + 1, text: (answer?.gaps?.[String(i + 1)] ?? "").trim() })).filter((gap) => gap.text);
-      return {
-        answerText: given.map((gap) => `${gap.number}: ${gap.text}`).join("; "),
-        correctAnswers: config2.gaps.map((gap, i) => `${i + 1}: ${gap.answers.join(" / ")}`)
-      };
-    }
-  }
-};
-var questionTypes = questionTypeDefs;
-var typeDef = (type) => questionTypeDefs[type];
-var isAnswered = (answer) => Boolean(
-  answer?.optionIds?.length || answer?.text?.trim() || answer?.order?.length || Object.keys(answer?.pairs ?? {}).length || Object.values(answer?.gaps ?? {}).some((value) => value.trim())
-);
-var promptText = (prompt) => prompt.replace(new RegExp(CLOZE_MARKER_PLAIN, "g"), "___");
-function gradeQuiz(questions, answers) {
-  const results = questions.map((question) => {
-    const def = typeDef(question.type);
-    const fraction = def.grade(question, answers[question.id]);
-    const described = def.describe(question, answers[question.id]);
-    return {
-      questionId: question.id,
-      correct: fraction === 1,
-      earned: Math.round(fraction * question.points * 100) / 100,
-      points: question.points,
-      correctOptionIds: question.options.filter((o) => o.isCorrect).map((o) => o.id),
-      correctAnswers: described.correctAnswers,
-      explanation: question.explanation,
-      answerText: described.answerText
-    };
-  });
-  const score = results.reduce((sum, r) => sum + r.earned, 0);
-  const maxScore = results.reduce((sum, r) => sum + r.points, 0);
-  return { score, maxScore, percent: maxScore ? Math.round(score / maxScore * 100) : 0, results };
-}
-
-// server/quizRepo.ts
+// server/db.ts
 var externalPool = null;
 var pool = () => {
   const connectionString = process.env.DATABASE_URL;
@@ -62736,271 +62314,6 @@ var pool = () => {
   }
   return externalPool;
 };
-async function listQuizzes(filter = {}, canEdit = false, userId = null) {
-  const values = [userId];
-  let difficultyCondition = "";
-  if (filter.difficulty) {
-    values.push(filter.difficulty);
-    difficultyCondition = `AND d.code = $${values.length}`;
-  }
-  let subjectCondition = "";
-  if (filter.subject === "none") subjectCondition = "AND q.subject_id IS NULL";
-  else if (filter.subject) {
-    values.push(filter.subject);
-    subjectCondition = `AND s.code = $${values.length}`;
-  }
-  const order = filter.sort === "popular" ? "plays DESC, q.updated_at DESC" : "q.updated_at DESC";
-  const { rows } = await pool().query(
-    `SELECT q.id, q.title, q.description, q.created_at, q.updated_at, q.sample_size, d.code AS difficulty, s.code AS subject,
-            (SELECT COUNT(*)::int FROM questions qu WHERE qu.quiz_id = q.id) AS question_count,
-            (SELECT COALESCE(SUM(qu.points), 0)::int FROM questions qu WHERE qu.quiz_id = q.id) AS total_points,
-            (SELECT COUNT(*)::int FROM quiz_attempts a WHERE a.quiz_id = q.id) AS plays,
-            (SELECT COUNT(*)::int FROM quiz_attempts a WHERE a.quiz_id = q.id AND a.user_id = $1) AS my_attempts,
-            (SELECT MAX(a.percent)::int FROM quiz_attempts a WHERE a.quiz_id = q.id AND a.user_id = $1) AS my_best
-     FROM quizzes q
-     LEFT JOIN difficulty_levels d ON d.id = q.difficulty_id
-     LEFT JOIN subjects s ON s.id = q.subject_id
-     WHERE q.kind = 'manual' ${difficultyCondition} ${subjectCondition}
-     ORDER BY ${order}`,
-    values
-  );
-  return rows.map((row) => ({
-    id: row.id,
-    title: row.title,
-    description: row.description,
-    difficulty: row.difficulty,
-    subject: row.subject,
-    canEdit,
-    plays: row.plays,
-    myAttempts: row.my_attempts,
-    myBestPercent: row.my_best,
-    questionCount: row.question_count,
-    sampleSize: row.sample_size,
-    totalPoints: row.total_points,
-    createdAt: row.created_at.toISOString(),
-    updatedAt: row.updated_at.toISOString()
-  }));
-}
-async function getQuiz(id, withAnswers, canEdit = false) {
-  const db = pool();
-  const quizzes = await db.query(
-    `SELECT q.*, d.code AS difficulty, s.code AS subject
-     FROM quizzes q
-     LEFT JOIN difficulty_levels d ON d.id = q.difficulty_id
-     LEFT JOIN subjects s ON s.id = q.subject_id
-     WHERE q.id = $1`,
-    [id]
-  );
-  const quiz = quizzes.rows[0];
-  if (!quiz) return null;
-  const questions = await db.query(
-    "SELECT id, type, prompt, explanation, points, config FROM questions WHERE quiz_id = $1 ORDER BY position",
-    [id]
-  );
-  const options = await db.query(
-    `SELECT o.id, o.question_id, o.text, o.is_correct
-     FROM options o JOIN questions q ON q.id = o.question_id
-     WHERE q.quiz_id = $1 ORDER BY o.position`,
-    [id]
-  );
-  return {
-    id: quiz.id,
-    title: quiz.title,
-    description: quiz.description,
-    kind: quiz.kind,
-    source: quiz.source,
-    difficulty: quiz.difficulty,
-    subject: quiz.subject,
-    courseId: quiz.course_id,
-    canEdit,
-    shuffleQuestions: quiz.shuffle_questions,
-    shuffleOptions: quiz.shuffle_options,
-    sampleSize: quiz.sample_size,
-    createdAt: quiz.created_at.toISOString(),
-    updatedAt: quiz.updated_at.toISOString(),
-    questions: questions.rows.map((question) => {
-      const own2 = options.rows.filter((o) => o.question_id === question.id);
-      const full = {
-        type: question.type,
-        // the accepted answers of `text` questions never reach the player
-        options: own2.map((o) => ({ id: o.id, text: o.text, isCorrect: o.is_correct })),
-        config: question.config ?? void 0
-      };
-      const view = withAnswers ? full : typeDef(question.type).playerView(full, Math.random, false);
-      return {
-        id: question.id,
-        type: question.type,
-        prompt: question.prompt,
-        points: question.points,
-        ...withAnswers ? { explanation: question.explanation } : {},
-        options: view.options,
-        ...view.config === void 0 ? {} : { config: view.config }
-      };
-    })
-  };
-}
-function toGradable(quiz) {
-  return quiz.questions.map((q) => ({
-    id: q.id,
-    type: q.type,
-    points: q.points,
-    explanation: q.explanation ?? "",
-    options: q.options.map((o) => ({ id: o.id, text: o.text, isCorrect: o.isCorrect ?? false })),
-    config: q.config
-  }));
-}
-async function insertQuestions(client, quizId, questions) {
-  for (const [qi, question] of questions.entries()) {
-    const inserted = await client.query(
-      `INSERT INTO questions (quiz_id, position, type, prompt, explanation, points, verb_id, config)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-      [
-        quizId,
-        qi,
-        question.type,
-        question.prompt,
-        question.explanation,
-        question.points,
-        question.verbId ?? null,
-        question.config === void 0 || question.config === null ? null : JSON.stringify(question.config)
-      ]
-    );
-    const questionId = inserted.rows[0].id;
-    for (const [oi, option] of question.options.entries()) {
-      await client.query(
-        "INSERT INTO options (question_id, position, text, is_correct) VALUES ($1, $2, $3, $4)",
-        [questionId, oi, option.text, option.isCorrect]
-      );
-    }
-  }
-}
-async function inTransaction(work) {
-  const client = await pool().connect();
-  try {
-    await client.query("BEGIN");
-    const result = await work(client);
-    await client.query("COMMIT");
-    return result;
-  } catch (error62) {
-    await client.query("ROLLBACK");
-    throw error62;
-  } finally {
-    client.release();
-  }
-}
-async function createQuiz(input2, meta3) {
-  return inTransaction(async (client) => {
-    const created = await client.query(
-      `INSERT INTO quizzes (title, description, kind, source, course_id, owner_id, difficulty_id,
-                            shuffle_questions, shuffle_options, sample_size, subject_id)
-       VALUES ($1, $2, $3, $4, $5, $6, (SELECT id FROM difficulty_levels WHERE code = $7), $8, $9, $10,
-               (SELECT id FROM subjects WHERE code = $11))
-       RETURNING id`,
-      [
-        input2.title,
-        input2.description,
-        meta3.kind,
-        meta3.source ?? null,
-        meta3.courseId ?? null,
-        meta3.ownerId ?? null,
-        meta3.difficulty ?? null,
-        input2.shuffleQuestions ?? null,
-        input2.shuffleOptions ?? false,
-        input2.sampleSize ?? null,
-        input2.subject ?? null
-      ]
-    );
-    const id = created.rows[0].id;
-    await insertQuestions(client, id, input2.questions);
-    return id;
-  });
-}
-async function replaceQuiz(id, input2) {
-  return inTransaction(async (client) => {
-    const updated = await client.query(
-      `UPDATE quizzes
-       SET title = $2, description = $3, updated_at = now(),
-           difficulty_id = (SELECT id FROM difficulty_levels WHERE code = $4),
-           shuffle_questions = $5, shuffle_options = $6, sample_size = $7,
-           subject_id = (SELECT id FROM subjects WHERE code = $8)
-       WHERE id = $1 RETURNING id`,
-      [
-        id,
-        input2.title,
-        input2.description,
-        input2.difficulty ?? null,
-        input2.shuffleQuestions ?? null,
-        input2.shuffleOptions ?? false,
-        input2.sampleSize ?? null,
-        input2.subject ?? null
-      ]
-    );
-    if (updated.rowCount === 0) return false;
-    await client.query("DELETE FROM questions WHERE quiz_id = $1", [id]);
-    await insertQuestions(client, id, input2.questions);
-    return true;
-  });
-}
-async function deleteQuiz(id) {
-  const result = await pool().query("DELETE FROM quizzes WHERE id = $1", [id]);
-  return (result.rowCount ?? 0) > 0;
-}
-async function getOwnerId(id) {
-  const { rows } = await pool().query(
-    "SELECT owner_id FROM quizzes WHERE id = $1",
-    [id]
-  );
-  return rows[0]?.owner_id ?? null;
-}
-async function saveAttempt(attempt) {
-  const { result } = attempt;
-  const inserted = await pool().query(
-    `INSERT INTO quiz_attempts
-       (quiz_id, quiz_title, user_id, course_id, passed, score, max_score, percent, answers, results)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
-    [
-      attempt.quizId,
-      attempt.quizTitle,
-      attempt.userId,
-      attempt.courseId,
-      attempt.passed,
-      result.score,
-      result.maxScore,
-      result.percent,
-      JSON.stringify(attempt.answers),
-      JSON.stringify(result.results)
-    ]
-  );
-  return inserted.rows[0].id;
-}
-async function listAttempts(userId, limit = 50) {
-  const { rows } = await pool().query(
-    `SELECT id, quiz_id, quiz_title, course_id, passed, score::float AS score,
-            max_score::float AS max_score, percent, created_at
-     FROM quiz_attempts
-     WHERE user_id IS NOT DISTINCT FROM $1
-     ORDER BY created_at DESC LIMIT $2`,
-    [userId, limit]
-  );
-  return rows.map((row) => ({
-    id: row.id,
-    quizId: row.quiz_id,
-    quizTitle: row.quiz_title,
-    score: row.score,
-    maxScore: row.max_score,
-    percent: row.percent,
-    courseId: row.course_id,
-    passed: row.passed,
-    createdAt: row.created_at.toISOString()
-  }));
-}
-async function getQuestionVerbs(quizId) {
-  const { rows } = await pool().query(
-    "SELECT id, verb_id FROM questions WHERE quiz_id = $1 AND verb_id IS NOT NULL",
-    [quizId]
-  );
-  return new Map(rows.map((r) => [r.id, r.verb_id]));
-}
 
 // server/apiTokens.ts
 var TOKEN_PREFIX = "qz_";
@@ -74186,6 +73499,428 @@ async function classReport(classId2) {
   };
 }
 
+// src/shared/quiz/engine.ts
+var QUESTION_TYPES = ["single", "multiple", "truefalse", "text", "numeric", "ordering", "matching", "cloze"];
+var countCorrect = (options) => options.filter((o) => o.isCorrect).length;
+var ORDERING_MAX_ITEMS = 50;
+var CONFIG_ID_MAX_LENGTH = 64;
+var idTooLong = (id) => [...id].length > CONFIG_ID_MAX_LENGTH;
+var orderingConfig = (config2) => {
+  if (!config2 || typeof config2 !== "object") return null;
+  const { items } = config2;
+  if (!Array.isArray(items) || items.length < 2 || items.length > ORDERING_MAX_ITEMS) return null;
+  const parsed = [];
+  for (const item of items) {
+    if (!item || typeof item !== "object") return null;
+    const { id, text: text2 } = item;
+    if (typeof id !== "string" || !id || typeof text2 !== "string") return null;
+    parsed.push({ id, text: text2 });
+  }
+  return { items: parsed };
+};
+var MATCHING_MAX_PAIRS = 20;
+var matchingConfig = (config2) => {
+  if (!config2 || typeof config2 !== "object") return null;
+  const { pairs } = config2;
+  if (!Array.isArray(pairs) || pairs.length < 2 || pairs.length > MATCHING_MAX_PAIRS) return null;
+  const parsed = [];
+  for (const pair of pairs) {
+    if (!pair || typeof pair !== "object") return null;
+    const { id, rightId, left, right } = pair;
+    if (typeof id !== "string" || !id) return null;
+    if (typeof rightId !== "string" || !rightId) return null;
+    if (typeof left !== "string" || typeof right !== "string") return null;
+    parsed.push({ id, rightId, left, right });
+  }
+  return { pairs: parsed };
+};
+var CLOZE_MAX_GAPS = 8;
+var CLOZE_MAX_VARIANTS = 10;
+var CLOZE_MAX_ANSWER_LENGTH = 200;
+var CLOZE_NUMBER = String.raw`[1-9]\d*`;
+var CLOZE_MARKER = new RegExp(String.raw`\{\{(${CLOZE_NUMBER})\}\}`);
+var CLOZE_MARKER_PLAIN = String.raw`\{\{${CLOZE_NUMBER}\}\}`;
+var clozeMarkers = (prompt) => [...prompt.matchAll(new RegExp(CLOZE_MARKER_PLAIN, "g"))].map((match) => Number(match[0].slice(2, -2)));
+var clozeConfig = (config2) => {
+  if (!config2 || typeof config2 !== "object") return null;
+  const { gaps } = config2;
+  if (!Array.isArray(gaps) || gaps.length < 1 || gaps.length > CLOZE_MAX_GAPS) return null;
+  const parsed = [];
+  for (const gap of gaps) {
+    if (!gap || typeof gap !== "object") return null;
+    const { answers } = gap;
+    if (!Array.isArray(answers) || answers.length < 1) return null;
+    if (answers.some((answer) => typeof answer !== "string")) return null;
+    parsed.push({ answers });
+  }
+  return { gaps: parsed };
+};
+var parseNumeric = (raw) => {
+  const compact = raw.trim().replace(/\u2212/g, "-").replace(/[\s\u00a0\u202f]/g, "");
+  if (!compact) return null;
+  const fraction = /^(-?\d+(?:[.,]\d+)?)\/(\d+(?:[.,]\d+)?)$/.exec(compact);
+  if (fraction) {
+    const numerator = Number(fraction[1].replace(",", "."));
+    const denominator = Number(fraction[2].replace(",", "."));
+    if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator === 0) return null;
+    return numerator / denominator;
+  }
+  const value = Number(compact.replace(",", "."));
+  return Number.isFinite(value) ? value : null;
+};
+var numericConfig = (config2) => {
+  if (!config2 || typeof config2 !== "object") return null;
+  const { answer, tolerance } = config2;
+  if (typeof answer !== "number" || !Number.isFinite(answer)) return null;
+  if (tolerance !== void 0) {
+    if (!tolerance || typeof tolerance !== "object") return null;
+    const { kind, value } = tolerance;
+    if (kind !== "absolute" && kind !== "relative") return null;
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return null;
+  }
+  return { answer, ...tolerance === void 0 ? {} : { tolerance: { kind: tolerance.kind, value: tolerance.value } } };
+};
+var TYPOGRAPHIC = {
+  "\u2018": "'",
+  "\u2019": "'",
+  "\u02BC": "'",
+  "`": "'",
+  "\u201C": '"',
+  "\u201D": '"',
+  "\u201E": '"',
+  "\u2013": "-",
+  "\u2014": "-",
+  "\u2011": "-",
+  "\u2212": "-"
+};
+var TYPOGRAPHIC_PATTERN = new RegExp(`[${Object.keys(TYPOGRAPHIC).join("")}]`, "g");
+var normalizeText = (value) => value.normalize("NFC").trim().replace(/\s+/g, " ").replace(TYPOGRAPHIC_PATTERN, (ch) => TYPOGRAPHIC[ch] ?? ch).toLocaleLowerCase();
+var normalizeGapAnswer = (value) => normalizeText(value).replace(/[.!?]+$/, "");
+var newItemId = () => Math.random().toString(36).slice(2, 10);
+var shuffleWith = (items, rng) => {
+  for (let i = items.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    const swap = items[i];
+    items[i] = items[j];
+    items[j] = swap;
+  }
+  return items;
+};
+var gradeChoice = (question, answer) => {
+  const selected = new Set(answer?.optionIds ?? []);
+  const correct = new Set(question.options.filter((o) => o.isCorrect).map((o) => o.id));
+  if (selected.size !== correct.size) return 0;
+  for (const id of selected) if (!correct.has(id)) return 0;
+  return 1;
+};
+var publicOptions = (question) => question.options.map((o) => ({ id: o.id, text: o.text }));
+var choiceAnswerText = (question, answer) => (answer?.optionIds ?? []).map((id) => question.options.find((o) => o.id === id)?.text).filter((text2) => Boolean(text2)).join(", ");
+var correctOptionTexts = (question) => question.options.filter((o) => o.isCorrect).map((o) => o.text);
+var questionTypeDefs = {
+  single: {
+    label: "Jednokrotny wyb\xF3r",
+    usesOptions: true,
+    defaultOptions: () => [
+      { text: "", isCorrect: true },
+      { text: "", isCorrect: false }
+    ],
+    validate: (q) => q.options.length < 2 ? "Dodaj co najmniej dwie opcje" : countCorrect(q.options) !== 1 ? "Zaznacz dok\u0142adnie jedn\u0105 poprawn\u0105 odpowied\u017A" : null,
+    grade: gradeChoice,
+    playerView: (question) => ({ options: publicOptions(question) }),
+    describe: (question, answer) => ({
+      answerText: choiceAnswerText(question, answer),
+      correctAnswers: correctOptionTexts(question)
+    })
+  },
+  multiple: {
+    label: "Wielokrotny wyb\xF3r",
+    usesOptions: true,
+    defaultOptions: () => [
+      { text: "", isCorrect: true },
+      { text: "", isCorrect: false }
+    ],
+    validate: (q) => q.options.length < 2 ? "Dodaj co najmniej dwie opcje" : countCorrect(q.options) < 1 ? "Zaznacz co najmniej jedn\u0105 poprawn\u0105 odpowied\u017A" : null,
+    grade: gradeChoice,
+    playerView: (question) => ({ options: publicOptions(question) }),
+    describe: (question, answer) => ({
+      answerText: choiceAnswerText(question, answer),
+      correctAnswers: correctOptionTexts(question)
+    })
+  },
+  truefalse: {
+    label: "Prawda / Fa\u0142sz",
+    usesOptions: true,
+    defaultOptions: () => [
+      { text: "Prawda", isCorrect: true },
+      { text: "Fa\u0142sz", isCorrect: false }
+    ],
+    validate: (q) => q.options.length !== 2 || countCorrect(q.options) !== 1 ? "Pytanie Prawda/Fa\u0142sz wymaga dw\xF3ch opcji i jednej poprawnej" : null,
+    grade: gradeChoice,
+    playerView: (question) => ({ options: publicOptions(question) }),
+    describe: (question, answer) => ({
+      answerText: choiceAnswerText(question, answer),
+      correctAnswers: correctOptionTexts(question)
+    })
+  },
+  text: {
+    label: "Odpowied\u017A tekstowa",
+    usesOptions: true,
+    defaultOptions: () => [{ text: "", isCorrect: true }],
+    validate: (q) => q.options.length < 1 || q.options.some((o) => !o.isCorrect) ? "Podaj co najmniej jedn\u0105 akceptowan\u0105 odpowied\u017A" : null,
+    grade: (question, answer) => {
+      const given = normalizeText(answer?.text ?? "");
+      if (!given) return 0;
+      return question.options.some((o) => o.isCorrect && normalizeText(o.text) === given) ? 1 : 0;
+    },
+    // the accepted answers must not leak to the player, so the view carries no options
+    playerView: () => ({ options: [] }),
+    describe: (question, answer) => ({
+      answerText: (answer?.text ?? "").trim(),
+      correctAnswers: correctOptionTexts(question)
+    })
+  },
+  numeric: {
+    label: "Odpowied\u017A liczbowa",
+    usesOptions: false,
+    defaultOptions: () => [],
+    defaultConfig: () => ({ answer: 0 }),
+    validate: (q) => {
+      const config2 = numericConfig(q.config);
+      if (!config2) return "Podaj poprawn\u0105 odpowied\u017A liczbow\u0105";
+      if (config2.tolerance?.kind === "relative" && config2.answer === 0) {
+        return "Dla odpowiedzi 0 u\u017Cyj tolerancji bezwzgl\u0119dnej";
+      }
+      return null;
+    },
+    grade: (question, answer) => {
+      const config2 = numericConfig(question.config);
+      if (!config2) return 0;
+      const value = parseNumeric(answer?.text ?? "");
+      if (value === null) return 0;
+      const tolerance = config2.tolerance === void 0 ? 0 : config2.tolerance.kind === "absolute" ? config2.tolerance.value : Math.abs(config2.answer) * config2.tolerance.value;
+      const epsilon = 1e-9 * Math.max(1, Math.abs(config2.answer));
+      return Math.abs(value - config2.answer) <= tolerance + epsilon ? 1 : 0;
+    },
+    // the expected value and the tolerance must never reach the player
+    playerView: () => ({ options: [] }),
+    describe: (question, answer) => {
+      const config2 = numericConfig(question.config);
+      return {
+        answerText: (answer?.text ?? "").trim(),
+        correctAnswers: config2 ? [String(config2.answer)] : []
+      };
+    }
+  },
+  ordering: {
+    label: "Uporz\u0105dkowanie element\xF3w",
+    usesOptions: false,
+    defaultOptions: () => [],
+    defaultConfig: () => ({
+      items: [
+        { id: newItemId(), text: "" },
+        { id: newItemId(), text: "" }
+      ]
+    }),
+    validate: (q) => {
+      const config2 = orderingConfig(q.config);
+      if (!config2) return "Dodaj co najmniej dwa elementy do uporz\u0105dkowania";
+      if (config2.items.some((item) => !item.text.trim())) return "Uzupe\u0142nij tre\u015B\u0107 wszystkich element\xF3w";
+      if (config2.items.some((item) => idTooLong(item.id))) {
+        return `Identyfikator elementu jest za d\u0142ugi (maks. ${CONFIG_ID_MAX_LENGTH} znaki)`;
+      }
+      if (new Set(config2.items.map((item) => item.id)).size !== config2.items.length) {
+        return "Elementy musz\u0105 mie\u0107 unikalne identyfikatory";
+      }
+      return null;
+    },
+    // 0/1 compared by normalized text, so the answer must be a permutation of every item
+    grade: (question, answer) => {
+      const config2 = orderingConfig(question.config);
+      const submitted = answer?.order;
+      if (!config2 || !submitted || submitted.length !== config2.items.length) return 0;
+      if (new Set(submitted).size !== submitted.length) return 0;
+      const byId = new Map(config2.items.map((item) => [item.id, item.text]));
+      const texts = submitted.map((id) => byId.get(id));
+      if (texts.some((text2) => text2 === void 0)) return 0;
+      return texts.every((text2, i) => normalizeText(text2) === normalizeText(config2.items[i].text)) ? 1 : 0;
+    },
+    // the server shuffles: a client-side shuffle would hand the correct order to the player
+    playerView: (question, rng, withAnswers) => {
+      const config2 = orderingConfig(question.config);
+      if (!config2) return { options: [] };
+      if (withAnswers) return { options: [], config: config2 };
+      const items = shuffleWith([...config2.items], rng);
+      return { options: [], config: { items: items.map(({ id, text: text2 }) => ({ id, text: text2 })) } };
+    },
+    describe: (question, answer) => {
+      const config2 = orderingConfig(question.config);
+      if (!config2) return { answerText: "", correctAnswers: [] };
+      const byId = new Map(config2.items.map((item) => [item.id, item.text]));
+      const given = (answer?.order ?? []).map((id) => byId.get(id)).filter((text2) => Boolean(text2));
+      return {
+        answerText: given.map((text2, i) => `${i + 1}. ${text2}`).join(", "),
+        correctAnswers: [config2.items.map((item) => item.text).join(" \u2192 ")]
+      };
+    }
+  },
+  matching: {
+    label: "Dopasowanie par",
+    usesOptions: false,
+    defaultOptions: () => [],
+    defaultConfig: () => ({
+      pairs: [
+        { id: newItemId(), rightId: newItemId(), left: "", right: "" },
+        { id: newItemId(), rightId: newItemId(), left: "", right: "" }
+      ]
+    }),
+    validate: (q) => {
+      const config2 = matchingConfig(q.config);
+      if (!config2) return "Dodaj co najmniej dwie pary";
+      if (config2.pairs.some((pair) => !pair.left.trim() || !pair.right.trim())) {
+        return "Uzupe\u0142nij obie strony ka\u017Cdej pary";
+      }
+      if (config2.pairs.some((pair) => idTooLong(pair.id) || idTooLong(pair.rightId))) {
+        return `Identyfikator pary jest za d\u0142ugi (maks. ${CONFIG_ID_MAX_LENGTH} znaki)`;
+      }
+      if (new Set(config2.pairs.map((pair) => pair.id)).size !== config2.pairs.length) {
+        return "Pary musz\u0105 mie\u0107 unikalne identyfikatory";
+      }
+      if (new Set(config2.pairs.map((pair) => pair.rightId)).size !== config2.pairs.length) {
+        return "Ka\u017Cda para musi mie\u0107 w\u0142asny kafelek po prawej stronie";
+      }
+      return null;
+    },
+    // proportional: one point per pair, a right tile can be used by a single pair
+    grade: (question, answer) => {
+      const config2 = matchingConfig(question.config);
+      const submitted = answer?.pairs;
+      if (!config2 || !submitted) return 0;
+      const textOfRight = new Map(config2.pairs.map((pair) => [pair.rightId, normalizeText(pair.right)]));
+      const used = /* @__PURE__ */ new Set();
+      let correct = 0;
+      for (const pair of config2.pairs) {
+        const chosen = submitted[pair.id];
+        if (!chosen || used.has(chosen)) continue;
+        const chosenText = textOfRight.get(chosen);
+        if (chosenText === void 0) continue;
+        used.add(chosen);
+        if (chosenText === normalizeText(pair.right)) correct += 1;
+      }
+      return correct / config2.pairs.length;
+    },
+    // lefts keep the author order; rights are shuffled and nothing links them to their left
+    playerView: (question, rng, withAnswers) => {
+      const config2 = matchingConfig(question.config);
+      if (!config2) return { options: [] };
+      if (withAnswers) return { options: [], config: config2 };
+      const rights = shuffleWith(
+        config2.pairs.map((pair) => ({ id: pair.rightId, text: pair.right })),
+        rng
+      );
+      return {
+        options: [],
+        config: { lefts: config2.pairs.map((pair) => ({ id: pair.id, text: pair.left })), rights }
+      };
+    },
+    // one correct answer per pair: the review lists cut/join the array (`slice(0, 3)`, `join(' / ')`)
+    describe: (question, answer) => {
+      const config2 = matchingConfig(question.config);
+      if (!config2) return { answerText: "", correctAnswers: [] };
+      const textOfRight = new Map(config2.pairs.map((pair) => [pair.rightId, pair.right]));
+      const given = config2.pairs.map((pair) => {
+        const chosen = answer?.pairs?.[pair.id];
+        const text2 = chosen ? textOfRight.get(chosen) : void 0;
+        return text2 === void 0 ? null : `${pair.left} \u2192 ${text2}`;
+      }).filter((entry) => entry !== null);
+      return {
+        answerText: given.join("; "),
+        correctAnswers: config2.pairs.map((pair) => `${pair.left} \u2192 ${pair.right}`)
+      };
+    }
+  },
+  cloze: {
+    label: "Uzupe\u0142nianie luk",
+    usesOptions: false,
+    defaultOptions: () => [],
+    defaultConfig: () => ({ gaps: [{ answers: [] }] }),
+    // the markers in the prompt and the gap list must describe the same thing
+    validate: (q) => {
+      const config2 = clozeConfig(q.config);
+      if (!config2) return "Dodaj co najmniej jedn\u0105 luk\u0119";
+      if (config2.gaps.some((gap) => gap.answers.length > CLOZE_MAX_VARIANTS)) {
+        return `Luka mo\u017Ce mie\u0107 najwy\u017Cej ${CLOZE_MAX_VARIANTS} akceptowanych odpowiedzi`;
+      }
+      if (config2.gaps.some((gap) => gap.answers.some((answer) => !answer.trim()))) {
+        return "Usu\u0144 puste akceptowane odpowiedzi";
+      }
+      if (config2.gaps.some((gap) => gap.answers.some((answer) => answer.length > CLOZE_MAX_ANSWER_LENGTH))) {
+        return `Akceptowana odpowied\u017A mo\u017Ce mie\u0107 najwy\u017Cej ${CLOZE_MAX_ANSWER_LENGTH} znak\xF3w`;
+      }
+      const markers = clozeMarkers(q.prompt ?? "");
+      const expected = config2.gaps.map((_, i) => i + 1);
+      if (markers.length !== expected.length || markers.some((marker, i) => marker !== expected[i])) {
+        return `Tre\u015B\u0107 musi zawiera\u0107 znaczniki ${expected.map((n) => `{{${n}}}`).join(", ")} - ka\u017Cdy dok\u0142adnie raz, bez zer wiod\u0105cych`;
+      }
+      return null;
+    },
+    // proportional: every gap is worth the same, any accepted variant counts
+    grade: (question, answer) => {
+      const config2 = clozeConfig(question.config);
+      if (!config2) return 0;
+      const given = answer?.gaps ?? {};
+      let correct = 0;
+      config2.gaps.forEach((gap, i) => {
+        const value = normalizeGapAnswer(given[String(i + 1)] ?? "");
+        if (!value) return;
+        if (gap.answers.some((accepted) => normalizeGapAnswer(accepted) === value)) correct += 1;
+      });
+      return correct / config2.gaps.length;
+    },
+    // the accepted answers never reach the player: the view carries only how many gaps there are
+    playerView: (question, _rng, withAnswers) => {
+      const config2 = clozeConfig(question.config);
+      if (!config2) return { options: [] };
+      return { options: [], config: withAnswers ? config2 : { gaps: config2.gaps.length } };
+    },
+    // one correct answer per gap: the review lists cut/join the array
+    describe: (question, answer) => {
+      const config2 = clozeConfig(question.config);
+      if (!config2) return { answerText: "", correctAnswers: [] };
+      const given = config2.gaps.map((_, i) => ({ number: i + 1, text: (answer?.gaps?.[String(i + 1)] ?? "").trim() })).filter((gap) => gap.text);
+      return {
+        answerText: given.map((gap) => `${gap.number}: ${gap.text}`).join("; "),
+        correctAnswers: config2.gaps.map((gap, i) => `${i + 1}: ${gap.answers.join(" / ")}`)
+      };
+    }
+  }
+};
+var questionTypes = questionTypeDefs;
+var typeDef = (type) => questionTypeDefs[type];
+var isAnswered = (answer) => Boolean(
+  answer?.optionIds?.length || answer?.text?.trim() || answer?.order?.length || Object.keys(answer?.pairs ?? {}).length || Object.values(answer?.gaps ?? {}).some((value) => value.trim())
+);
+var promptText = (prompt) => prompt.replace(new RegExp(CLOZE_MARKER_PLAIN, "g"), "___");
+function gradeQuiz(questions, answers) {
+  const results = questions.map((question) => {
+    const def = typeDef(question.type);
+    const fraction = def.grade(question, answers[question.id]);
+    const described = def.describe(question, answers[question.id]);
+    return {
+      questionId: question.id,
+      correct: fraction === 1,
+      earned: Math.round(fraction * question.points * 100) / 100,
+      points: question.points,
+      correctOptionIds: question.options.filter((o) => o.isCorrect).map((o) => o.id),
+      correctAnswers: described.correctAnswers,
+      explanation: question.explanation,
+      answerText: described.answerText
+    };
+  });
+  const score = results.reduce((sum, r) => sum + r.earned, 0);
+  const maxScore = results.reduce((sum, r) => sum + r.points, 0);
+  return { score, maxScore, percent: maxScore ? Math.round(score / maxScore * 100) : 0, results };
+}
+
 // server/classes/results.ts
 async function questionDetails(rows) {
   const questionIds = [...new Set(rows.flatMap((a) => (a.results ?? []).map((r) => r.questionId)))];
@@ -75758,6 +75493,273 @@ var quiz_schema_default = {
     }
   }
 };
+
+// server/quizRepo.ts
+async function listQuizzes(filter = {}, canEdit = false, userId = null) {
+  const values = [userId];
+  let difficultyCondition = "";
+  if (filter.difficulty) {
+    values.push(filter.difficulty);
+    difficultyCondition = `AND d.code = $${values.length}`;
+  }
+  let subjectCondition = "";
+  if (filter.subject === "none") subjectCondition = "AND q.subject_id IS NULL";
+  else if (filter.subject) {
+    values.push(filter.subject);
+    subjectCondition = `AND s.code = $${values.length}`;
+  }
+  const order = filter.sort === "popular" ? "plays DESC, q.updated_at DESC" : "q.updated_at DESC";
+  const { rows } = await pool().query(
+    `SELECT q.id, q.title, q.description, q.created_at, q.updated_at, q.sample_size, d.code AS difficulty, s.code AS subject,
+            (SELECT COUNT(*)::int FROM questions qu WHERE qu.quiz_id = q.id) AS question_count,
+            (SELECT COALESCE(SUM(qu.points), 0)::int FROM questions qu WHERE qu.quiz_id = q.id) AS total_points,
+            (SELECT COUNT(*)::int FROM quiz_attempts a WHERE a.quiz_id = q.id) AS plays,
+            (SELECT COUNT(*)::int FROM quiz_attempts a WHERE a.quiz_id = q.id AND a.user_id = $1) AS my_attempts,
+            (SELECT MAX(a.percent)::int FROM quiz_attempts a WHERE a.quiz_id = q.id AND a.user_id = $1) AS my_best
+     FROM quizzes q
+     LEFT JOIN difficulty_levels d ON d.id = q.difficulty_id
+     LEFT JOIN subjects s ON s.id = q.subject_id
+     WHERE q.kind = 'manual' ${difficultyCondition} ${subjectCondition}
+     ORDER BY ${order}`,
+    values
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    difficulty: row.difficulty,
+    subject: row.subject,
+    canEdit,
+    plays: row.plays,
+    myAttempts: row.my_attempts,
+    myBestPercent: row.my_best,
+    questionCount: row.question_count,
+    sampleSize: row.sample_size,
+    totalPoints: row.total_points,
+    createdAt: row.created_at.toISOString(),
+    updatedAt: row.updated_at.toISOString()
+  }));
+}
+async function getQuiz(id, withAnswers, canEdit = false) {
+  const db = pool();
+  const quizzes = await db.query(
+    `SELECT q.*, d.code AS difficulty, s.code AS subject
+     FROM quizzes q
+     LEFT JOIN difficulty_levels d ON d.id = q.difficulty_id
+     LEFT JOIN subjects s ON s.id = q.subject_id
+     WHERE q.id = $1`,
+    [id]
+  );
+  const quiz = quizzes.rows[0];
+  if (!quiz) return null;
+  const questions = await db.query(
+    "SELECT id, type, prompt, explanation, points, config FROM questions WHERE quiz_id = $1 ORDER BY position",
+    [id]
+  );
+  const options = await db.query(
+    `SELECT o.id, o.question_id, o.text, o.is_correct
+     FROM options o JOIN questions q ON q.id = o.question_id
+     WHERE q.quiz_id = $1 ORDER BY o.position`,
+    [id]
+  );
+  return {
+    id: quiz.id,
+    title: quiz.title,
+    description: quiz.description,
+    kind: quiz.kind,
+    source: quiz.source,
+    difficulty: quiz.difficulty,
+    subject: quiz.subject,
+    courseId: quiz.course_id,
+    canEdit,
+    shuffleQuestions: quiz.shuffle_questions,
+    shuffleOptions: quiz.shuffle_options,
+    sampleSize: quiz.sample_size,
+    createdAt: quiz.created_at.toISOString(),
+    updatedAt: quiz.updated_at.toISOString(),
+    questions: questions.rows.map((question) => {
+      const own2 = options.rows.filter((o) => o.question_id === question.id);
+      const full = {
+        type: question.type,
+        // the accepted answers of `text` questions never reach the player
+        options: own2.map((o) => ({ id: o.id, text: o.text, isCorrect: o.is_correct })),
+        config: question.config ?? void 0
+      };
+      const view = withAnswers ? full : typeDef(question.type).playerView(full, Math.random, false);
+      return {
+        id: question.id,
+        type: question.type,
+        prompt: question.prompt,
+        points: question.points,
+        ...withAnswers ? { explanation: question.explanation } : {},
+        options: view.options,
+        ...view.config === void 0 ? {} : { config: view.config }
+      };
+    })
+  };
+}
+function toGradable(quiz) {
+  return quiz.questions.map((q) => ({
+    id: q.id,
+    type: q.type,
+    points: q.points,
+    explanation: q.explanation ?? "",
+    options: q.options.map((o) => ({ id: o.id, text: o.text, isCorrect: o.isCorrect ?? false })),
+    config: q.config
+  }));
+}
+async function insertQuestions(client, quizId, questions) {
+  for (const [qi, question] of questions.entries()) {
+    const inserted = await client.query(
+      `INSERT INTO questions (quiz_id, position, type, prompt, explanation, points, verb_id, config)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+      [
+        quizId,
+        qi,
+        question.type,
+        question.prompt,
+        question.explanation,
+        question.points,
+        question.verbId ?? null,
+        question.config === void 0 || question.config === null ? null : JSON.stringify(question.config)
+      ]
+    );
+    const questionId = inserted.rows[0].id;
+    for (const [oi, option] of question.options.entries()) {
+      await client.query(
+        "INSERT INTO options (question_id, position, text, is_correct) VALUES ($1, $2, $3, $4)",
+        [questionId, oi, option.text, option.isCorrect]
+      );
+    }
+  }
+}
+async function inTransaction(work) {
+  const client = await pool().connect();
+  try {
+    await client.query("BEGIN");
+    const result = await work(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (error62) {
+    await client.query("ROLLBACK");
+    throw error62;
+  } finally {
+    client.release();
+  }
+}
+async function createQuiz(input2, meta3) {
+  return inTransaction(async (client) => {
+    const created = await client.query(
+      `INSERT INTO quizzes (title, description, kind, source, course_id, owner_id, difficulty_id,
+                            shuffle_questions, shuffle_options, sample_size, subject_id)
+       VALUES ($1, $2, $3, $4, $5, $6, (SELECT id FROM difficulty_levels WHERE code = $7), $8, $9, $10,
+               (SELECT id FROM subjects WHERE code = $11))
+       RETURNING id`,
+      [
+        input2.title,
+        input2.description,
+        meta3.kind,
+        meta3.source ?? null,
+        meta3.courseId ?? null,
+        meta3.ownerId ?? null,
+        meta3.difficulty ?? null,
+        input2.shuffleQuestions ?? null,
+        input2.shuffleOptions ?? false,
+        input2.sampleSize ?? null,
+        input2.subject ?? null
+      ]
+    );
+    const id = created.rows[0].id;
+    await insertQuestions(client, id, input2.questions);
+    return id;
+  });
+}
+async function replaceQuiz(id, input2) {
+  return inTransaction(async (client) => {
+    const updated = await client.query(
+      `UPDATE quizzes
+       SET title = $2, description = $3, updated_at = now(),
+           difficulty_id = (SELECT id FROM difficulty_levels WHERE code = $4),
+           shuffle_questions = $5, shuffle_options = $6, sample_size = $7,
+           subject_id = (SELECT id FROM subjects WHERE code = $8)
+       WHERE id = $1 RETURNING id`,
+      [
+        id,
+        input2.title,
+        input2.description,
+        input2.difficulty ?? null,
+        input2.shuffleQuestions ?? null,
+        input2.shuffleOptions ?? false,
+        input2.sampleSize ?? null,
+        input2.subject ?? null
+      ]
+    );
+    if (updated.rowCount === 0) return false;
+    await client.query("DELETE FROM questions WHERE quiz_id = $1", [id]);
+    await insertQuestions(client, id, input2.questions);
+    return true;
+  });
+}
+async function deleteQuiz(id) {
+  const result = await pool().query("DELETE FROM quizzes WHERE id = $1", [id]);
+  return (result.rowCount ?? 0) > 0;
+}
+async function getOwnerId(id) {
+  const { rows } = await pool().query(
+    "SELECT owner_id FROM quizzes WHERE id = $1",
+    [id]
+  );
+  return rows[0]?.owner_id ?? null;
+}
+async function saveAttempt(attempt) {
+  const { result } = attempt;
+  const inserted = await pool().query(
+    `INSERT INTO quiz_attempts
+       (quiz_id, quiz_title, user_id, course_id, passed, score, max_score, percent, answers, results)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+    [
+      attempt.quizId,
+      attempt.quizTitle,
+      attempt.userId,
+      attempt.courseId,
+      attempt.passed,
+      result.score,
+      result.maxScore,
+      result.percent,
+      JSON.stringify(attempt.answers),
+      JSON.stringify(result.results)
+    ]
+  );
+  return inserted.rows[0].id;
+}
+async function listAttempts(userId, limit = 50) {
+  const { rows } = await pool().query(
+    `SELECT id, quiz_id, quiz_title, course_id, passed, score::float AS score,
+            max_score::float AS max_score, percent, created_at
+     FROM quiz_attempts
+     WHERE user_id IS NOT DISTINCT FROM $1
+     ORDER BY created_at DESC LIMIT $2`,
+    [userId, limit]
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    quizId: row.quiz_id,
+    quizTitle: row.quiz_title,
+    score: row.score,
+    maxScore: row.max_score,
+    percent: row.percent,
+    courseId: row.course_id,
+    passed: row.passed,
+    createdAt: row.created_at.toISOString()
+  }));
+}
+async function getQuestionVerbs(quizId) {
+  const { rows } = await pool().query(
+    "SELECT id, verb_id FROM questions WHERE quiz_id = $1 AND verb_id IS NOT NULL",
+    [quizId]
+  );
+  return new Map(rows.map((r) => [r.id, r.verb_id]));
+}
 
 // server/mcp/quizTools.ts
 var uuid3 = external_exports.string().uuid().describe("Id quizu (UUID)");

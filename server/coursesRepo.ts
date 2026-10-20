@@ -6,7 +6,7 @@ import type {
   PopularityCode,
 } from '../src/shared/quiz/types'
 import { listVerbs } from './irregularVerbs'
-import { pool } from './quizRepo'
+import { pool } from './db'
 
 interface CourseRow {
   id: string

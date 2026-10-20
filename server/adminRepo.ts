@@ -1,5 +1,5 @@
 import type { AuditEntry, FeedbackContext, FeedbackItem, FeedbackKind, FeedbackStatus } from '../src/shared/quiz/types'
-import { pool } from './quizRepo'
+import { pool } from './db'
 
 export async function writeAudit(entry: {
   actorId: string

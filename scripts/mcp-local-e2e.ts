@@ -7,7 +7,7 @@ import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { createApiToken } from '../server/apiTokens'
 import { createApp } from '../server/app'
-import { pool } from '../server/quizRepo'
+import { pool } from '../server/db'
 import * as repo from '../server/quizRepo'
 
 type Result = { err: boolean; data: any }

@@ -72,7 +72,7 @@ Dlaczego tu: wszystkie siedzą w `QuizPlayer.tsx`, `engine.ts` i `schema.ts`, kt
 
 | # | Zadanie | Uzasadnienie |
 | --- | --- | --- |
-| 1.1 | **Podział, krok 1:** `pool` do `server/db.ts` (11 importów), re-eksport z `quizRepo` na czas przejścia | wymaga go `media` (M1) i migawka pytań; mechaniczny, bez zmiany zachowania |
+| 1.1 | **Podział, krok 1:** `pool` do `server/db.ts` (11 importów + `quizRepo`), bez re-eksportu z `quizRepo` (zrobione) | wymaga go `media` (M1) i migawka pytań; mechaniczny, bez zmiany zachowania |
 | 1.2 | **M0 (spike):** bucket Neon, skrypt `scripts/media-smoke.ts`, odpowiedzi na niewiadome 1–5 z [[Media-Storage-Plan]] | równolegle z fazami 2–3, bo wymaga logowania CLI i czasu człowieka; wynik decyduje o dostawcy przed M1 |
 
 ### Faza 2 — rozcięcie sprzężenia quizy ↔ nauka (około 2–3 dni)

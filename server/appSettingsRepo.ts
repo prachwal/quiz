@@ -1,6 +1,6 @@
 import type { AppSettings } from '../src/shared/quiz/types'
 import { normalizeThresholds } from '../src/shared/quiz/scoreBands'
-import { pool } from './quizRepo'
+import { pool } from './db'
 
 /** Global settings with defaults for anything never saved (or saved in an invalid shape). */
 export async function getAppSettings(): Promise<AppSettings> {

@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto'
 import type { ApiTokenSummary, CreatedApiToken } from '../src/shared/quiz/types'
-import { pool } from './quizRepo'
+import { pool } from './db'
 
 export const TOKEN_PREFIX = 'qz_'
 const MAX_ACTIVE_TOKENS = 20
