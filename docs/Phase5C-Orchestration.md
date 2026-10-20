@@ -82,4 +82,11 @@ Dla każdego zadania: czas, liczba tokenów i wywołań narzędzi (z powiadomien
 
 | Faza / zadanie | Agent | Czas | Tokeny | Wywołania | Pierwsze podejście zielone? | Odstępstwa | Wnioski |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| (wypełniane na bieżąco) | | | | | | | |
+| 0 / skrypt bramki | Haiku (`haiku-coder`) | 6 min 46 s | 85,5 tys. | 11 | tak (pełna bramka 4 min 44 s: PASS) | 5 drobnych (m.in. dodatkowe wymaganie kodu wyjścia 0, katalog tymczasowy z pułapką EXIT) | Zadanie kalibracyjne wypadło bardzo dobrze. **Moja specyfikacja była wewnętrznie sprzeczna** (kazałem dodać sekcję w dokumencie, który „już ją ma", i jednocześnie dopisać wiersz do CLAUDE.md): agent rozstrzygnął to rozsądnie i opisał w odstępstwach. Odmowa uprawnień dla kontroli bazy po `test:mcp`: agent jej nie obchodził i zostawił mi — dobra postawa. Wniosek: czytać własne zlecenie pod kątem sprzeczności zanim je wyślę. |
+| 1A / sloty frontendu | Haiku, worktree | w toku | | | | | |
+| 1B / platforma (viewer, schematy) | Haiku, worktree | w toku | | | | | |
+| 1C / media i próby | Haiku, worktree | w toku | | | | | |
+
+### Zaplanowane zmiany specyfikacji (z rozpoznania przed fazą 2)
+
+- **Pułapka lokalizacji tras generowania:** gałąź `onlyWeak` używa `reviews.weakVerbs` (postęp), więc trasy `generate/irregular-verbs` i `retry-wrong` trafiają do modułu **postępu** (nie nauki), a `verbs_list` i `verb_set_image` z `quizTools.ts` do `lessonTools.ts` (nauka).
