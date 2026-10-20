@@ -1,8 +1,9 @@
 /**
  * Pure rules of the media cleanup (Media-Storage-Plan, S1 "Sprzątanie"): the age cut-offs, the order and the batch of
- * the rows to remove, and the time budget of one run. No database, no storage, no clock: the caller passes `now`.
- * Imports only constants, so the tests can load it without the database driver.
+ * the rows to remove, the time budget of one run and the cron guard. No database, no storage, no clock: the caller
+ * passes `now`. Imports only constants and node:crypto, so the tests can load it without the database driver.
  */
+import { createHash, timingSafeEqual } from 'node:crypto'
 import { MEDIA_PENDING_MAX_AGE_MS, MEDIA_UNREFERENCED_MAX_AGE_MS } from './constants'
 
 /** Rows removed per run and per kind (the daily run is the only place that removes unreferenced files). */
@@ -33,3 +34,15 @@ export function takeBatch<T extends { createdAt: string; id: string }>(rows: rea
 
 /** True while the run may still start work; `startedAt` and `now` are epoch milliseconds. */
 export const withinBudget = (startedAt: number, now: number, budgetMs: number = CLEANUP_TIME_BUDGET_MS): boolean => now - startedAt < budgetMs
+
+/**
+ * Guard of the cron endpoint (`GET /api/media/cleanup`). `disabled`: CRON_SECRET is unset or blank, so the endpoint
+ * must look absent (404) and never run. `unauthorized`: the Authorization header is not exactly `Bearer <secret>`.
+ * Both sides are hashed first, so the comparison takes the same time whatever the lengths are (timingSafeEqual).
+ */
+export function cronGuard(secret: string | undefined, authorization: string | undefined): 'disabled' | 'unauthorized' | 'ok' {
+  if (secret === undefined || secret.trim() === '') return 'disabled'
+  if (authorization === undefined) return 'unauthorized'
+  const digest = (value: string) => createHash('sha256').update(value).digest()
+  return timingSafeEqual(digest(authorization), digest(`Bearer ${secret}`)) ? 'ok' : 'unauthorized'
+}

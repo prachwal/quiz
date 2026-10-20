@@ -11,6 +11,7 @@ import { mcpHandler, mcpNotAllowed } from './mcp'
 import { MCP_PATH, METADATA_PATH, protectedResourceMetadata, publicOrigin } from './protectedResource'
 import { registerAdminRoutes } from './routes/admin'
 import { registerClassRoutes } from './routes/classes'
+import { mediaCleanupRoute } from './media/cronRoute'
 import { registerMediaRoutes } from './media/routes'
 import { registerLearningRoutes } from './routes/learning'
 import { registerProgressRoutes } from './routes/progress'
@@ -71,6 +72,9 @@ export function createApp() {
     }
     res.set('Access-Control-Allow-Origin', '*').json(protectedResourceMetadata(origin, domain))
   })
+
+  // public, but guarded by CRON_SECRET (404 when unset): the daily media cleanup for Vercel Cron (S1)
+  app.get('/media/cleanup', mediaCleanupRoute)
 
   // everything below is private: Bearer JWT (Auth0) or personal API token
   app.use(authenticate, requireAuthenticated)

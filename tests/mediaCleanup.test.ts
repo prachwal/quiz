@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import {
   CLEANUP_BATCH_SIZE,
   CLEANUP_TIME_BUDGET_MS,
+  cronGuard,
   orderOldestFirst,
   pendingCutoff,
   takeBatch,
@@ -53,4 +54,28 @@ test('the time budget stops new work after 20 seconds', () => {
   assert.equal(withinBudget(1_000, 1_000), true)
   assert.equal(withinBudget(1_000, 20_999), true)
   assert.equal(withinBudget(1_000, 21_000), false)
+})
+
+test('cron guard: without CRON_SECRET the endpoint is disabled, whatever the header says', () => {
+  for (const secret of [undefined, '', '   ']) {
+    assert.equal(cronGuard(secret, undefined), 'disabled', JSON.stringify(secret))
+    assert.equal(cronGuard(secret, 'Bearer '), 'disabled', JSON.stringify(secret))
+    assert.equal(cronGuard(secret, `Bearer ${secret ?? ''}`), 'disabled', JSON.stringify(secret))
+  }
+})
+
+test('cron guard: a missing or wrong header is unauthorized', () => {
+  const secret = 'e2e-cron-secret'
+  assert.equal(cronGuard(secret, undefined), 'unauthorized')
+  assert.equal(cronGuard(secret, ''), 'unauthorized')
+  assert.equal(cronGuard(secret, secret), 'unauthorized', 'the bare secret without the Bearer scheme')
+  assert.equal(cronGuard(secret, 'Bearer e2e-cron-secre'), 'unauthorized')
+  assert.equal(cronGuard(secret, 'Bearer e2e-cron-secret-x'), 'unauthorized')
+  assert.equal(cronGuard(secret, 'bearer e2e-cron-secret'), 'unauthorized', 'the scheme is compared exactly')
+  assert.equal(cronGuard(secret, 'Bearer wrong-secret-of-the-same-length!'), 'unauthorized')
+})
+
+test('cron guard: the exact Bearer header is accepted', () => {
+  assert.equal(cronGuard('e2e-cron-secret', 'Bearer e2e-cron-secret'), 'ok')
+  assert.equal(cronGuard('s'.repeat(48), `Bearer ${'s'.repeat(48)}`), 'ok')
 })

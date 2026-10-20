@@ -16,6 +16,8 @@ cd "$(dirname "$0")/.."
 export MEDIA_DRIVER=memory
 export MEDIA_PUBLIC_BASE_URL=https://media.test
 export MEDIA_URL_FETCH=false
+# CRON_SECRET guards GET /api/media/cleanup (the daily run); the e2e checks the guard with this value.
+export CRON_SECRET=e2e-cron-secret
 MEDIA_DIR="$(mktemp -d)"
 export MEDIA_MEMORY_DIR="$MEDIA_DIR"
 
