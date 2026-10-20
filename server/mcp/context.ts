@@ -2,8 +2,10 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import type { Request } from 'express'
 import { currentUserId, hasPermission, WRITE_QUIZZES } from '../auth'
 import { writeAudit } from '../adminRepo'
+import { ManagementError } from '../auth0Management'
 import { viewerOf } from '../classAccess'
 import type { Viewer } from '../classAccess'
+import { HttpError } from '../http'
 
 /** Everything a tool needs to know about the caller and to answer in one consistent way. */
 export interface Ctx {
@@ -43,3 +45,16 @@ export async function audit(ctx: Ctx, tool: string, target: { id?: string; label
   })
 }
 export const needAdmin = () => failure('Ta operacja wymaga roli admina (uprawnienie manage:users, logowanie OAuth; token osobisty go nie ma).')
+
+/**
+ * Runs an admin action whose expected refusals are thrown as `HttpError` (the shared logic in `server/userAdmin.ts`)
+ * or as Auth0 `ManagementError`, and turns them into the usual refusal. Anything unexpected still propagates.
+ */
+export async function refusing(work: () => Promise<CallToolResult>): Promise<CallToolResult> {
+  try {
+    return await work()
+  } catch (error) {
+    if (error instanceof HttpError || error instanceof ManagementError) return failure(error.message)
+    throw error
+  }
+}

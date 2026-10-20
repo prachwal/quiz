@@ -74990,6 +74990,14 @@ async function audit(ctx, tool, target, details = {}) {
   });
 }
 var needAdmin = () => failure2("Ta operacja wymaga roli admina (uprawnienie manage:users, logowanie OAuth; token osobisty go nie ma).");
+async function refusing(work) {
+  try {
+    return await work();
+  } catch (error62) {
+    if (error62 instanceof HttpError || error62 instanceof ManagementError) return failure2(error62.message);
+    throw error62;
+  }
+}
 
 // src/shared/quiz/auth0Id.ts
 var AUTH0_ID_PATTERN = /^[\w-]+(\|[\w.-]+)+$/;
@@ -75660,6 +75668,186 @@ function registerAdminTools(server, ctx) {
   );
 }
 
+// server/userAdminPure.ts
+var SELF_ROLE_REFUSAL = "Nie mo\u017Cesz odebra\u0107 sobie roli admin";
+var LAST_ADMIN_ROLE_REFUSAL = "Nie mo\u017Cna odebra\u0107 roli ostatniemu adminowi";
+var SELF_BLOCK_REFUSAL = "Nie mo\u017Cesz zablokowa\u0107 w\u0142asnego konta";
+var LAST_ADMIN_BLOCK_REFUSAL = "Nie mo\u017Cna zablokowa\u0107 ostatniego admina";
+var selfRoleRefusal = (actorId, targetId, desired) => targetId === actorId && !desired.includes("admin") ? SELF_ROLE_REFUSAL : null;
+var lastAdminRoleRefusal = (currentRoles, desired, adminCount) => currentRoles.includes("admin") && !desired.includes("admin") && adminCount <= 1 ? LAST_ADMIN_ROLE_REFUSAL : null;
+var selfBlockRefusal = (actorId, targetId, blocked) => blocked && targetId === actorId ? SELF_BLOCK_REFUSAL : null;
+var lastAdminBlockRefusal = (targetRoles, blocked, adminCount) => blocked && targetRoles.includes("admin") && adminCount <= 1 ? LAST_ADMIN_BLOCK_REFUSAL : null;
+
+// server/userAdmin.ts
+async function setUserRoles(actorId, targetId, roles) {
+  const desired = [...new Set(roles)];
+  const self = selfRoleRefusal(actorId, targetId, desired);
+  if (self) throw new HttpError(409, self);
+  const target = await getUser(targetId);
+  const adminCount = target.roles.includes("admin") && !desired.includes("admin") ? await countAdmins() : 0;
+  const lastAdmin = lastAdminRoleRefusal(target.roles, desired, adminCount);
+  if (lastAdmin) throw new HttpError(409, lastAdmin);
+  await setManagedRoles(targetId, target.roles, desired);
+  await writeAudit({
+    actorId,
+    actorLabel: await userLabel(actorId),
+    action: "roles.update",
+    targetId,
+    targetLabel: target.email ?? target.name,
+    details: { from: target.roles, to: desired }
+  });
+  return { target: { ...target, roles: desired }, from: target.roles, to: desired };
+}
+async function setUserBlocked(actorId, targetId, blocked) {
+  const self = selfBlockRefusal(actorId, targetId, blocked);
+  if (self) throw new HttpError(409, self);
+  const target = await getUser(targetId);
+  const adminCount = blocked && target.roles.includes("admin") ? await countAdmins() : 0;
+  const lastAdmin = lastAdminBlockRefusal(target.roles, blocked, adminCount);
+  if (lastAdmin) throw new HttpError(409, lastAdmin);
+  await setBlocked(targetId, blocked);
+  await writeAudit({
+    actorId,
+    actorLabel: await userLabel(actorId),
+    action: blocked ? "user.block" : "user.unblock",
+    targetId,
+    targetLabel: target.email ?? target.name
+  });
+  return { target: { ...target, blocked }, wasBlocked: target.blocked };
+}
+
+// server/mcp/tools/shared.ts
+var classId = external_exports.string().uuid().describe("Id klasy (UUID) z class_list");
+var studentId = auth0UserId.describe(
+  "Identyfikator Auth0 ucznia, np. google-oauth2|123 lub discord|456 (widoczny w student_list i w Ustawieniach \u2192 U\u017Cytkownicy)"
+);
+var confirm = external_exports.literal(true).describe("Musi by\u0107 true - potwierdzenie operacji nieodwracalnej");
+function classGuards(ctx) {
+  const v = ctx.viewer;
+  return {
+    reading: async (id, work) => {
+      if (!canReadClasses(v)) return needTeacherOrAdmin();
+      const cls = await readableClass(v, id);
+      return cls ? text(await work(cls)) : classNotFound();
+    },
+    changing: async (id, work) => {
+      if (!v.teacher) return needTeacher();
+      const cls = await writableClass(v, id);
+      if (cls) return text(await work(cls));
+      return await readableClass(v, id) ? notOwner() : classNotFound();
+    }
+  };
+}
+
+// server/mcp/tools/users.ts
+var accountOrNull = (userId) => getUser(userId).catch((error62) => {
+  if (error62 instanceof ManagementError && error62.status === 404) return null;
+  throw error62;
+});
+function registerUserTools(server, ctx) {
+  const admin = ctx.viewer.admin;
+  server.registerTool(
+    "user_list",
+    {
+      title: "Lista kont (admin)",
+      description: "Konta z Auth0 (e-mail, imi\u0119, dostawca logowania, roles, blocked, lastLogin, loginsCount), od ostatnio zalogowanego, 20 na stron\u0119. q szuka po e-mailu, imieniu i nicku; page liczy od 1. Zwraca total i page.",
+      inputSchema: {
+        q: external_exports.string().trim().max(100).optional(),
+        page: external_exports.number().int().min(1).max(1e3).default(1)
+      },
+      annotations: { readOnlyHint: true }
+    },
+    async ({ q, page }) => {
+      if (!admin) return needAdmin();
+      return refusing(async () => text({ ...await listUsers(q ?? "", page - 1, 20), page }));
+    }
+  );
+  server.registerTool(
+    "user_get",
+    {
+      title: "Konto u\u017Cytkownika (admin)",
+      description: "Pe\u0142ne dane konta z Auth0 (z e-mailem, rolami, blocked, lastLogin). include dodaje sekcje: classes (klasy, do kt\xF3rych nale\u017Cy), attempts (\u0142\u0105cznie i 20 ostatnich podej\u015B\u0107 bez odpowiedzi), reviews (stan powt\xF3rek, liczba s\u0142abych czasownik\xF3w i 8 najs\u0142abszych). Id z user_list, user_search albo attempt_list.",
+      inputSchema: {
+        userId: auth0UserId,
+        include: external_exports.array(external_exports.enum(["attempts", "classes", "reviews"])).max(3).default([])
+      },
+      annotations: { readOnlyHint: true }
+    },
+    async ({ userId, include }) => {
+      if (!admin) return needAdmin();
+      return refusing(async () => {
+        const user = await accountOrNull(userId);
+        if (!user) return failure2("Nie znaleziono u\u017Cytkownika.");
+        const result = { ...user };
+        if (include.includes("classes")) result.classes = await classesOfMember(userId);
+        if (include.includes("attempts")) {
+          const [latest, total] = await Promise.all([allAttempts(userId, 20), countAttempts(userId)]);
+          result.attempts = { total, hasMore: total > latest.length, latest: attemptRows(latest, false, /* @__PURE__ */ new Map()) };
+        }
+        if (include.includes("reviews")) {
+          const [summary2, weakCount, weakVerbs2] = await Promise.all([
+            getReviewSummary(userId),
+            weakVerbCount(userId),
+            weakVerbDetails(userId, 8)
+          ]);
+          result.reviews = { ...summary2, weakVerbCount: weakCount, weakVerbs: weakVerbs2 };
+        }
+        return text(result);
+      });
+    }
+  );
+  server.registerTool(
+    "user_search",
+    {
+      title: "Szukaj konta w aplikacji (admin)",
+      description: "Szuka kont w bazie aplikacji po imieniu, e-mailu lub identyfikatorze Auth0 (min. 2 znaki, do 25 wynik\xF3w, domy\u015Blnie 8). Celowo r\xF3\u017Cni si\u0119 od student_search: nie wymaga klasy, pokazuje pe\u0142ny e-mail i nie maskuje go, a limit i minimalna d\u0142ugo\u015B\u0107 s\u0105 inne. Znajduje tylko osoby, kt\xF3re logowa\u0142y si\u0119 do aplikacji. Zwraca userId, name, email, lastActiveDay, attempts.",
+      inputSchema: {
+        q: external_exports.string().trim().min(2).max(100),
+        limit: external_exports.number().int().min(1).max(25).default(8)
+      },
+      annotations: { readOnlyHint: true }
+    },
+    async ({ q, limit }) => {
+      if (!admin) return needAdmin();
+      return text(await searchUsers(q, limit));
+    }
+  );
+  server.registerTool(
+    "user_roles_set",
+    {
+      title: "Ustaw role u\u017Cytkownika (admin)",
+      description: "Ustawia dok\u0142adnie podany zestaw r\xF3l zarz\u0105dzanych (admin, teacher, student); pozosta\u0142e role Auth0 zostaj\u0105. Nie mo\u017Cna odebra\u0107 sobie roli admin ani jej ostatniemu adminowi. Zmiana dzia\u0142a po ponownym zalogowaniu u\u017Cytkownika. Wymaga confirm=true. Zapisuje wpis audytu.",
+      inputSchema: { userId: auth0UserId, roles: rolesInput.shape.roles, confirm },
+      annotations: { destructiveHint: true, idempotentHint: true }
+    },
+    async ({ userId, roles }) => {
+      if (!admin) return needAdmin();
+      return refusing(async () => {
+        const change = await setUserRoles(ctx.userId, userId, roles);
+        await audit(ctx, "user_roles_set", { id: userId, label: change.target.email ?? change.target.name ?? userId }, { userId, from: change.from, to: change.to });
+        return text({ userId, roles: change.to });
+      });
+    }
+  );
+  server.registerTool(
+    "user_block",
+    {
+      title: "Zablokuj lub odblokuj konto (admin)",
+      description: "Blokuje (blocked=true) albo odblokowuje (blocked=false) konto w Auth0. Nie mo\u017Cna zablokowa\u0107 siebie ani ostatniego admina. Dane wynik\xF3w zostaj\u0105. Wymaga confirm=true. Zapisuje wpis audytu.",
+      inputSchema: { userId: auth0UserId, blocked: blockedInput.shape.blocked, confirm },
+      annotations: { destructiveHint: true, idempotentHint: true }
+    },
+    async ({ userId, blocked }) => {
+      if (!admin) return needAdmin();
+      return refusing(async () => {
+        const change = await setUserBlocked(ctx.userId, userId, blocked);
+        await audit(ctx, "user_block", { id: userId, label: change.target.email ?? change.target.name ?? userId }, { userId, from: change.wasBlocked, to: blocked });
+        return text({ userId, blocked });
+      });
+    }
+  );
+}
+
 // src/shared/quiz/classAnalysis.ts
 var DAY2 = 24 * 60 * 60 * 1e3;
 var INACTIVE_DAYS = 7;
@@ -75711,29 +75899,6 @@ function analyzeClass(report, now = /* @__PURE__ */ new Date()) {
       averageBestPercent: allBest.length ? Math.round(allBest.reduce((x, y) => x + y, 0) / allBest.length) : null,
       inactive7Days,
       withOverdueWork
-    }
-  };
-}
-
-// server/mcp/tools/shared.ts
-var classId = external_exports.string().uuid().describe("Id klasy (UUID) z class_list");
-var studentId = auth0UserId.describe(
-  "Identyfikator Auth0 ucznia, np. google-oauth2|123 lub discord|456 (widoczny w student_list i w Ustawieniach \u2192 U\u017Cytkownicy)"
-);
-var confirm = external_exports.literal(true).describe("Musi by\u0107 true - potwierdzenie operacji nieodwracalnej");
-function classGuards(ctx) {
-  const v = ctx.viewer;
-  return {
-    reading: async (id, work) => {
-      if (!canReadClasses(v)) return needTeacherOrAdmin();
-      const cls = await readableClass(v, id);
-      return cls ? text(await work(cls)) : classNotFound();
-    },
-    changing: async (id, work) => {
-      if (!v.teacher) return needTeacher();
-      const cls = await writableClass(v, id);
-      if (cls) return text(await work(cls));
-      return await readableClass(v, id) ? notOwner() : classNotFound();
     }
   };
 }
@@ -76401,6 +76566,7 @@ function buildServer(req) {
   registerQuizTools(server, ctx);
   registerClassTools(server, ctx);
   registerAdminTools(server, ctx);
+  registerUserTools(server, ctx);
   return server;
 }
 var mcpHandler = async (req, res) => {
@@ -76484,43 +76650,14 @@ function registerAdminRoutes(router) {
     res.json(await listUsers(q, page, 20));
   });
   router.put("/admin/users/:id/roles", adminOnly, async (req, res) => {
-    const targetId = String(req.params.id);
     const { roles } = rolesInput.parse(req.body);
-    const desired = [...new Set(roles)];
-    const target = await getUser(targetId);
-    const removingAdmin = target.roles.includes("admin") && !desired.includes("admin");
-    if (removingAdmin) {
-      if (targetId === userOf(req)) throw new HttpError(409, "Nie mo\u017Cesz odebra\u0107 sobie roli admin");
-      if (await countAdmins() <= 1) throw new HttpError(409, "Nie mo\u017Cna odebra\u0107 roli ostatniemu adminowi");
-    }
-    await setManagedRoles(targetId, target.roles, desired);
-    await writeAudit({
-      actorId: userOf(req),
-      actorLabel: await userLabel(userOf(req)),
-      action: "roles.update",
-      targetId,
-      targetLabel: target.email ?? target.name,
-      details: { from: target.roles, to: desired }
-    });
-    res.json({ ...target, roles: desired });
+    const change = await setUserRoles(userOf(req), String(req.params.id), roles);
+    res.json(change.target);
   });
   router.patch("/admin/users/:id/blocked", adminOnly, async (req, res) => {
-    const targetId = String(req.params.id);
     const { blocked } = blockedInput.parse(req.body);
-    if (blocked && targetId === userOf(req)) throw new HttpError(409, "Nie mo\u017Cesz zablokowa\u0107 w\u0142asnego konta");
-    const target = await getUser(targetId);
-    if (blocked && target.roles.includes("admin") && await countAdmins() <= 1) {
-      throw new HttpError(409, "Nie mo\u017Cna zablokowa\u0107 ostatniego admina");
-    }
-    await setBlocked(targetId, blocked);
-    await writeAudit({
-      actorId: userOf(req),
-      actorLabel: await userLabel(userOf(req)),
-      action: blocked ? "user.block" : "user.unblock",
-      targetId,
-      targetLabel: target.email ?? target.name
-    });
-    res.json({ ...target, blocked });
+    const change = await setUserBlocked(userOf(req), String(req.params.id), blocked);
+    res.json(change.target);
   });
   router.get("/admin/students", adminOnly, async (req, res) => {
     const q = external_exports.string().trim().max(100).default("").parse(req.query.q ?? "");

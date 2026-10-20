@@ -101,6 +101,12 @@ export async function archiveClass(id: string, ownerId: string) {
   return (r.rowCount ?? 0) > 0
 }
 
+/** Hands the class to another owner (admin action, MCP `class_transfer`). Members and assignments stay. */
+export async function transferClass(id: string, newOwnerId: string) {
+  const r = await pool().query('UPDATE classes SET owner_id = $2 WHERE id = $1 AND archived_at IS NULL', [id, newOwnerId])
+  return (r.rowCount ?? 0) > 0
+}
+
 export async function regenerateCode(id: string, ownerId: string): Promise<string | null> {
   for (let attempt = 0; attempt < 5; attempt++) {
     try {

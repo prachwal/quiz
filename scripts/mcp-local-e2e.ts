@@ -92,8 +92,8 @@ try {
   const getOk = await fetch(`${base}/mcp`, { headers: { Authorization: `Bearer ${await token(PLAIN, [])}` } })
   check('GET /mcp -> 405', getOk.status === 405, getOk.status)
   const names = (await tPlain.listTools()).tools.map((t) => t.name).sort()
-  check('30 tools listed', names.length === 30, names.length)
-  for (const required of ['quiz_create', 'class_create', 'student_search', 'student_add', 'class_analyze', 'assignment_create', 'attempt_list', 'attempt_get', 'quiz_stats', 'user_results', 'user_analysis'])
+  check('35 tools listed', names.length === 35, names.length)
+  for (const required of ['quiz_create', 'class_create', 'student_search', 'student_add', 'class_analyze', 'assignment_create', 'attempt_list', 'attempt_get', 'quiz_stats', 'user_results', 'user_analysis', 'user_list', 'user_get', 'user_search', 'user_roles_set', 'user_block'])
     check(`tool ${required} exists`, names.includes(required))
 
   // ---- quizzes ---------------------------------------------------------------------------
@@ -261,6 +261,24 @@ try {
   denied('user_analysis unknown user', await call(tAdmin, 'user_analysis', { userId: `discord|${P}-nobody` }), 'Nie znaleziono użytkownika')
   denied('user_analysis as teacher', await call(tTeacher, 'user_analysis', { userId: STUDENT }), 'admina')
   denied('user_analysis as plain', await call(tPlain, 'user_analysis', { userId: STUDENT }), 'admina')
+
+  // ---- user administration: only reads and refusals here (Auth0 writes are never reached) -----
+  ok('user_search (app directory, unmasked e-mail)', await call(tAdmin, 'user_search', { q: 'uczennica' }), (d) => d.length === 1 && d[0].userId === STUDENT && d[0].email === 'ala.uczennica@szkola.pl')
+  ok('user_search (limit)', await call(tAdmin, 'user_search', { q: 'szkola.pl', limit: 2 }), (d) => d.length === 2)
+  denied('user_search too short', await call(tAdmin, 'user_search', { q: 'a' }))
+  denied('user_search as teacher', await call(tTeacher, 'user_search', { q: 'uczennica' }), 'admina')
+  denied('user_list as teacher', await call(tTeacher, 'user_list', {}), 'admina')
+  denied('user_list as plain', await call(tPlain, 'user_list', {}), 'admina')
+  denied('user_get as teacher', await call(tTeacher, 'user_get', { userId: STUDENT }), 'admina')
+  denied('user_get unknown account', await call(tAdmin, 'user_get', { userId: `discord|${P}-nobody` }))
+  denied('user_roles_set as teacher', await call(tTeacher, 'user_roles_set', { userId: STUDENT, roles: ['student'], confirm: true }), 'admina')
+  denied('user_roles_set without confirm', await call(tAdmin, 'user_roles_set', { userId: STUDENT, roles: [], confirm: false }))
+  denied('user_roles_set cannot demote yourself (before Auth0)', await call(tAdmin, 'user_roles_set', { userId: ADMIN, roles: ['student'], confirm: true }), 'odebrać sobie')
+  denied('user_roles_set unknown account', await call(tAdmin, 'user_roles_set', { userId: `discord|${P}-nobody`, roles: ['student'], confirm: true }))
+  denied('user_block as plain', await call(tPlain, 'user_block', { userId: STUDENT, blocked: true, confirm: true }), 'admina')
+  denied('user_block without confirm', await call(tAdmin, 'user_block', { userId: STUDENT, blocked: true, confirm: false }))
+  denied('user_block cannot block yourself (before Auth0)', await call(tAdmin, 'user_block', { userId: ADMIN, blocked: true, confirm: true }), 'zablokować własnego')
+  denied('user_block unknown account', await call(tAdmin, 'user_block', { userId: `discord|${P}-nobody`, blocked: true, confirm: true }))
 
   // ---- removals and archiving --------------------------------------------------------------
   denied('student_remove without confirm', await call(tTeacher, 'student_remove', { classId, userId: STUDENT2, confirm: false }))

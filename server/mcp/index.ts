@@ -3,6 +3,7 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import type { Request, RequestHandler, Response } from 'express'
 import { contextOf } from './context'
 import { registerAdminTools } from './tools/admin'
+import { registerUserTools } from './tools/users'
 import { registerClassTools } from './classTools'
 import { registerQuizTools } from './quizTools'
 
@@ -27,6 +28,7 @@ function buildServer(req: Request) {
   registerQuizTools(server, ctx)
   registerClassTools(server, ctx)
   registerAdminTools(server, ctx)
+  registerUserTools(server, ctx)
   return server
 }
 

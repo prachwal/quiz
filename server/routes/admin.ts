@@ -14,6 +14,7 @@ import * as auth0 from '../auth0Management'
 import { MANAGE_USERS, requirePermission } from '../auth'
 import * as classes from '../classesRepo'
 import { HttpError, idParam, userOf } from '../http'
+import { setUserBlocked, setUserRoles } from '../userAdmin'
 import { adminStudentResults } from '../userResults'
 
 /**
@@ -64,44 +65,15 @@ export function registerAdminRoutes(router: Router) {
   })
 
   router.put('/admin/users/:id/roles', adminOnly, async (req, res) => {
-    const targetId = String(req.params.id)
     const { roles } = rolesInput.parse(req.body)
-    const desired = [...new Set(roles)]
-    const target = await auth0.getUser(targetId)
-    const removingAdmin = target.roles.includes('admin') && !desired.includes('admin')
-    if (removingAdmin) {
-      if (targetId === userOf(req)) throw new HttpError(409, 'Nie możesz odebrać sobie roli admin')
-      if ((await auth0.countAdmins()) <= 1) throw new HttpError(409, 'Nie można odebrać roli ostatniemu adminowi')
-    }
-    await auth0.setManagedRoles(targetId, target.roles, desired)
-    await admin.writeAudit({
-      actorId: userOf(req),
-      actorLabel: await auth0.userLabel(userOf(req)),
-      action: 'roles.update',
-      targetId,
-      targetLabel: target.email ?? target.name,
-      details: { from: target.roles, to: desired },
-    })
-    res.json({ ...target, roles: desired })
+    const change = await setUserRoles(userOf(req), String(req.params.id), roles)
+    res.json(change.target)
   })
 
   router.patch('/admin/users/:id/blocked', adminOnly, async (req, res) => {
-    const targetId = String(req.params.id)
     const { blocked } = blockedInput.parse(req.body)
-    if (blocked && targetId === userOf(req)) throw new HttpError(409, 'Nie możesz zablokować własnego konta')
-    const target = await auth0.getUser(targetId)
-    if (blocked && target.roles.includes('admin') && (await auth0.countAdmins()) <= 1) {
-      throw new HttpError(409, 'Nie można zablokować ostatniego admina')
-    }
-    await auth0.setBlocked(targetId, blocked)
-    await admin.writeAudit({
-      actorId: userOf(req),
-      actorLabel: await auth0.userLabel(userOf(req)),
-      action: blocked ? 'user.block' : 'user.unblock',
-      targetId,
-      targetLabel: target.email ?? target.name,
-    })
-    res.json({ ...target, blocked })
+    const change = await setUserBlocked(userOf(req), String(req.params.id), blocked)
+    res.json(change.target)
   })
 
   // ---- admin: any student's complete results (all quizzes, not only class assignments) ----

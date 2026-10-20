@@ -17,6 +17,7 @@ export {
   setJoiningOpen,
   archiveClass,
   regenerateCode,
+  transferClass,
   listMembers,
   addMember,
   searchCandidates,
