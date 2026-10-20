@@ -51,6 +51,15 @@ test('an empty alt is an error (D5) but only for a valid reference', () => {
   assert.deepEqual(parseRichText(`![](media:${ID})`), [{ type: 'image', alt: '', mediaId: ID }])
 })
 
+test('a blank alt (only whitespace) is an error too, a padded alt with text is fine', () => {
+  for (const blank of [' ', '   ', '\t', ' \u00a0 ']) {
+    assert.equal(imageSyntaxErrors(`![${blank}](media:${ID})`).length, 1, JSON.stringify(blank))
+    assert.match(imageSyntaxErrors(`![${blank}](media:${ID})`)[0], /wymaga opisu/)
+  }
+  assert.deepEqual(imageSyntaxErrors(`![ Mapa Polski ](media:${ID})`), [])
+  assert.deepEqual(imageSyntaxErrors(`![ . ](media:${ID})`), [])
+})
+
 test('a malformed uuid is flagged and is not an image', () => {
   for (const bad of ['media:1234', `media:${ID}0`, 'media:not-a-uuid', 'media:', `media:${ID.replace(/-/g, '')}`]) {
     const text = `![opis](${bad})`

@@ -8,7 +8,7 @@
  * reference (the server always writes lowercase ids, so the author gets one canonical spelling).
  */
 
-/** Alt text (the description) is 1..200 characters; an empty one is rejected by `imageSyntaxErrors` (D5). */
+/** Alt text (the description) is 1..200 characters; an empty or whitespace-only one is rejected by `imageSyntaxErrors` (D5). */
 export const MEDIA_ALT_MAX_LENGTH = 200
 /** At most three images in one text field (question prompt, explanation, one option). */
 export const MEDIA_MAX_IMAGES_PER_FIELD = 3
@@ -60,7 +60,7 @@ export function hasImageSyntax(text: string): boolean {
 
 /**
  * Problems with the image syntax of one text field, in Polish, for the author. Empty list = fine.
- * Checks: external addresses (D4), targets that are not `media:<lowercase uuid>`, empty alt (D5),
+ * Checks: external addresses (D4), targets that are not `media:<lowercase uuid>`, empty or blank alt (D5),
  * alt longer than 200 characters, more than three images in the field.
  */
 export function imageSyntaxErrors(text: string): string[] {
@@ -72,7 +72,7 @@ export function imageSyntaxErrors(text: string): string[] {
     const target = match[2]
     if (UUID_TARGET.test(target)) {
       validCount += 1
-      if (alt === '') problems.add(EMPTY_ALT)
+      if (alt.trim() === '') problems.add(EMPTY_ALT)
       else if (alt.length > MEDIA_ALT_MAX_LENGTH) problems.add(LONG_ALT)
     } else if (EXTERNAL_TARGET.test(target)) {
       problems.add(EXTERNAL)

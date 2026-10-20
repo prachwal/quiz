@@ -68,7 +68,7 @@ plik najpierw trzeba wysłać do magazynu (`media_upload`, `media_upload_from_ur
 | luki `cloze`, odpowiedź `numeric` | **nie** | odpowiedzi są porównywane tekstem albo liczbą |
 | `lessons.intro` | tak | do 2000 znaków; reguły jak w pytaniach (`src/shared/quiz/lessonIntro.ts`) |
 
-- **Opis (alt)** jest wymagany: 1–200 znaków. Pusty opis jest odrzucany przy zapisie
+- **Opis (alt)** jest wymagany: 1–200 znaków. Pusty opis (albo złożony z samych spacji) jest odrzucany przy zapisie
   (`imageSyntaxErrors`) i w JSON Schema (`data/quiz.schema.json`, wzorzec z negatywnym lookahead).
 - **Limity:** najwyżej 3 obrazy w jednym polu i 100 odwołań w quizie. `{{n}}` wewnątrz opisu obrazu
   nie jest luką.

@@ -62765,7 +62765,7 @@ function imageSyntaxErrors(text2) {
     const target = match[2];
     if (UUID_TARGET.test(target)) {
       validCount += 1;
-      if (alt2 === "") problems.add(EMPTY_ALT);
+      if (alt2.trim() === "") problems.add(EMPTY_ALT);
       else if (alt2.length > MEDIA_ALT_MAX_LENGTH) problems.add(LONG_ALT);
     } else if (EXTERNAL_TARGET.test(target)) {
       problems.add(EXTERNAL);
@@ -78454,7 +78454,7 @@ var quiz_schema_default = {
       additionalProperties: false,
       required: ["text", "isCorrect"],
       properties: {
-        text: { type: "string", minLength: 1, maxLength: 500, pattern: "^(?![\\s\\S]*!\\[\\]\\(media:)(?![\\s\\S]*!\\[[^\\]\\n]{201,}\\]\\()(?![\\s\\S]*!\\[[^\\]\\n]*\\]\\((?!media:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\))[^)\\n]*\\))[\\s\\S]*$", description: "Tre\u015B\u0107 opcji; w single/multiple/truefalse mo\u017Ce zawiera\u0107 obraz w zapisie ![opis](media:<uuid>) (opis 1\u2013200 znak\xF3w, obraz najpierw wys\u0142any do magazynu; zewn\u0119trzne adresy https s\u0105 odrzucane). W typie text obrazy s\u0105 niedozwolone. Zgodno\u015Bci z zasadami \u201Egdzie wolno\u201D nie sprawdza ten schemat." },
+        text: { type: "string", minLength: 1, maxLength: 500, pattern: "^(?![\\s\\S]*!\\[\\s*\\]\\(media:)(?![\\s\\S]*!\\[[^\\]\\n]{201,}\\]\\()(?![\\s\\S]*!\\[[^\\]\\n]*\\]\\((?!media:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\))[^)\\n]*\\))[\\s\\S]*$", description: "Tre\u015B\u0107 opcji; w single/multiple/truefalse mo\u017Ce zawiera\u0107 obraz w zapisie ![opis](media:<uuid>) (opis 1\u2013200 znak\xF3w, obraz najpierw wys\u0142any do magazynu; zewn\u0119trzne adresy https s\u0105 odrzucane). W typie text obrazy s\u0105 niedozwolone. Zgodno\u015Bci z zasadami \u201Egdzie wolno\u201D nie sprawdza ten schemat." },
         isCorrect: { type: "boolean" }
       }
     },
@@ -78467,8 +78467,8 @@ var quiz_schema_default = {
           enum: ["single", "multiple", "truefalse", "text", "numeric", "ordering", "matching", "cloze"],
           description: "single: jedna poprawna; multiple: co najmniej jedna; truefalse: dwie opcje, jedna poprawna; text: opcje to akceptowane odpowiedzi; numeric: wynik liczbowy w config (odpowied\u017A + tolerancja); ordering: elementy w poprawnej kolejno\u015Bci w config (gracz je uk\u0142ada); matching: pary w config (lewa \u2192 prawa); cloze: tre\u015B\u0107 ze znacznikami {{1}}\u2026{{n}} i lukami w config."
         },
-        prompt: { type: "string", minLength: 1, maxLength: 2e3, pattern: "^(?![\\s\\S]*!\\[\\]\\(media:)(?![\\s\\S]*!\\[[^\\]\\n]{201,}\\]\\()(?![\\s\\S]*!\\[[^\\]\\n]*\\]\\((?!media:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\))[^)\\n]*\\))[\\s\\S]*$", description: "Tre\u015B\u0107 pytania. Obraz wstawia si\u0119 zapisem ![opis](media:<uuid>) w jednym wierszu; obraz najpierw trzeba wys\u0142a\u0107 do magazynu (MCP media_upload / media_upload_from_url), zewn\u0119trzne adresy https s\u0105 odrzucane, opis (alt) jest wymagany." },
-        explanation: { type: "string", maxLength: 2e3, default: "", pattern: "^(?![\\s\\S]*!\\[\\]\\(media:)(?![\\s\\S]*!\\[[^\\]\\n]{201,}\\]\\()(?![\\s\\S]*!\\[[^\\]\\n]*\\]\\((?!media:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\))[^)\\n]*\\))[\\s\\S]*$", description: "Wyja\u015Bnienie po ocenie. Obraz w zapisie ![opis](media:<uuid>), tak jak w tre\u015Bci pytania (wys\u0142any wcze\u015Bniej do magazynu, z opisem; zewn\u0119trzne adresy s\u0105 odrzucone)." },
+        prompt: { type: "string", minLength: 1, maxLength: 2e3, pattern: "^(?![\\s\\S]*!\\[\\s*\\]\\(media:)(?![\\s\\S]*!\\[[^\\]\\n]{201,}\\]\\()(?![\\s\\S]*!\\[[^\\]\\n]*\\]\\((?!media:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\))[^)\\n]*\\))[\\s\\S]*$", description: "Tre\u015B\u0107 pytania. Obraz wstawia si\u0119 zapisem ![opis](media:<uuid>) w jednym wierszu; obraz najpierw trzeba wys\u0142a\u0107 do magazynu (MCP media_upload / media_upload_from_url), zewn\u0119trzne adresy https s\u0105 odrzucane, opis (alt) jest wymagany." },
+        explanation: { type: "string", maxLength: 2e3, default: "", pattern: "^(?![\\s\\S]*!\\[\\s*\\]\\(media:)(?![\\s\\S]*!\\[[^\\]\\n]{201,}\\]\\()(?![\\s\\S]*!\\[[^\\]\\n]*\\]\\((?!media:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\))[^)\\n]*\\))[\\s\\S]*$", description: "Wyja\u015Bnienie po ocenie. Obraz w zapisie ![opis](media:<uuid>), tak jak w tre\u015Bci pytania (wys\u0142any wcze\u015Bniej do magazynu, z opisem; zewn\u0119trzne adresy s\u0105 odrzucone)." },
         points: { type: "integer", minimum: 1, maximum: 100, default: 1 },
         options: { type: "array", maxItems: 20, default: [], items: { $ref: "#/$defs/option" } },
         config: {
