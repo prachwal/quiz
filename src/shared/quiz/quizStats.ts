@@ -6,6 +6,7 @@
  * generates new question ids); otherwise the quiz's CURRENT questions (old attempts). A result whose question
  * is known neither way is not attributed: the attempt is counted in `unattributedAttempts`.
  */
+import { promptText } from './engine'
 import { analyzeItem } from './itemStats'
 import type { ItemStats, Observation } from './itemStats'
 import type { SnapshotQuestion } from './questionsSnapshot'
@@ -97,7 +98,7 @@ export function quizStats(input: { quiz: StatsQuiz; attempts: StatsAttempt[]; li
     return {
       ...stats,
       questionId,
-      prompt: question?.prompt ?? '',
+      prompt: promptText(question?.prompt ?? ''),
       type,
       points: question?.points ?? 0,
       inCurrentQuiz: currentById.has(questionId),

@@ -198,3 +198,15 @@ test('attempts without answer text give no top answers but still count', () => {
   assert.equal(report.questions[0].attempts, 1)
   assert.equal(report.questions[0].accuracy, 0)
 })
+
+test('prompts in the statistics are text: an image becomes its description, never its address', () => {
+  const media = '0b6f6c3e-3f5a-4d2e-9a7b-1c2d3e4f5a6b'
+  const prompt = `Co to jest? ![kot](media:${media})`
+  const report = quizStats({
+    quiz: quiz([q('a', 1, 'single', prompt)]),
+    attempts: [attempt([result('a', true)], null)],
+    limit: 10,
+  })
+  assert.equal(report.questions[0].prompt, 'Co to jest? [obraz: kot]')
+  assert.ok(!report.questions[0].prompt.includes('media:'))
+})

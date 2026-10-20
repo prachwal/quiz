@@ -75575,7 +75575,7 @@ function quizStats(input2) {
     return {
       ...stats,
       questionId,
-      prompt: question?.prompt ?? "",
+      prompt: promptText(question?.prompt ?? ""),
       type,
       points: question?.points ?? 0,
       inCurrentQuiz: currentById.has(questionId),
