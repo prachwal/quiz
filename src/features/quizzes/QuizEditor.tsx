@@ -54,7 +54,7 @@ function QuestionCard({
   // images can be inserted into the prompt and the explanation of every type; option images are in OptionsEditor
   const insertImage = (path: 'prompt' | 'explanation', ref: typeof promptRef, image: InsertedImage) => {
     onImage(image)
-    insertIntoFormField(form, ['questions', name, path], ref.current?.resizableTextArea?.textArea ?? null, image.markdown)
+    insertIntoFormField(form, ['questions', name, path], ref.current?.resizableTextArea?.textArea ?? null, image.markdown, true)
   }
 
   return (

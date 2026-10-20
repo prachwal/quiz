@@ -62,10 +62,15 @@ describe('QuizEditor with images', () => {
 
   it('inserts the markup into the prompt and shows the image under it', async () => {
     renderEditor(withQuestion({ ...emptyQuestion(), prompt: 'Co to jest?' }))
+    // the caret of the prompt is at its end (jsdom starts an unfocused field at 0): the markup goes on its own line
+    const prompt = screen.getByLabelText('Treść pytania') as HTMLTextAreaElement
+    prompt.focus()
+    prompt.setSelectionRange(prompt.value.length, prompt.value.length)
     uploadThrough(screen.getAllByRole('button', { name: /Wstaw obrazek$/ })[0], 'Kwadrat')
 
-    // inserted at the caret, which jsdom places on its own for a field that was never focused: only presence is checked
-    await waitFor(() => expect((screen.getByLabelText('Treść pytania') as HTMLTextAreaElement).value).toContain(`![Kwadrat](media:${ID})`))
+    await waitFor(() =>
+      expect((screen.getByLabelText('Treść pytania') as HTMLTextAreaElement).value).toBe(`Co to jest?\n![Kwadrat](media:${ID})`),
+    )
     await waitFor(() => expect(previewImage('Kwadrat')).not.toBeNull())
     expect(previewImage('Kwadrat')).toHaveAttribute('src', SRC)
     // the first test of the file pays for the first mount of antd (transforms, styles): a longer budget

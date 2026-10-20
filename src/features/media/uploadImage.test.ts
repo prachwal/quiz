@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { MediaUploadCompleted, MediaUploadStarted } from '../../shared/media/upload'
 import type { PreparedImage } from './prepareImage'
 import { imageMarkdown, uploadImage, validateAltText, type UploadDeps } from './uploadImage'
-import { insertAtSelection, selectionOf } from './markdownInsert'
+import { selectionOf } from './markdownInsert'
 
 const prepared: PreparedImage = { bytes: new Uint8Array([1, 2, 3]), contentType: 'image/webp', width: 800, height: 450, reencoded: true }
 const picked = new File([new Uint8Array(3)], 'kot.png', { type: 'image/png' })
@@ -100,27 +100,6 @@ describe('uploadImage', () => {
   it('reports a server that did not offer an upload target', async () => {
     const fake = fakeDeps({ mediaId: 'id-3', reused: false, status: 'pending' })
     await expect(uploadImage({ file: picked, alt: 'x' }, fake.deps)).rejects.toThrow('nie przygotował wysyłki')
-  })
-})
-
-describe('insertAtSelection', () => {
-  it('inserts at the caret and puts the caret after the markup', () => {
-    const markup = '![a](media:x)'
-    expect(insertAtSelection('Co to jest?', { start: 3, end: 3 }, markup)).toEqual({ text: `Co ${markup}to jest?`, caret: 3 + markup.length })
-  })
-
-  it('replaces a selected range', () => {
-    expect(insertAtSelection('abcdef', { start: 1, end: 4 }, 'X')).toEqual({ text: 'aXef', caret: 2 })
-  })
-
-  it('appends on a new line when there is no selection', () => {
-    expect(insertAtSelection('Pytanie', null, 'M')).toEqual({ text: 'Pytanie\nM', caret: 9 })
-    expect(insertAtSelection('Pytanie\n', null, 'M')).toEqual({ text: 'Pytanie\nM', caret: 9 })
-    expect(insertAtSelection('', null, 'M')).toEqual({ text: 'M', caret: 1 })
-  })
-
-  it('clamps a selection that is outside the text', () => {
-    expect(insertAtSelection('ab', { start: 9, end: 12 }, 'X')).toEqual({ text: 'abX', caret: 3 })
   })
 })
 

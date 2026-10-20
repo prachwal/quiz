@@ -6,7 +6,8 @@ import type { DraftOption, QuestionType } from '../../shared/quiz/engine'
 import FieldPreview from '../media/FieldPreview'
 import ImageUpload from '../media/ImageUpload'
 import type { InsertedImage } from '../media/uploadImage'
-import { insertAtSelection, restoreCaret, selectionOf } from '../media/markdownInsert'
+import { insertImageMarkdown } from '../media/imageInsert'
+import { restoreCaret, selectionOf } from '../media/markdownInsert'
 
 interface Props {
   type: QuestionType
@@ -36,7 +37,12 @@ export default function OptionsEditor({ type, value = [], onChange, onMediaUploa
   const insertIntoOption = (index: number, image: InsertedImage) => {
     onMediaUploaded?.(image)
     const element = inputs.current[index]?.input ?? null
-    const { text, caret } = insertAtSelection(value[index]?.text ?? '', selectionOf(element), image.markdown)
+    // option inputs are single-line: the markup goes in as it is, without a line break
+    const selection = selectionOf(element)
+    const { text, caret } = insertImageMarkdown(value[index]?.text ?? '', selection?.start ?? null, image.markdown, {
+      block: false,
+      selectionEnd: selection?.end ?? null,
+    })
     update(index, { text })
     restoreCaret(element, caret)
   }
