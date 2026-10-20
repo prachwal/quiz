@@ -7,6 +7,7 @@ import * as auth0 from './auth0Management'
 import { gradeRegistry } from './gradeRegistry'
 import { HttpError } from './http'
 import { registerLearningGradeHooks } from './learningGradeHooks'
+import { lessonRegistry } from './lessonRegistry'
 import { mcpHandler, mcpNotAllowed } from './mcp'
 import { MCP_PATH, METADATA_PATH, protectedResourceMetadata, publicOrigin } from './protectedResource'
 import { registerAdminRoutes } from './routes/admin'
@@ -14,6 +15,7 @@ import { registerClassRoutes } from './routes/classes'
 import { mediaCleanupRoute } from './media/cronRoute'
 import { registerMediaRoutes } from './media/routes'
 import { registerLearningRoutes } from './routes/learning'
+import { registerProgressHooks } from './progressHooks'
 import { registerProgressRoutes } from './routes/progress'
 import { registerQuizRoutes } from './routes/quizzes'
 import { registerTokenRoutes } from './routes/tokens'
@@ -28,8 +30,10 @@ import { initSentry, reportServerError } from './sentry'
  */
 export function createApp() {
   initSentry()
-  // grade side effects of other modules (course pass, spaced repetition, streak); see server/gradeHooks.ts
+  // grade and lesson side effects of other modules (course pass, spaced repetition, streak, review queue);
+  // the order of the afterSave hooks is the order of registration (see server/gradeHooks.ts)
   registerLearningGradeHooks(gradeRegistry)
+  registerProgressHooks({ grade: gradeRegistry, lesson: lessonRegistry })
   const app = express()
   app.disable('x-powered-by')
   // correlate logs, Sentry events, the error screen and feedback reports

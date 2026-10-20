@@ -6,11 +6,10 @@ import { currentUserId } from '../auth'
 import * as courses from '../coursesRepo'
 import { HttpError, courseNotFound, idSchema, parseCourseId, userOf } from '../http'
 import { buildVerbQuiz, listVerbs, randomSample } from '../irregularVerbs'
+import { lessonRegistry } from '../lessonRegistry'
 import { withMedia } from '../media/mediaMap'
 import { resolveMedia } from '../media/resolve'
-import * as progress from '../progressRepo'
 import * as repo from '../quizRepo'
-import * as reviews from '../reviewsRepo'
 import { verbImageIds, verbListBody } from '../verbMedia'
 
 /** Verb catalog and the learning module (courses, lessons, the final exam). */
@@ -58,8 +57,13 @@ export function registerLearningRoutes(router: Router) {
       : null
     if (!result?.found) throw new HttpError(404, 'Lesson not found')
     if (result.created) {
-      await progress.recordActivity(userOf(req), { lessons: 1 })
-      await reviews.enqueueLessonVerbs(userOf(req), String(req.params.lessonId))
+      // the progress module subscribes to this event (server/progressHooks.ts); errors propagate, as before
+      await lessonRegistry.runCompleted({
+        user: userOf(req),
+        userId: currentUserId(req),
+        courseId: parseCourseId(req.params.id),
+        lessonId: String(req.params.lessonId),
+      })
     }
     res.json({ ok: true })
   })
