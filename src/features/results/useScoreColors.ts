@@ -1,5 +1,5 @@
 import { theme } from 'antd'
-import { useGetAppSettingsQuery } from '../admin/api'
+import { useGetAppSettingsQuery } from '../settings/api'
 import { DEFAULT_SCORE_THRESHOLDS, scoreBand } from '../../shared/quiz/scoreBands'
 import type { ScoreBand } from '../../shared/quiz/scoreBands'
 
