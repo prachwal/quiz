@@ -122,7 +122,7 @@ Rozpoczyna się po rozstrzygnięciu M0 (rozstrzygnięte 2026-10-20, D7 = Neon).
 | # | Zadanie | Uwagi |
 | --- | --- | --- |
 | 5.1 | **Krok 6:** `server/modules/*`, `src/features/*`, podział `shared/quiz/` i `types.ts` | jeden duży, mechaniczny diff; `media` jest już w docelowym kształcie, narzędzia admina przenosimy razem z resztą |
-| 5.2 | **Krok 7:** granice (`no-restricted-imports` albo `dependency-cruiser`) i test-kanarek | po przeniesieniu, inaczej reguły padają od razu |
+| 5.2 | **Krok 7:** granice (`no-restricted-imports` albo `dependency-cruiser`) i test-kanarek | kanarek gotowy; naprawy naruszeń w toku (5.C), przenoszenie plików (5.D) później |
 | — | **Krok 8** (schemat `course_exams`) | nie robić do czasu drugiego rodzaju egzaminu |
 
 ## Licznik narzędzi MCP

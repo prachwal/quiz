@@ -115,7 +115,7 @@ Każdy krok to osobny commit; przed commitem `npm run lint`, `npm test`, `npm ru
 | 4 | **RTK Query na slice'y** (zrobione) | `api.injectEndpoints` w każdym module; baza i tagi zostają w `app/api.ts` | niskie |
 | 5 | ✅ **Klasy przez publiczne API nauki** (zrobione) | zamiast SQL na `lessons`/`lesson_progress`/`courses`/`lesson_verbs` w `classes` i `reviewsRepo` czytają je funkcje `server/coursesRepo.ts` (`lessonTotalsByCourse`, `lessonsDoneByUser`, `lessonsCompletedCount`, `courseExists`, `courseTitles`, `lessonVerbIds`); zamiast jednego `progressFacts` — wąskie funkcje, bo każda ma jednego konsumenta lub jest batchowa; `attemptsRepo` i MCP nie czytały tych tabel | średnie |
 | 6 | **Przeniesienie plików do slice'ów** | `server/modules/*`, `src/features/learning`, podział `shared/quiz/` i `types.ts` | niskie logicznie, duży diff |
-| 7 | **Egzekwowanie granic** | reguła zakazująca importów „w górę” (patrz niżej) | niskie |
+| 7 | **Egzekwowanie granic** | reguła zakazująca importów „w górę” (patrz niżej); kanarek gotowy (`tests/architecture.test.ts`), naprawy naruszeń w toku (5.C), przenoszenie plików (5.D) później | niskie |
 | 8 | *(opcjonalnie)* **Schemat** | tabela `course_exams(quiz_id, course_id)` + ogólne `quizzes.pass_percent` zamiast `course_id` w `quizzes`/`quiz_attempts`; migracja z backfillem | wyższe |
 
 ### Kolejność i rekomendacja

@@ -16,13 +16,13 @@ updated: 2026-10-20
 
 ## Wynik w skrócie
 
-- 366 plików kodu (`server/`, `src/`, `api-src/`, `scripts/`, `tests/`): wszystkie przypisane do modułu. Po korekcie manifestu (decyzje a–f) `src/vite-env.d.ts` trafia do `f-platform`.
-- 1132 względne importy rozwiązano do plików, 0 nierozwiązanych. Poza zakresem: 798 importów pakietów npm, 2 importy CSS, 1 import dynamiczny bez literału (`scripts/dev-server.mjs:52`).
+- 368 plików kodu (`server/`, `src/`, `api-src/`, `scripts/`, `tests/`): wszystkie przypisane do modułu. Po korekcie manifestu (decyzje a–f) `src/vite-env.d.ts` trafia do `f-platform`.
+- 1134 względne importy rozwiązano do plików, 0 nierozwiązanych. Poza zakresem: 805 importów pakietów npm, 2 importy CSS, 1 import dynamiczny bez literału (`scripts/dev-server.mjs:52`).
 - **24 importy łamią zasadę w 13 parach modułów** (z 137 par, łącznie z testami). Przed korektą manifestu było 36 importów w 21 parach. Korekta usunęła 12 importów i 8 par, bez nowych naruszeń. 7 z 24 to `import type`, czyli tanie w naprawie.
 - Serwer: `learning -> progress` (hooki oceny i aktywność dzienna), `quizzes -> learning/progress/classes` i `mcp-platform -> classes` (guardy klas w narzędziach MCP, `context.ts`, `tools/shared.ts`). Quizy zależą od `learning` (generator z czasowników) i `classes` (`attemptsRepo`).
 - Frontend: `f-learning -> f-progress` (znacznik „słabe”), `f-quizzes -> f-progress` (wynik quizu), `f-platform -> shared-quizzes` (typy wejścia tokenów i uwag).
 - **3 cykle** między modułami: klaster serwerowy (6 modułów), frontendowy (3) i `shared-quizzes` z `shared-types` (2). Cykle nie są liczone przez skrypt jako błąd; kanarek pilnuje, żeby ich liczba i składy nie rosły (`tests/architecture.test.ts`).
-- Importy z testów (330) są raportowane w tabeli, ale nigdy nie są naruszeniem.
+- Importy z testów (331) są raportowane w tabeli, ale nigdy nie są naruszeniem.
 
 ## Decyzje właściciela (korekta manifestu)
 
@@ -48,7 +48,7 @@ Dla porównania, naruszenia przed korektą (`node scripts/arch-audit.mjs` na `a2
 - **Warstwy** (reguła dopisana ponad plan, bo plan jej wprost nie zapisał): plik w `src/**` nie importuje z `server/**`, a plik serwerowy (`server/`, `api-src/`, `scripts/`) importuje z `src/` tylko `src/shared/**`. Naruszenie tego typu to `tier`.
 - **`shared-X`** to część współdzielona modułu X. Moduł może importować `shared-Y` tylko tam, gdzie wolno mu importować Y (domknięcie zbioru z planu).
 - **Parser**: tekst jest czyszczony z komentarzy (znaki nowej linii zostają, więc numery linii są dokładne), następnie szukane są `import … from`, `export … from`, `import '…'`, `import('…')`, `require('…')`. Import `type` i lista `{ type X }` są oznaczane jako typowe. Wywołania `vi.mock` nie są czytane. Względne specyfikatory rozwiązywane są przez `.ts`, `.tsx`, `.mts`, `.cts`, `.mjs`, `.js`, `.jsx`, `.cjs`, `/index.*` i zamianę `.js` na `.ts`. W repo nie ma aliasów `paths`.
-- **Wyjścia**: tabela krawędzi, naruszenia pogrupowane wg krawędzi, nieprzypisane pliki, cykle (Tarjan), nierozwiązane importy, importy dynamiczne, podsumowanie. `--json` daje to samo jako JSON; `--fail-on-violations` kończy się kodem 1, gdy są naruszenia (pod kanarek). Wynik jest deterministyczny (sprawdzone dwoma uruchomieniami i diffem).
+- **Wyjścia**: tabela krawędzi, naruszenia pogrupowane wg krawędzi, nieprzypisane pliki, cykle (Tarjan), nierozwiązane importy, importy dynamiczne, podsumowanie. `--json` daje to samo jako JSON; `--fail-on-violations` kończy się kodem 1, gdy są naruszenia; `--print-allowlist` wypisuje listę wyjątków (patrz „Kanarek”). Wynik jest deterministyczny (sprawdzone dwoma uruchomieniami i diffem).
 
 ## Decyzje i odchylenia od propozycji
 
@@ -83,7 +83,7 @@ Pliki na moduł (po przypisaniu) i zbiór modułów, z których moduł może imp
 | `platform` | 12 | nic |
 | `progress` | 3 | `platform`, `media`, `quizzes`, `learning`, `shared-progress`, `shared-learning`, `shared-quizzes`, `shared-media`, `shared-platform` |
 | `quizzes` | 6 | `platform`, `media`, `shared-quizzes`, `shared-media`, `shared-platform` |
-| `root` | 31 | `*` |
+| `root` | 32 | `*` |
 | `shared-classes` | 4 | `shared-platform`, `shared-media`, `shared-quizzes`, `shared-learning`, `shared-progress` |
 | `shared-learning` | 4 | `shared-platform`, `shared-media`, `shared-quizzes` |
 | `shared-media` | 3 | `shared-platform` |
@@ -91,11 +91,11 @@ Pliki na moduł (po przypisaniu) i zbiór modułów, z których moduł może imp
 | `shared-progress` | 1 | `shared-platform`, `shared-media`, `shared-quizzes`, `shared-learning` |
 | `shared-quizzes` | 7 | `shared-platform`, `shared-media` |
 | `shared-types` | 1 | nic |
-| `tests` | 138 | `*` |
+| `tests` | 139 | `*` |
 
-## Pełny wynik audytu (commit a2591f2 z korektą manifestu)
+## Pełny wynik audytu (po commicie kanarka)
 
-Wynik `node scripts/arch-audit.mjs` po korekcie manifestu (decyzje a–f). Naruszenia są pogrupowane wg krawędzi; `[reason]` to `not-allowed`, `incoming` lub `tier`.
+Wynik `node scripts/arch-audit.mjs` po korekcie manifestu (decyzje a–f) i po dodaniu kanarka (`scripts/arch-core.mjs`, `tests/architecture.test.ts`), które same są w skanowanym zakresie. Naruszenia są pogrupowane wg krawędzi; `[reason]` to `not-allowed`, `incoming` lub `tier`.
 
 ```text
 arch-audit (manifest v1, 26 rules)
@@ -117,7 +117,7 @@ media                22
 platform             12
 progress              3
 quizzes               6
-root                 31
+root                 32
 shared-classes        4
 shared-learning       4
 shared-media          3
@@ -125,7 +125,7 @@ shared-platform       3
 shared-progress       1
 shared-quizzes        7
 shared-types          1
-tests               138
+tests               139
 
 ## Module edges (cross-module imports)
 admin -> classes                              7  ok
@@ -257,7 +257,7 @@ tests -> learning                             6  ok
 tests -> media                               18  ok
 tests -> platform                             3  ok
 tests -> quizzes                              2  ok
-tests -> root                                19  ok
+tests -> root                                20  ok
 tests -> shared-classes                       8  ok
 tests -> shared-learning                      7  ok
 tests -> shared-media                         7  ok
@@ -345,11 +345,11 @@ none
 scripts/dev-server.mjs:52  import(...)
 
 ## Summary
-filesScanned: 366
-filesAssigned: 366
+filesScanned: 368
+filesAssigned: 368
 filesUnassigned: 0
-nonCodeFilesSkipped: 10
-importEdges: 1132
+nonCodeFilesSkipped: 11
+importEdges: 1134
 crossModuleEdgePairs: 137
 violatingImports: 24
 violatingImportsTypeOnly: 7
@@ -357,10 +357,10 @@ violatingModulePairs: 13
 cycles: 3
 unresolvedRelative: 0
 dynamicSpecifiers: 1
-externalPackageImports: 798
+externalPackageImports: 805
 assetImportsIgnored: 2
 importsOutsideScope: 0
-testEdges: 330
+testEdges: 331
 ```
 
 ## Nieprzypisane pliki
@@ -419,6 +419,24 @@ Po korekcie manifestu naprawy 1, 3, 6, 8, 10, 11, 12 i 19 nie dotyczą już naru
 19. **`shared-quizzes -> shared-classes`** (`src/shared/quiz/userHistory.ts:5` `AnalysisAttempt`, `AnalysisInput` (typy)): przenieść te dwa typy do `userHistory.ts`. `studentAnalysis.ts` importuje je stamtąd (`shared-classes -> shared-quizzes` jest dozwolone).
 20. **`shared-types -> shared-media`** (`src/shared/quiz/types.ts:2`, `MediaMap` (typ)): pole używające `MediaMap` przenieść do typu zdefiniowanego w `src/shared/media/types.ts` (np. `QuizWithMedia`). `types.ts` nie importuje mediów.
 21. **`shared-types -> shared-quizzes`** (`src/shared/quiz/types.ts:1`, `QuizResult`, `QuestionType` z `engine.ts` (typy)): rozdzielić `types.ts` wg tabeli wyżej. Typy quizowe trafiają do `shared-quizzes`, a `types.ts` przestaje istnieć jako nośnik.
+
+## Kanarek
+
+Test `tests/architecture.test.ts` działa w `npm test` (ok. 0,4 s). Analizę robi `scripts/arch-core.mjs` (czysta funkcja `auditRepo(rootDir)`, bez wypisywania i bez `exit`); `scripts/arch-audit.mjs` to tylko CLI. Test porównuje wynik z `scripts/arch-allowlist.json` i sprawdza pięć rzeczy:
+
+1. **Nowe naruszenie.** Para plik → plik, która narusza granicę i nie jest na liście. Komunikat wypisuje `plik -> cel (moduł -> moduł)` i podpowiada: `napraw import albo (wyjątkowo) dopisz do scripts/arch-allowlist.json z uzasadnieniem`. Domyślna odpowiedź to naprawa importu (propozycje w „Proponowane naprawy”). Wpis na liście wymaga uzasadnienia w review.
+2. **Wpis nieaktualny.** Wpis, który już nie narusza granicy (plik usunięty, import naprawiony). Komunikat kończy się `usuń z scripts/arch-allowlist.json`. Dzięki temu lista tylko się kurczy.
+3. **Pole `pair`.** Musi zgadzać się z aktualnym modułem plików. Inaczej test prosi o poprawienie pola (np. po przeniesieniu pliku między modułami).
+4. **Cykle.** Liczba cykli modułów nie może wzrosnąć, a każdy cykl musi mieć skład znany z `EXPECTED_CYCLES` w teście. Nowy cykl albo większy skład pada. Usunięty cykl jest w porządku (wtedy lista w teście też się skraca).
+5. **Reguły twarde** (`HARD_RULES` w `arch-core.mjs`), niezależne od listy: moduły `media`, `f-media`, `shared-media` nie importują `quizzes`, `learning`, `progress` ani `classes` (serwer, front, shared), a `src/**` nie importuje `server/**`. Wpis allowlisty nie może ukrywać takiego importu.
+
+**Wyjątek reguły twardej.** Jedna krawędź `server/mcp/tools/media.ts → server/quizRepo.ts` (naprawa 14, 5.C) łamie regułę `media-no-domain` już dziś. Nie trafia do allowlisty (reguły twarde nie mają wpisów), tylko do `HARD_RULE_EXCEPTIONS` w teście. Wyjątek jest sprawdzany jak wpis nieaktualny: po naprawie test pada z komunikatem `usuń wyjątek` i trzeba go skasować. Lista wyjątków tylko się kurczy.
+
+**Jak czytać porażkę.** Nazwa testu mówi, która reguła padła, a komunikat wypisuje pliki i pary modułów. Dla każdego naruszenia wybierz: naprawić import (zwykle najlepsze), albo dopisać wpis z `reason` (rzadko, z review). Wpis nieaktualny zawsze się usuwa.
+
+**Jak regenerować listę.** `node scripts/arch-audit.mjs --print-allowlist` wypisuje JSON (`$comment` i `entries`) dla bieżących naruszeń, z `reason` `do naprawy w 5.C`. Służy do przeglądu, nie do dopisywania: po naprawie porównaj wynik z plikiem (`diff`), powinny zniknąć wyłącznie wpisy naprawionych naruszeń. Nowe wpisy wymagają uzasadnienia w review. Ręczna edycja jest w porządku, o ile zasada „tylko znikają” jest zachowana.
+
+**Test syntetyczny.** Ostatni test buduje w `os.tmpdir()` drzewo z dwoma modułami i jednym naruszeniem, wpisem nieaktualnym, importem `media -> quizzes` i cyklem, i sprawdza, że kanarek to wszystko wykrywa. Dzięki temu porażka nie jest jedynym dowodem, że kanarek działa.
 
 ## Ograniczenia pomiaru
 
