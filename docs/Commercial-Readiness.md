@@ -56,7 +56,7 @@ updated: 2026-10-20
 | 2.3 | Auth0: plan płatny przy większej liczbie użytkowników (limity darmowego, role/RBAC, własna domena, społeczne logowania) | ⬜ | S | zależnie od skali | rozważyć alternatywy (koszty rosną z liczbą aktywnych użytkowników) |
 | 2.4 | Sentry: plan dla zespołu lub zostać przy darmowym | 🟡 | S | — | region i dane w zdarzeniach (identyfikator użytkownika = `sub`) opisać w polityce |
 | 2.5 | Domena własna, certyfikat (Vercel automatycznie), poczta kontaktowa | ⬜ | S | — | adres kontaktowy wymagany w polityce i regulaminie |
-| 2.6 | Kopie zapasowe i przywracanie: Neon ma przywracanie do punktu w czasie, okno zależy od planu; plan i test odtworzenia | 🟡 | S–M | tak | spisać RPO/RTO, przećwiczyć odtworzenie na gałęzi Neon |
+| 2.6 | Kopie zapasowe i przywracanie: Neon ma przywracanie do punktu w czasie, okno zależy od planu; plan i test odtworzenia | 🟡 | S–M | tak | środowiska rozdzielone 2026-10-20 (gałęzie preview/dev/e2e); plan przywracania i test odtworzenia nadal do zrobienia |
 | 2.7 | Bucket mediów: koszty miejsca i transferu, limity na autora (są), sprzątanie (jest) | ✅ | — | — | monitorować wzrost; klucze `dev/`, `preview/`, produkcja bez prefiksu |
 | 2.8 | Monitoring dostępności i alerty (uptime, 5xx, koszty) | 🟡 | S | — | Sentry jest; brak sondy zewnętrznej i alertów budżetowych |
 | 2.9 | Budżet miesięczny na pilotaż | ⬜ | S | — | rząd 100–200 USD/miesiąc przy planach płatnych (do zweryfikowania) |
@@ -90,6 +90,7 @@ updated: 2026-10-20
 | 4.9 | Test penetracyjny lub choć przegląd OWASP (uwierzytelnianie, IDOR, wstrzyknięcia, CSRF/CORS) | ⬜ | M–L | najbardziej wartościowe przed szkołami |
 | 4.10 | Plan reagowania na incydent i wycofania wdrożenia (`vercel rollback`, migracje wyłącznie wprzód) | 🟡 | S | rollback udokumentowany w planie 5.C; brak runbooka incydentu |
 | 4.11 | Wydajność i skala: test obciążeniowy dla klasy 30 uczniów jednocześnie | ⬜ | S–M | funkcje serverless + pula połączeń Neon; sprawdzić limity połączeń |
+| 4.12 | Rozdzielenie środowisk (dev/preview/e2e/prod), dane osobowe usunięte z kopii | ✅ | — | gałęzie Neon z osobnymi bucketami; `docs/vercel.md`, "Środowiska i bazy danych" |
 
 ## 5. Dojrzałość techniczna (to, co już jest)
 

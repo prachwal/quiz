@@ -53,14 +53,86 @@ ale `S3_KEY_PREFIX` rozdziela ich obiekty (`dev/`, `preview/`, Production bez pr
 plików Production i odwrotnie. Klucze S3 z `neon env pull --project-id broad-leaf-41334668 --branch main -s object-storage`
 dodaje się na Vercelu ręcznie (`vercel env add`); automatycznej integracji Neon–Vercel nie potwierdzono.
 
+## Środowiska i bazy danych
+
+Projekt Neon `quiz-neon` (`broad-leaf-41334668`) ma cztery gałęzie. `main` to **produkcja**; `preview`, `dev`
+i `e2e` są kopiami `main` utworzonymi z `--parent main`, z których usunięto dane osobowe i stan użytkowników
+(skrypt `scripts/scrub-neon-branch.mjs`). Każda gałąź ma własny bucket `media` z własnym endpointem
+(`br-<id gałęzi>.storage…`) i własnymi kluczami.
+
+| Środowisko | Gałąź Neon (id, host) | Bucket i zmienne S3 | Uwagi |
+| --- | --- | --- | --- |
+| Lokalny dev (`npm run dev:full`, `.env.local`) | `dev` (`br-noisy-thunder-b77gflw2`, `ep-lingering-tooth-…`) | bucket `media` gałęzi `dev`, prefiks `dev/` | `DATABASE_URL` |
+| Testy: `npm run test:mcp`, `npm run test:e2e` | `e2e` (`br-tiny-leaf-b7at7qm3`, `ep-rough-forest-…`), zmienna `NEON_E2E_DATABASE_URL` | `test:mcp` używa pamięci (`MEDIA_DRIVER=memory`); `test:e2e` bucketu z `S3_*` z `.env.local` (dziś gałąź `dev`) | skrypty czyszczą wiersze `mcp-e2e` i `[E2E]`; bez `NEON_E2E_DATABASE_URL` idą do `dev` z ostrzeżeniem |
+| Vercel **Preview** (każdy podgląd) | `preview` (`br-muddy-mud-b78ol4b6`, `ep-gentle-wind-…`), wspólna dla wszystkich podglądów | bucket `media` gałęzi `preview` | jedna stabilna gałąź, nie kopia per deployment |
+| **Produkcja** (Vercel Production) | `main` (`br-broad-butterfly-b70003zq`, `ep-old-rice-…`) | bucket `media` gałęzi `main`, bez prefiksu | jedyne dane użytkowników |
+
+### Zmienne w Vercel
+
+- `DATABASE_URL` i `DATABASE_URL_UNPOOLED` są osobno dla **Production** (`main`), **Preview** (`preview`)
+  i **Development** (`dev`).
+- `POSTGRES_*` i `PG*` istnieją tylko dla **Production**. Preview i Development ich nie dostają, więc
+  kod ani skrypty uruchomione tam nie trafią do produkcyjnej bazy przez domyślne nazwy.
+- `S3_*` oraz `MEDIA_PUBLIC_BASE_URL` / `VITE_MEDIA_PUBLIC_BASE_URL` są osobno dla każdego środowiska
+  (każda gałąź ma własny bucket i klucze). `S3_SECRET_ACCESS_KEY` i pozostałe klucze są wrażliwe
+  (`--sensitive`), więc nie da się ich odczytać przez `vercel env pull`.
+- `CRON_SECRET` jest tylko w Production (cron działa tylko tam). `MEDIA_URL_FETCH` pozostaje `false`
+  we wszystkich środowiskach, dopóki nie przejdzie testu wiązania IP na Vercelu (zob. `docs/Media-Storage-Plan.md`).
+  `MEDIA_CLEANUP_OWNER_FILTER` i `MEDIA_DRIVER=memory` nigdy nie są ustawione w Vercel.
+
+### Token nie działa w innym środowisku
+
+Osobiste tokeny (`qz_…`) są zapisane w tabeli `api_tokens` **w bazie danego środowiska**, więc token
+z produkcji nie działa na preview (odpowiedź `401`) i odwrotnie. To dowód izolacji: `401` od tokenu
+produkcyjnego na preview oznacza, że podgląd nie widzi danych produkcyjnych. Lokalnie `QZ_PREVIEW_TOKEN`
+działa na produkcji, a `QZ_PREVIEW_BRANCH_TOKEN` tylko na gałęzi preview (oba w `.env.local`, nigdy w repo).
+
+### Migracje: dev → e2e → preview → prod
+
+Migracje idą kolejno przez środowiska. Każdą najpierw sprawdź w trybie `--dry` (nic nie zapisuje):
+
+```bash
+npm run db:migrate:dev -- --dry        # potem bez --dry
+npm run db:migrate:e2e
+npm run db:migrate:preview
+npm run db:migrate:prod -- --dry
+npm run db:migrate:prod -- --confirm-production
+```
+
+`npm run db:migrate` (bez `--env`) migruje `DATABASE_URL` tak jak dotąd. Produkcja wymaga `--confirm-production`
+przy każdym zastosowaniu; `--dry` działa też dla produkcji, bo tylko czyta `schema_migrations`.
+
+### Odświeżenie gałęzi nieprodukcyjnej z produkcji
+
+1. Utwórz nową gałąź z `main` bez sekretów (polecenia i identyfikatory: `.claude/skills/quiz-infra-cli/SKILL.md`):
+   `neon branches create --name <nazwa> --parent main --no-secrets --project-id broad-leaf-41334668 --org-id org-shy-paper-64501177`.
+2. Wyczyść dane osobowe z kopii: `node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/scrub-neon-branch.mjs <dev|e2e|preview>`
+   (najpierw suchy przebieg, potem `-- --apply`). Skrypt czyta adres z odpowiedniej zmiennej `*_UNPOOLED`, więc
+   najpierw ustaw ją na nową gałąź w `.env.local`. Odmawia, gdy host to host produkcji.
+3. Bucket gałęzi kopiuje się razem z danymi, a skrypt czyści tylko bazę. Opróżnij bucket kopii
+   (`neon buckets object`, zob. skill) przed podpięciem go do środowiska, bo pliki z produkcji nie mogą zostać dostępne z kluczy nieprodukcyjnych.
+4. Zaktualizuj adresy połączeń (`neon connection-string <gałąź> --project-id broad-leaf-41334668 [--pooled]`)
+   i zmienne `S3_*` (`neon env pull --branch <nazwa> -s object-storage --file <plik tymczasowy>`), a w Vercel
+   rekordy danego środowiska. Potem redeploy: zmiany env działają tylko w nowych deploymentach.
+
+Uwaga: kopie nadal zawierają treści (quizy, kursy, lekcje, `quizzes.owner_id`), a tabele z danymi osobowymi
+(`user_profiles`, `quiz_attempts`, `classes`, `api_tokens`, `feedback`, `admin_audit_log` itd.) są puste.
+
+### Wycofanie zmian środowisk
+
+Zmienne produkcyjne (`Production`) nie były zmieniane. `Preview` i `Development` wcześniej miały wartości
+produkcyjne: w razie potrzeby przywróć je z gałęzi `main` (ale wtedy podglądy znów widzą dane osobowe, więc
+tylko awaryjnie).
+
 ## Baza
 
 Neon: projekt `broad-leaf-41334668`, baza `neondb`. **Vercel nie aplikuje migracji** — po deployu ze
 zmianą schematu uruchom je ręcznie:
 
 ```bash
-vercel env pull .env.local --environment production --yes
-env -u DATABASE_URL node --env-file=.env.local scripts/migrate.mjs
+# produkcja: sprawdź w trybie --dry, potem zastosuj (wymaga NEON_PROD_DATABASE_URL_UNPOOLED w .env.local)
+npm run db:migrate:prod -- --dry
+npm run db:migrate:prod -- --confirm-production
 ```
 
 ### Odbudowa od zera
