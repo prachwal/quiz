@@ -9,7 +9,7 @@ import UsersAdmin from '../features/admin/UsersAdmin'
 import ApiTokens from '../features/auth/ApiTokens'
 import { useAuth } from '../features/auth/useAuth'
 import { openFeedback } from '../features/feedback/feedbackSlice'
-import { useGetProgressQuery, useUpdateProfileMutation } from '../app/api'
+import { useGetProgressQuery, useUpdateProfileMutation } from '../features/progress/api'
 import {
   resetSettings,
   setCompact,

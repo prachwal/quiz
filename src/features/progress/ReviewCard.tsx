@@ -1,7 +1,8 @@
 import { ReloadOutlined } from '@ant-design/icons'
 import { Button, Card, Flex, Skeleton, Tag, Typography, App as AntdApp, theme } from 'antd'
 import { useNavigate } from 'react-router-dom'
-import { errorMessage, useGetReviewSummaryQuery, useStartReviewMutation } from '../../app/api'
+import { errorMessage } from '../../app/api'
+import { useGetReviewSummaryQuery, useStartReviewMutation } from './api'
 
 const plural = (n: number) => (n === 1 ? 'czasownik' : n >= 2 && n <= 4 ? 'czasowniki' : 'czasowników')
 

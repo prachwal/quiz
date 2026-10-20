@@ -1,7 +1,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 import { getAccessToken } from '../features/auth/token'
 import type { FeedbackInput, TokenInput } from '../shared/quiz/schema'
-import type { AdminUser, AssignmentItem, ClassDetail, ClassReport, StudentCandidate, AdminStudentListItem, AppSettings, AdminStudentResults, StudentListItem, StudentResults, ClassSummary, MyAssignment, MyClass, ProgressSummary, ReviewSummary, WeakVerb, AdminUsersPage, ApiTokenSummary, AuditEntry, FeedbackItem, FeedbackStatus, ManagedRole, AttemptSummary, CreatedApiToken, CourseDetail, CourseSummary, DifficultyCode, IrregularVerb, LessonDetail, PatternCode, PopularityCode, QuizDetail } from '../shared/quiz/types'
+import type { AdminUser, AssignmentItem, ClassDetail, ClassReport, StudentCandidate, AdminStudentListItem, AppSettings, AdminStudentResults, StudentListItem, StudentResults, ClassSummary, MyAssignment, MyClass, AdminUsersPage, ApiTokenSummary, AuditEntry, FeedbackItem, FeedbackStatus, ManagedRole, CreatedApiToken } from '../shared/quiz/types'
 
 export const api = createApi({
   reducerPath: 'api',
@@ -15,10 +15,6 @@ export const api = createApi({
   }),
   tagTypes: ['Quiz', 'Attempt', 'Course', 'Token', 'AdminUsers', 'Feedback', 'Audit', 'Progress', 'Review', 'Class', 'MyClass', 'AppSettings'],
   endpoints: (build) => ({
-    listIrregularVerbs: build.query<
-      IrregularVerb[],
-      { difficulty?: DifficultyCode; popularity?: PopularityCode; pattern?: PatternCode } | void
-    >({ query: (params) => ({ url: 'irregular-verbs', params: params ?? undefined }) }),
     listTokens: build.query<ApiTokenSummary[], void>({
       query: () => 'tokens',
       providesTags: ['Token'],
@@ -171,57 +167,10 @@ export const api = createApi({
       query: () => 'my/assignments',
       providesTags: ['MyClass', 'Course', 'Attempt'],
     }),
-    getWeakVerbs: build.query<WeakVerb[], { limit?: number } | void>({
-      query: (params) => ({ url: 'progress/weak-verbs', params: params ?? undefined }),
-      providesTags: ['Review'],
-    }),
-    getReviewSummary: build.query<ReviewSummary, void>({
-      query: () => 'reviews/summary',
-      providesTags: ['Review'],
-    }),
-    startReview: build.mutation<QuizDetail, { count?: number } | void>({
-      query: (body) => ({ url: 'reviews/session', method: 'POST', body: body ?? {} }),
-    }),
-    getProgress: build.query<ProgressSummary, void>({
-      query: () => 'progress/summary',
-      providesTags: ['Progress'],
-    }),
-    updateProfile: build.mutation<ProgressSummary, { dailyGoal?: number; timezone?: string }>({
-      query: (body) => ({ url: 'progress/profile', method: 'PATCH', body }),
-      invalidatesTags: ['Progress'],
-    }),
-    listCourses: build.query<CourseSummary[], void>({
-      query: () => 'courses',
-      providesTags: ['Course'],
-    }),
-    getCourse: build.query<CourseDetail, string>({
-      query: (id) => `courses/${id}`,
-      providesTags: ['Course'],
-    }),
-    getLesson: build.query<LessonDetail, { courseId: string; lessonId: string }>({
-      query: ({ courseId, lessonId }) => `courses/${courseId}/lessons/${lessonId}`,
-      providesTags: ['Course'],
-    }),
-    completeLesson: build.mutation<void, { courseId: string; lessonId: string }>({
-      query: ({ courseId, lessonId }) => ({
-        url: `courses/${courseId}/lessons/${lessonId}/complete`,
-        method: 'POST',
-      }),
-      invalidatesTags: ['Course', 'Progress', 'Review', 'Class', 'MyClass'],
-    }),
-    startExam: build.mutation<QuizDetail, { courseId: string; count?: number }>({
-      query: ({ courseId, count }) => ({ url: `courses/${courseId}/exam`, method: 'POST', body: { count } }),
-    }),
-    listAttempts: build.query<AttemptSummary[], void>({
-      query: () => 'attempts',
-      providesTags: ['Attempt'],
-    }),
   }),
 })
 
 export const {
-  useListIrregularVerbsQuery,
-  useListAttemptsQuery,
   useListTokensQuery,
   useCreateTokenMutation,
   useRevokeTokenMutation,
@@ -255,16 +204,6 @@ export const {
   useListMyClassesQuery,
   useLeaveClassMutation,
   useListMyAssignmentsQuery,
-  useGetWeakVerbsQuery,
-  useGetReviewSummaryQuery,
-  useStartReviewMutation,
-  useGetProgressQuery,
-  useUpdateProfileMutation,
-  useListCoursesQuery,
-  useGetCourseQuery,
-  useGetLessonQuery,
-  useCompleteLessonMutation,
-  useStartExamMutation,
 } = api
 
 /** Extracts a readable message from an RTK Query error (incl. server validation issues). */

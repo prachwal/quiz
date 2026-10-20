@@ -1,5 +1,5 @@
 import { Tag } from 'antd'
-import { useGetWeakVerbsQuery } from '../../app/api'
+import { useGetWeakVerbsQuery } from './api'
 
 /** "Hard for you" marker next to a verb the user keeps getting wrong. */
 export default function WeakMark({ verbId }: { verbId: number }) {

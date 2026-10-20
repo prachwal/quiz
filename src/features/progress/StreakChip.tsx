@@ -1,7 +1,7 @@
 import { FireFilled } from '@ant-design/icons'
 import { Tooltip, theme } from 'antd'
 import { Link } from 'react-router-dom'
-import { useGetProgressQuery } from '../../app/api'
+import { useGetProgressQuery } from './api'
 
 /** Header chip with the current streak (links to the results page). */
 export default function StreakChip() {

@@ -1,6 +1,6 @@
 import { CheckCircleFilled, FireFilled } from '@ant-design/icons'
 import { Card, Flex, Progress, Skeleton, Typography, theme } from 'antd'
-import { useGetProgressQuery } from '../../app/api'
+import { useGetProgressQuery } from './api'
 import WeekStrip from './WeekStrip'
 
 const streakWord = (n: number) => (n === 1 ? 'dzień' : 'dni')

@@ -1,7 +1,8 @@
 import { ReloadOutlined } from '@ant-design/icons'
 import { Button, App as AntdApp } from 'antd'
 import { useNavigate } from 'react-router-dom'
-import { errorMessage, useStartExamMutation } from '../../app/api'
+import { errorMessage } from '../../app/api'
+import { useStartExamMutation } from './api'
 import { EXAM_COUNT, clampCount } from '../quizzes/counts'
 
 /** Starts a new attempt of the course exam with the same number of questions (capped). */

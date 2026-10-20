@@ -1,7 +1,8 @@
 import { CheckOutlined, LockOutlined, PlayCircleOutlined, RightOutlined, TrophyOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Flex, Progress, Skeleton, Tag, Typography, App as AntdApp, theme } from 'antd'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { errorMessage, useGetCourseQuery, useStartExamMutation } from '../app/api'
+import { errorMessage } from '../app/api'
+import { useGetCourseQuery, useStartExamMutation } from '../features/learn/api'
 import { DifficultyTag, PopularityTag } from '../components/GroupTags'
 import PageHeader from '../components/PageHeader'
 

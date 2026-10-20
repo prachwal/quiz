@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useGetProgressQuery, useUpdateProfileMutation } from '../../app/api'
+import { useGetProgressQuery, useUpdateProfileMutation } from './api'
 
 /** Days (and so streaks) are counted in the device's time zone: keep the profile in sync with it. */
 export function useTimezoneSync() {

@@ -1,6 +1,6 @@
 import { CheckCircleFilled, FireFilled } from '@ant-design/icons'
 import { Alert } from 'antd'
-import { useGetProgressQuery } from '../../app/api'
+import { useGetProgressQuery } from './api'
 
 /** One-line recap shown after a quiz: today's progress towards the goal and the streak. */
 export default function ProgressLine() {
