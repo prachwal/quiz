@@ -75356,7 +75356,7 @@ async function classReport(classId2) {
   };
 }
 
-// server/classes/results.ts
+// server/attemptDetails.ts
 async function questionDetails(rows) {
   const questionIds = [...new Set(rows.flatMap((a) => (a.results ?? []).map((r) => r.questionId)))];
   const prompts = /* @__PURE__ */ new Map();
@@ -75382,6 +75382,8 @@ async function questionDetails(rows) {
     };
   });
 }
+
+// server/classes/results.ts
 async function studentResults(classId2, userId) {
   const members2 = await listMembers(classId2);
   const member = members2.find((m) => m.userId === userId);

@@ -1,6 +1,6 @@
 import type { StudentAttemptQuestion } from '../src/shared/quiz/types'
-import { questionDetails } from './classes/results'
-import type { AttemptRow } from './classes/results'
+import { questionDetails } from './attemptDetails'
+import type { AttemptRow } from './attemptDetails'
 import { pool } from './db'
 import { parseQuestionsSnapshot } from '../src/shared/quiz/questionsSnapshot'
 import type { SnapshotQuestion } from '../src/shared/quiz/questionsSnapshot'

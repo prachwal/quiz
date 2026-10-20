@@ -11,7 +11,7 @@
     ] },
     { "module": "media", "match": ["server/media/**", "server/mcp/tools/media.ts"] },
     { "module": "quizzes", "match": [
-      "server/quizRepo.ts", "server/attemptsRepo.ts", "server/gradeHooks.ts", "server/gradeRegistry.ts",
+      "server/quizRepo.ts", "server/attemptsRepo.ts", "server/attemptDetails.ts", "server/gradeHooks.ts", "server/gradeRegistry.ts",
       "server/routes/quizzes.ts", "server/mcp/quizTools.ts"
     ] },
     { "module": "learning", "match": [

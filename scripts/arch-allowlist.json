@@ -2,12 +2,6 @@
   "$comment": "Znane naruszenia granic modułów (kanarek: tests/architecture.test.ts). Lista tylko się kurczy: wpisy się usuwa, gdy naruszenie zniknie. Nowy wpis wymaga uzasadnienia w review. Wygenerowanie od zera (node scripts/arch-audit.mjs --print-allowlist) służy do przeglądu, nie do dopisywania. Krawędzie reguł twardych (HARD_RULES) nie trafiają tutaj.",
   "entries": [
     {
-      "from": "server/attemptsRepo.ts",
-      "to": "server/classes/results.ts",
-      "pair": "quizzes -> classes",
-      "reason": "do naprawy w 5.C"
-    },
-    {
       "from": "server/learningGradeHooks.ts",
       "to": "server/progressRepo.ts",
       "pair": "learning -> progress",
