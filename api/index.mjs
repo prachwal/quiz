@@ -62662,6 +62662,44 @@ async function userLabel(userId) {
   }
 }
 
+// server/gradeHooks.ts
+function createGradeRegistry() {
+  const beforeSave = [];
+  const afterSave = [];
+  return {
+    onBeforeSave(hook) {
+      if (!beforeSave.includes(hook)) beforeSave.push(hook);
+    },
+    onAfterSave(hook) {
+      if (!afterSave.includes(hook)) afterSave.push(hook);
+    },
+    async run(ctx, save, onHookError) {
+      let courseId = null;
+      let passed = null;
+      let response = {};
+      for (const hook of beforeSave) {
+        const outcome = await hook(ctx);
+        if (!outcome) continue;
+        if (outcome.courseId !== void 0) courseId = outcome.courseId;
+        if (outcome.passed !== void 0) passed = outcome.passed;
+        if (outcome.response) response = { ...response, ...outcome.response };
+      }
+      const attemptId = await save({ courseId, passed });
+      for (const [index, hook] of afterSave.entries()) {
+        try {
+          await hook({ ...ctx, attemptId });
+        } catch (error62) {
+          await onHookError(error62, index);
+        }
+      }
+      return { attemptId, response };
+    }
+  };
+}
+
+// server/gradeRegistry.ts
+var gradeRegistry = createGradeRegistry();
+
 // server/http.ts
 var HttpError = class extends Error {
   status;
@@ -62689,6 +62727,1256 @@ var idParam = (value) => {
 var userOf = (req) => currentUserId(req);
 var notFound = () => new HttpError(404, "Quiz not found");
 var courseNotFound = () => new HttpError(404, "Course not found");
+
+// src/shared/quiz/engine.ts
+var QUESTION_TYPES = ["single", "multiple", "truefalse", "text", "numeric", "ordering", "matching", "cloze"];
+var countCorrect = (options) => options.filter((o) => o.isCorrect).length;
+var ORDERING_MAX_ITEMS = 50;
+var CONFIG_ID_MAX_LENGTH = 64;
+var idTooLong = (id) => [...id].length > CONFIG_ID_MAX_LENGTH;
+var orderingConfig = (config2) => {
+  if (!config2 || typeof config2 !== "object") return null;
+  const { items } = config2;
+  if (!Array.isArray(items) || items.length < 2 || items.length > ORDERING_MAX_ITEMS) return null;
+  const parsed = [];
+  for (const item of items) {
+    if (!item || typeof item !== "object") return null;
+    const { id, text: text2 } = item;
+    if (typeof id !== "string" || !id || typeof text2 !== "string") return null;
+    parsed.push({ id, text: text2 });
+  }
+  return { items: parsed };
+};
+var MATCHING_MAX_PAIRS = 20;
+var matchingConfig = (config2) => {
+  if (!config2 || typeof config2 !== "object") return null;
+  const { pairs } = config2;
+  if (!Array.isArray(pairs) || pairs.length < 2 || pairs.length > MATCHING_MAX_PAIRS) return null;
+  const parsed = [];
+  for (const pair of pairs) {
+    if (!pair || typeof pair !== "object") return null;
+    const { id, rightId, left, right } = pair;
+    if (typeof id !== "string" || !id) return null;
+    if (typeof rightId !== "string" || !rightId) return null;
+    if (typeof left !== "string" || typeof right !== "string") return null;
+    parsed.push({ id, rightId, left, right });
+  }
+  return { pairs: parsed };
+};
+var CLOZE_MAX_GAPS = 8;
+var CLOZE_MAX_VARIANTS = 10;
+var CLOZE_MAX_ANSWER_LENGTH = 200;
+var CLOZE_NUMBER = String.raw`[1-9]\d*`;
+var CLOZE_MARKER = new RegExp(String.raw`\{\{(${CLOZE_NUMBER})\}\}`);
+var CLOZE_MARKER_PLAIN = String.raw`\{\{${CLOZE_NUMBER}\}\}`;
+var clozeMarkers = (prompt) => [...prompt.matchAll(new RegExp(CLOZE_MARKER_PLAIN, "g"))].map((match) => Number(match[0].slice(2, -2)));
+var clozeConfig = (config2) => {
+  if (!config2 || typeof config2 !== "object") return null;
+  const { gaps } = config2;
+  if (!Array.isArray(gaps) || gaps.length < 1 || gaps.length > CLOZE_MAX_GAPS) return null;
+  const parsed = [];
+  for (const gap of gaps) {
+    if (!gap || typeof gap !== "object") return null;
+    const { answers } = gap;
+    if (!Array.isArray(answers) || answers.length < 1) return null;
+    if (answers.some((answer) => typeof answer !== "string")) return null;
+    parsed.push({ answers });
+  }
+  return { gaps: parsed };
+};
+var parseNumeric = (raw) => {
+  const compact = raw.trim().replace(/\u2212/g, "-").replace(/[\s\u00a0\u202f]/g, "");
+  if (!compact) return null;
+  const fraction = /^(-?\d+(?:[.,]\d+)?)\/(\d+(?:[.,]\d+)?)$/.exec(compact);
+  if (fraction) {
+    const numerator = Number(fraction[1].replace(",", "."));
+    const denominator = Number(fraction[2].replace(",", "."));
+    if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator === 0) return null;
+    return numerator / denominator;
+  }
+  const value = Number(compact.replace(",", "."));
+  return Number.isFinite(value) ? value : null;
+};
+var numericConfig = (config2) => {
+  if (!config2 || typeof config2 !== "object") return null;
+  const { answer, tolerance } = config2;
+  if (typeof answer !== "number" || !Number.isFinite(answer)) return null;
+  if (tolerance !== void 0) {
+    if (!tolerance || typeof tolerance !== "object") return null;
+    const { kind, value } = tolerance;
+    if (kind !== "absolute" && kind !== "relative") return null;
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return null;
+  }
+  return { answer, ...tolerance === void 0 ? {} : { tolerance: { kind: tolerance.kind, value: tolerance.value } } };
+};
+var TYPOGRAPHIC = {
+  "\u2018": "'",
+  "\u2019": "'",
+  "\u02BC": "'",
+  "`": "'",
+  "\u201C": '"',
+  "\u201D": '"',
+  "\u201E": '"',
+  "\u2013": "-",
+  "\u2014": "-",
+  "\u2011": "-",
+  "\u2212": "-"
+};
+var TYPOGRAPHIC_PATTERN = new RegExp(`[${Object.keys(TYPOGRAPHIC).join("")}]`, "g");
+var normalizeText = (value) => value.normalize("NFC").trim().replace(/\s+/g, " ").replace(TYPOGRAPHIC_PATTERN, (ch) => TYPOGRAPHIC[ch] ?? ch).toLocaleLowerCase();
+var normalizeGapAnswer = (value) => normalizeText(value).replace(/[.!?]+$/, "");
+var newItemId = () => Math.random().toString(36).slice(2, 10);
+var shuffleWith = (items, rng) => {
+  for (let i = items.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    const swap = items[i];
+    items[i] = items[j];
+    items[j] = swap;
+  }
+  return items;
+};
+var gradeChoice = (question, answer) => {
+  const selected = new Set(answer?.optionIds ?? []);
+  const correct = new Set(question.options.filter((o) => o.isCorrect).map((o) => o.id));
+  if (selected.size !== correct.size) return 0;
+  for (const id of selected) if (!correct.has(id)) return 0;
+  return 1;
+};
+var publicOptions = (question) => question.options.map((o) => ({ id: o.id, text: o.text }));
+var choiceAnswerText = (question, answer) => (answer?.optionIds ?? []).map((id) => question.options.find((o) => o.id === id)?.text).filter((text2) => Boolean(text2)).join(", ");
+var correctOptionTexts = (question) => question.options.filter((o) => o.isCorrect).map((o) => o.text);
+var questionTypeDefs = {
+  single: {
+    label: "Jednokrotny wyb\xF3r",
+    usesOptions: true,
+    defaultOptions: () => [
+      { text: "", isCorrect: true },
+      { text: "", isCorrect: false }
+    ],
+    validate: (q) => q.options.length < 2 ? "Dodaj co najmniej dwie opcje" : countCorrect(q.options) !== 1 ? "Zaznacz dok\u0142adnie jedn\u0105 poprawn\u0105 odpowied\u017A" : null,
+    grade: gradeChoice,
+    playerView: (question) => ({ options: publicOptions(question) }),
+    describe: (question, answer) => ({
+      answerText: choiceAnswerText(question, answer),
+      correctAnswers: correctOptionTexts(question)
+    })
+  },
+  multiple: {
+    label: "Wielokrotny wyb\xF3r",
+    usesOptions: true,
+    defaultOptions: () => [
+      { text: "", isCorrect: true },
+      { text: "", isCorrect: false }
+    ],
+    validate: (q) => q.options.length < 2 ? "Dodaj co najmniej dwie opcje" : countCorrect(q.options) < 1 ? "Zaznacz co najmniej jedn\u0105 poprawn\u0105 odpowied\u017A" : null,
+    grade: gradeChoice,
+    playerView: (question) => ({ options: publicOptions(question) }),
+    describe: (question, answer) => ({
+      answerText: choiceAnswerText(question, answer),
+      correctAnswers: correctOptionTexts(question)
+    })
+  },
+  truefalse: {
+    label: "Prawda / Fa\u0142sz",
+    usesOptions: true,
+    defaultOptions: () => [
+      { text: "Prawda", isCorrect: true },
+      { text: "Fa\u0142sz", isCorrect: false }
+    ],
+    validate: (q) => q.options.length !== 2 || countCorrect(q.options) !== 1 ? "Pytanie Prawda/Fa\u0142sz wymaga dw\xF3ch opcji i jednej poprawnej" : null,
+    grade: gradeChoice,
+    playerView: (question) => ({ options: publicOptions(question) }),
+    describe: (question, answer) => ({
+      answerText: choiceAnswerText(question, answer),
+      correctAnswers: correctOptionTexts(question)
+    })
+  },
+  text: {
+    label: "Odpowied\u017A tekstowa",
+    usesOptions: true,
+    defaultOptions: () => [{ text: "", isCorrect: true }],
+    validate: (q) => q.options.length < 1 || q.options.some((o) => !o.isCorrect) ? "Podaj co najmniej jedn\u0105 akceptowan\u0105 odpowied\u017A" : null,
+    grade: (question, answer) => {
+      const given = normalizeText(answer?.text ?? "");
+      if (!given) return 0;
+      return question.options.some((o) => o.isCorrect && normalizeText(o.text) === given) ? 1 : 0;
+    },
+    // the accepted answers must not leak to the player, so the view carries no options
+    playerView: () => ({ options: [] }),
+    describe: (question, answer) => ({
+      answerText: (answer?.text ?? "").trim(),
+      correctAnswers: correctOptionTexts(question)
+    })
+  },
+  numeric: {
+    label: "Odpowied\u017A liczbowa",
+    usesOptions: false,
+    defaultOptions: () => [],
+    defaultConfig: () => ({ answer: 0 }),
+    validate: (q) => {
+      const config2 = numericConfig(q.config);
+      if (!config2) return "Podaj poprawn\u0105 odpowied\u017A liczbow\u0105";
+      if (config2.tolerance?.kind === "relative" && config2.answer === 0) {
+        return "Dla odpowiedzi 0 u\u017Cyj tolerancji bezwzgl\u0119dnej";
+      }
+      return null;
+    },
+    grade: (question, answer) => {
+      const config2 = numericConfig(question.config);
+      if (!config2) return 0;
+      const value = parseNumeric(answer?.text ?? "");
+      if (value === null) return 0;
+      const tolerance = config2.tolerance === void 0 ? 0 : config2.tolerance.kind === "absolute" ? config2.tolerance.value : Math.abs(config2.answer) * config2.tolerance.value;
+      const epsilon = 1e-9 * Math.max(1, Math.abs(config2.answer));
+      return Math.abs(value - config2.answer) <= tolerance + epsilon ? 1 : 0;
+    },
+    // the expected value and the tolerance must never reach the player
+    playerView: () => ({ options: [] }),
+    describe: (question, answer) => {
+      const config2 = numericConfig(question.config);
+      return {
+        answerText: (answer?.text ?? "").trim(),
+        correctAnswers: config2 ? [String(config2.answer)] : []
+      };
+    }
+  },
+  ordering: {
+    label: "Uporz\u0105dkowanie element\xF3w",
+    usesOptions: false,
+    defaultOptions: () => [],
+    defaultConfig: () => ({
+      items: [
+        { id: newItemId(), text: "" },
+        { id: newItemId(), text: "" }
+      ]
+    }),
+    validate: (q) => {
+      const config2 = orderingConfig(q.config);
+      if (!config2) return "Dodaj co najmniej dwa elementy do uporz\u0105dkowania";
+      if (config2.items.some((item) => !item.text.trim())) return "Uzupe\u0142nij tre\u015B\u0107 wszystkich element\xF3w";
+      if (config2.items.some((item) => idTooLong(item.id))) {
+        return `Identyfikator elementu jest za d\u0142ugi (maks. ${CONFIG_ID_MAX_LENGTH} znaki)`;
+      }
+      if (new Set(config2.items.map((item) => item.id)).size !== config2.items.length) {
+        return "Elementy musz\u0105 mie\u0107 unikalne identyfikatory";
+      }
+      return null;
+    },
+    // 0/1 compared by normalized text, so the answer must be a permutation of every item
+    grade: (question, answer) => {
+      const config2 = orderingConfig(question.config);
+      const submitted = answer?.order;
+      if (!config2 || !submitted || submitted.length !== config2.items.length) return 0;
+      if (new Set(submitted).size !== submitted.length) return 0;
+      const byId = new Map(config2.items.map((item) => [item.id, item.text]));
+      const texts = submitted.map((id) => byId.get(id));
+      if (texts.some((text2) => text2 === void 0)) return 0;
+      return texts.every((text2, i) => normalizeText(text2) === normalizeText(config2.items[i].text)) ? 1 : 0;
+    },
+    // the server shuffles: a client-side shuffle would hand the correct order to the player
+    playerView: (question, rng, withAnswers) => {
+      const config2 = orderingConfig(question.config);
+      if (!config2) return { options: [] };
+      if (withAnswers) return { options: [], config: config2 };
+      const items = shuffleWith([...config2.items], rng);
+      return { options: [], config: { items: items.map(({ id, text: text2 }) => ({ id, text: text2 })) } };
+    },
+    describe: (question, answer) => {
+      const config2 = orderingConfig(question.config);
+      if (!config2) return { answerText: "", correctAnswers: [] };
+      const byId = new Map(config2.items.map((item) => [item.id, item.text]));
+      const given = (answer?.order ?? []).map((id) => byId.get(id)).filter((text2) => Boolean(text2));
+      return {
+        answerText: given.map((text2, i) => `${i + 1}. ${text2}`).join(", "),
+        correctAnswers: [config2.items.map((item) => item.text).join(" \u2192 ")]
+      };
+    }
+  },
+  matching: {
+    label: "Dopasowanie par",
+    usesOptions: false,
+    defaultOptions: () => [],
+    defaultConfig: () => ({
+      pairs: [
+        { id: newItemId(), rightId: newItemId(), left: "", right: "" },
+        { id: newItemId(), rightId: newItemId(), left: "", right: "" }
+      ]
+    }),
+    validate: (q) => {
+      const config2 = matchingConfig(q.config);
+      if (!config2) return "Dodaj co najmniej dwie pary";
+      if (config2.pairs.some((pair) => !pair.left.trim() || !pair.right.trim())) {
+        return "Uzupe\u0142nij obie strony ka\u017Cdej pary";
+      }
+      if (config2.pairs.some((pair) => idTooLong(pair.id) || idTooLong(pair.rightId))) {
+        return `Identyfikator pary jest za d\u0142ugi (maks. ${CONFIG_ID_MAX_LENGTH} znaki)`;
+      }
+      if (new Set(config2.pairs.map((pair) => pair.id)).size !== config2.pairs.length) {
+        return "Pary musz\u0105 mie\u0107 unikalne identyfikatory";
+      }
+      if (new Set(config2.pairs.map((pair) => pair.rightId)).size !== config2.pairs.length) {
+        return "Ka\u017Cda para musi mie\u0107 w\u0142asny kafelek po prawej stronie";
+      }
+      return null;
+    },
+    // proportional: one point per pair, a right tile can be used by a single pair
+    grade: (question, answer) => {
+      const config2 = matchingConfig(question.config);
+      const submitted = answer?.pairs;
+      if (!config2 || !submitted) return 0;
+      const textOfRight = new Map(config2.pairs.map((pair) => [pair.rightId, normalizeText(pair.right)]));
+      const used = /* @__PURE__ */ new Set();
+      let correct = 0;
+      for (const pair of config2.pairs) {
+        const chosen = submitted[pair.id];
+        if (!chosen || used.has(chosen)) continue;
+        const chosenText = textOfRight.get(chosen);
+        if (chosenText === void 0) continue;
+        used.add(chosen);
+        if (chosenText === normalizeText(pair.right)) correct += 1;
+      }
+      return correct / config2.pairs.length;
+    },
+    // lefts keep the author order; rights are shuffled and nothing links them to their left
+    playerView: (question, rng, withAnswers) => {
+      const config2 = matchingConfig(question.config);
+      if (!config2) return { options: [] };
+      if (withAnswers) return { options: [], config: config2 };
+      const rights = shuffleWith(
+        config2.pairs.map((pair) => ({ id: pair.rightId, text: pair.right })),
+        rng
+      );
+      return {
+        options: [],
+        config: { lefts: config2.pairs.map((pair) => ({ id: pair.id, text: pair.left })), rights }
+      };
+    },
+    // one correct answer per pair: the review lists cut/join the array (`slice(0, 3)`, `join(' / ')`)
+    describe: (question, answer) => {
+      const config2 = matchingConfig(question.config);
+      if (!config2) return { answerText: "", correctAnswers: [] };
+      const textOfRight = new Map(config2.pairs.map((pair) => [pair.rightId, pair.right]));
+      const given = config2.pairs.map((pair) => {
+        const chosen = answer?.pairs?.[pair.id];
+        const text2 = chosen ? textOfRight.get(chosen) : void 0;
+        return text2 === void 0 ? null : `${pair.left} \u2192 ${text2}`;
+      }).filter((entry) => entry !== null);
+      return {
+        answerText: given.join("; "),
+        correctAnswers: config2.pairs.map((pair) => `${pair.left} \u2192 ${pair.right}`)
+      };
+    }
+  },
+  cloze: {
+    label: "Uzupe\u0142nianie luk",
+    usesOptions: false,
+    defaultOptions: () => [],
+    defaultConfig: () => ({ gaps: [{ answers: [] }] }),
+    // the markers in the prompt and the gap list must describe the same thing
+    validate: (q) => {
+      const config2 = clozeConfig(q.config);
+      if (!config2) return "Dodaj co najmniej jedn\u0105 luk\u0119";
+      if (config2.gaps.some((gap) => gap.answers.length > CLOZE_MAX_VARIANTS)) {
+        return `Luka mo\u017Ce mie\u0107 najwy\u017Cej ${CLOZE_MAX_VARIANTS} akceptowanych odpowiedzi`;
+      }
+      if (config2.gaps.some((gap) => gap.answers.some((answer) => !answer.trim()))) {
+        return "Usu\u0144 puste akceptowane odpowiedzi";
+      }
+      if (config2.gaps.some((gap) => gap.answers.some((answer) => answer.length > CLOZE_MAX_ANSWER_LENGTH))) {
+        return `Akceptowana odpowied\u017A mo\u017Ce mie\u0107 najwy\u017Cej ${CLOZE_MAX_ANSWER_LENGTH} znak\xF3w`;
+      }
+      const markers = clozeMarkers(q.prompt ?? "");
+      const expected = config2.gaps.map((_, i) => i + 1);
+      if (markers.length !== expected.length || markers.some((marker, i) => marker !== expected[i])) {
+        return `Tre\u015B\u0107 musi zawiera\u0107 znaczniki ${expected.map((n) => `{{${n}}}`).join(", ")} - ka\u017Cdy dok\u0142adnie raz, bez zer wiod\u0105cych`;
+      }
+      return null;
+    },
+    // proportional: every gap is worth the same, any accepted variant counts
+    grade: (question, answer) => {
+      const config2 = clozeConfig(question.config);
+      if (!config2) return 0;
+      const given = answer?.gaps ?? {};
+      let correct = 0;
+      config2.gaps.forEach((gap, i) => {
+        const value = normalizeGapAnswer(given[String(i + 1)] ?? "");
+        if (!value) return;
+        if (gap.answers.some((accepted) => normalizeGapAnswer(accepted) === value)) correct += 1;
+      });
+      return correct / config2.gaps.length;
+    },
+    // the accepted answers never reach the player: the view carries only how many gaps there are
+    playerView: (question, _rng, withAnswers) => {
+      const config2 = clozeConfig(question.config);
+      if (!config2) return { options: [] };
+      return { options: [], config: withAnswers ? config2 : { gaps: config2.gaps.length } };
+    },
+    // one correct answer per gap: the review lists cut/join the array
+    describe: (question, answer) => {
+      const config2 = clozeConfig(question.config);
+      if (!config2) return { answerText: "", correctAnswers: [] };
+      const given = config2.gaps.map((_, i) => ({ number: i + 1, text: (answer?.gaps?.[String(i + 1)] ?? "").trim() })).filter((gap) => gap.text);
+      return {
+        answerText: given.map((gap) => `${gap.number}: ${gap.text}`).join("; "),
+        correctAnswers: config2.gaps.map((gap, i) => `${i + 1}: ${gap.answers.join(" / ")}`)
+      };
+    }
+  }
+};
+var questionTypes = questionTypeDefs;
+var typeDef = (type) => questionTypeDefs[type];
+var isAnswered = (answer) => Boolean(
+  answer?.optionIds?.length || answer?.text?.trim() || answer?.order?.length || Object.keys(answer?.pairs ?? {}).length || Object.values(answer?.gaps ?? {}).some((value) => value.trim())
+);
+var promptText = (prompt) => prompt.replace(new RegExp(CLOZE_MARKER_PLAIN, "g"), "___");
+function gradeQuiz(questions, answers) {
+  const results = questions.map((question) => {
+    const def = typeDef(question.type);
+    const fraction = def.grade(question, answers[question.id]);
+    const described = def.describe(question, answers[question.id]);
+    return {
+      questionId: question.id,
+      correct: fraction === 1,
+      earned: Math.round(fraction * question.points * 100) / 100,
+      points: question.points,
+      correctOptionIds: question.options.filter((o) => o.isCorrect).map((o) => o.id),
+      correctAnswers: described.correctAnswers,
+      explanation: question.explanation,
+      answerText: described.answerText
+    };
+  });
+  const score = results.reduce((sum, r) => sum + r.earned, 0);
+  const maxScore = results.reduce((sum, r) => sum + r.points, 0);
+  return { score, maxScore, percent: maxScore ? Math.round(score / maxScore * 100) : 0, results };
+}
+
+// server/verbQuizBuilder.ts
+var pick2 = (items) => items[Math.floor(Math.random() * items.length)];
+function shuffled(items) {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+var regularForm = (base) => base.endsWith("e") ? `${base}d` : /[^aeiou]y$/.test(base) ? `${base.slice(0, -1)}ied` : `${base}ed`;
+var FORM_LABEL = { pastSimple: "past simple", pastParticiple: "past participle" };
+var summary = (verb) => `${verb.base} \u2013 ${verb.pastSimple.join("/")} \u2013 ${verb.pastParticiple.join("/")} (${verb.meanings.join(", ")})`;
+var meaning = (verb) => verb.meanings.join(", ");
+function formTyping(verb, form) {
+  return {
+    type: "text",
+    prompt: `Podaj ${FORM_LABEL[form]} czasownika \u201E${verb.base}\u201D (${meaning(verb)})`,
+    explanation: summary(verb),
+    points: 1,
+    options: verb[form].map((text2) => ({ text: text2, isCorrect: true }))
+  };
+}
+function buildChoice(prompt, verb, correct, forbidden, candidates, extraDistractor) {
+  const taken = new Set(forbidden);
+  const distractors = [];
+  const add = (candidate) => {
+    if (!taken.has(candidate) && !distractors.includes(candidate)) distractors.push(candidate);
+  };
+  if (extraDistractor) add(extraDistractor);
+  for (const candidate of shuffled(candidates)) {
+    if (distractors.length >= 3) break;
+    add(candidate);
+  }
+  const options = shuffled([
+    { text: correct, isCorrect: true },
+    ...distractors.slice(0, 3).map((text2) => ({ text: text2, isCorrect: false }))
+  ]);
+  return { type: "single", prompt, explanation: summary(verb), points: 1, options };
+}
+function formChoice(verb, form, pool2) {
+  const other = form === "pastSimple" ? "pastParticiple" : "pastSimple";
+  const candidates = pool2.flatMap((v) => v[pick2(["pastSimple", "pastParticiple"])]);
+  return buildChoice(
+    `Wybierz poprawny ${FORM_LABEL[form]} czasownika \u201E${verb.base}\u201D (${meaning(verb)})`,
+    verb,
+    pick2(verb[form]),
+    [...verb[form], ...verb[other], verb.base],
+    candidates,
+    regularForm(verb.base)
+  );
+}
+var synonyms = (verb, pool2) => pool2.filter((v) => v.id === verb.id || v.meanings.some((m) => verb.meanings.includes(m)));
+function translationTyping(verb, pool2) {
+  return {
+    type: "text",
+    prompt: `Jak jest po angielsku: \u201E${meaning(verb)}\u201D? (podaj bezokolicznik)`,
+    explanation: summary(verb),
+    points: 1,
+    options: synonyms(verb, pool2).map((v) => ({ text: v.base, isCorrect: true }))
+  };
+}
+function translationChoice(verb, pool2) {
+  const same = synonyms(verb, pool2).map((v) => v.base);
+  return buildChoice(
+    `Kt\xF3ry czasownik oznacza: \u201E${meaning(verb)}\u201D?`,
+    verb,
+    verb.base,
+    same,
+    pool2.map((v) => v.base)
+  );
+}
+function buildVerbQuiz(verbs, pool2, variant, title, description) {
+  const questions = verbs.map((verb) => {
+    const form = pick2(["pastSimple", "pastParticiple"]);
+    const question = (() => {
+      switch (variant) {
+        case "typing":
+          return formTyping(verb, form);
+        case "choice":
+          return formChoice(verb, form, pool2);
+        case "translation":
+          return Math.random() < 0.5 ? translationTyping(verb, pool2) : translationChoice(verb, pool2);
+        default:
+          return Math.random() < 0.5 ? formTyping(verb, form) : formChoice(verb, form, pool2);
+      }
+    })();
+    return { ...question, verbId: verb.id };
+  });
+  return { title, description, shuffleOptions: false, questions };
+}
+var randomSample = (items, count) => shuffled(items).slice(0, count);
+
+// server/irregularVerbs.ts
+var VERB_SELECT = `
+  SELECT v.id, v.base, v.cefr_level, d.code AS difficulty, p.code AS popularity, pt.code AS pattern,
+         v.example_en, v.example_pl,
+         ARRAY(SELECT f.form FROM verb_forms f WHERE f.verb_id = v.id AND f.form_type = 'past_simple'
+               ORDER BY f.position) AS past_simple,
+         ARRAY(SELECT f.form FROM verb_forms f WHERE f.verb_id = v.id AND f.form_type = 'past_participle'
+               ORDER BY f.position) AS past_participle,
+         ARRAY(SELECT m.translation_pl FROM verb_meanings m WHERE m.verb_id = v.id
+               ORDER BY m.position) AS meanings
+  FROM irregular_verbs v
+  JOIN difficulty_levels d ON d.id = v.difficulty_id
+  JOIN popularity_tiers p ON p.id = v.popularity_id
+  JOIN verb_patterns pt ON pt.id = v.pattern_id`;
+var toVerb = (row) => ({
+  id: row.id,
+  base: row.base,
+  cefrLevel: row.cefr_level,
+  difficulty: row.difficulty,
+  popularity: row.popularity,
+  pattern: row.pattern,
+  pastSimple: row.past_simple,
+  pastParticiple: row.past_participle,
+  meanings: row.meanings,
+  exampleEn: row.example_en,
+  examplePl: row.example_pl
+});
+var query = async (text2, values = []) => await pool().query(text2, values);
+async function listVerbs(filter = {}) {
+  const conditions = ["v.cefr_level = $1"];
+  const values = [filter.level ?? "B2"];
+  const add = (sql, value) => {
+    values.push(value);
+    conditions.push(sql.replace("?", `$${values.length}`));
+  };
+  if (filter.difficulty) add("d.code = ?", filter.difficulty);
+  if (filter.popularity) add("p.code = ?", filter.popularity);
+  if (filter.pattern) add("pt.code = ?", filter.pattern);
+  if (filter.ids) add("v.id = ANY(?::int[])", filter.ids);
+  const { rows } = await query(`${VERB_SELECT} WHERE ${conditions.join(" AND ")} ORDER BY v.base`, values);
+  return rows.map(toVerb);
+}
+var VARIANT_LABEL = {
+  mixed: "losowy quiz",
+  typing: "wpisywanie odpowiedzi",
+  choice: "wyb\xF3r odpowiedzi",
+  translation: "t\u0142umaczenie"
+};
+async function generateIrregularVerbsQuiz(options) {
+  const pool2 = await listVerbs();
+  const filtered = pool2.filter(
+    (v) => (!options.difficulty || v.difficulty === options.difficulty) && (!options.popularity || v.popularity === options.popularity)
+  );
+  const chosen = randomSample(filtered, options.count);
+  const groups = [options.difficulty && `trudno\u015B\u0107: ${options.difficulty}`, options.popularity && `popularno\u015B\u0107: ${options.popularity}`].filter(Boolean).join(", ");
+  const quiz = buildVerbQuiz(
+    chosen,
+    pool2,
+    options.variant,
+    `Czasowniki nieregularne B2 \u2013 ${VARIANT_LABEL[options.variant]}`,
+    `${chosen.length} pyta\u0144 z czasownik\xF3w nieregularnych (poziom B2${groups ? `; ${groups}` : ""}).`
+  );
+  return { quiz, difficulty: options.difficulty ?? null };
+}
+
+// server/coursesRepo.ts
+var COURSE_SELECT = `
+  SELECT c.id, c.slug, c.title, c.description, c.pass_percent, d.code AS difficulty, p.code AS popularity,
+         (SELECT COUNT(*)::int FROM lessons l WHERE l.course_id = c.id) AS lesson_count,
+         (SELECT COUNT(*)::int FROM lesson_progress lp JOIN lessons l ON l.id = lp.lesson_id
+           WHERE l.course_id = c.id AND lp.user_id IS NOT DISTINCT FROM $1) AS completed_lessons,
+         (SELECT COUNT(*)::int FROM lesson_verbs lv JOIN lessons l ON l.id = lv.lesson_id
+           WHERE l.course_id = c.id) AS verb_count,
+         (SELECT MAX(a.percent) FROM quiz_attempts a
+           WHERE a.course_id = c.id AND a.user_id IS NOT DISTINCT FROM $1) AS best_percent,
+         EXISTS (SELECT 1 FROM quiz_attempts a
+           WHERE a.course_id = c.id AND a.user_id IS NOT DISTINCT FROM $1 AND a.passed) AS passed
+  FROM courses c
+  LEFT JOIN difficulty_levels d ON d.id = c.difficulty_id
+  LEFT JOIN popularity_tiers p ON p.id = c.popularity_id`;
+var toSummary2 = (row) => ({
+  id: row.id,
+  slug: row.slug,
+  title: row.title,
+  description: row.description,
+  difficulty: row.difficulty,
+  popularity: row.popularity,
+  passPercent: row.pass_percent,
+  lessonCount: row.lesson_count,
+  completedLessons: row.completed_lessons,
+  verbCount: row.verb_count,
+  bestPercent: row.best_percent,
+  passed: row.passed
+});
+async function listCourses(userId) {
+  const { rows } = await pool().query(`${COURSE_SELECT} ORDER BY c.position, c.title`, [userId]);
+  return rows.map(toSummary2);
+}
+async function getCourse(id, userId) {
+  const { rows } = await pool().query(`${COURSE_SELECT} WHERE c.id = $2`, [userId, id]);
+  if (!rows[0]) return null;
+  const lessons = await pool().query(
+    `SELECT l.id, l.position, l.title,
+            (SELECT COUNT(*)::int FROM lesson_verbs lv WHERE lv.lesson_id = l.id) AS verb_count,
+            EXISTS (SELECT 1 FROM lesson_progress lp
+                    WHERE lp.lesson_id = l.id AND lp.user_id IS NOT DISTINCT FROM $2) AS completed
+     FROM lessons l WHERE l.course_id = $1 ORDER BY l.position`,
+    [id, userId]
+  );
+  return {
+    ...toSummary2(rows[0]),
+    lessons: lessons.rows.map((l) => ({
+      id: l.id,
+      position: l.position,
+      title: l.title,
+      verbCount: l.verb_count,
+      completed: l.completed
+    }))
+  };
+}
+async function getLesson(courseId, lessonId, userId) {
+  const db = pool();
+  const lesson = await db.query(
+    `SELECT l.id, l.course_id, l.position, l.title, l.intro, c.title AS course_title,
+            EXISTS (SELECT 1 FROM lesson_progress lp
+                    WHERE lp.lesson_id = l.id AND lp.user_id IS NOT DISTINCT FROM $3) AS completed
+     FROM lessons l JOIN courses c ON c.id = l.course_id
+     WHERE l.id = $2 AND l.course_id = $1`,
+    [courseId, lessonId, userId]
+  );
+  const row = lesson.rows[0];
+  if (!row) return null;
+  const neighbours = await db.query(
+    `SELECT id, position FROM lessons WHERE course_id = $1 AND position IN ($2, $3)`,
+    [courseId, row.position - 1, row.position + 1]
+  );
+  const verbIds = await db.query(
+    "SELECT verb_id FROM lesson_verbs WHERE lesson_id = $1 ORDER BY position",
+    [lessonId]
+  );
+  const ids = verbIds.rows.map((v) => v.verb_id);
+  const verbs = await listVerbs({ ids });
+  const byId = new Map(verbs.map((v) => [v.id, v]));
+  return {
+    id: row.id,
+    courseId: row.course_id,
+    courseTitle: row.course_title,
+    position: row.position,
+    title: row.title,
+    intro: row.intro,
+    completed: row.completed,
+    prevLessonId: neighbours.rows.find((n) => n.position === row.position - 1)?.id ?? null,
+    nextLessonId: neighbours.rows.find((n) => n.position === row.position + 1)?.id ?? null,
+    verbs: ids.flatMap((id) => byId.get(id) ?? [])
+  };
+}
+async function completeLesson(courseId, lessonId, userId) {
+  const lesson = await pool().query("SELECT 1 FROM lessons WHERE id = $1 AND course_id = $2", [
+    lessonId,
+    courseId
+  ]);
+  if (lesson.rows.length === 0) return { found: false, created: false };
+  const inserted = await pool().query(
+    "INSERT INTO lesson_progress (user_id, lesson_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+    [userId, lessonId]
+  );
+  return { found: true, created: (inserted.rowCount ?? 0) > 0 };
+}
+async function courseVerbIds(courseId) {
+  const { rows } = await pool().query(
+    `SELECT DISTINCT lv.verb_id FROM lesson_verbs lv JOIN lessons l ON l.id = lv.lesson_id
+     WHERE l.course_id = $1`,
+    [courseId]
+  );
+  return rows.map((r) => r.verb_id);
+}
+async function coursePassInfo(courseId) {
+  const { rows } = await pool().query(
+    "SELECT id, title, pass_percent FROM courses WHERE id = $1",
+    [courseId]
+  );
+  return rows[0] ? { id: rows[0].id, title: rows[0].title, passPercent: rows[0].pass_percent } : null;
+}
+
+// src/shared/quiz/streaks.ts
+function localDay(instant, timeZone) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(instant);
+  const get = (type) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+function isValidTimeZone(timeZone) {
+  try {
+    new Intl.DateTimeFormat("en", { timeZone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+var DAY_MS = 864e5;
+var dayNumber = (day) => {
+  const [y, m, d] = day.split("-").map(Number);
+  return Math.round(Date.UTC(y, m - 1, d) / DAY_MS);
+};
+function shiftDay(day, n) {
+  return new Date((dayNumber(day) + n) * DAY_MS).toISOString().slice(0, 10);
+}
+function computeStreaks(activeDays, today) {
+  const days = [...new Set(activeDays)].map(dayNumber).sort((a, b) => a - b);
+  const todayN = dayNumber(today);
+  let longest = 0;
+  let run = 0;
+  let previous = Number.NaN;
+  for (const n of days) {
+    run = n === previous + 1 ? run + 1 : 1;
+    longest = Math.max(longest, run);
+    previous = n;
+  }
+  const set2 = new Set(days);
+  const activeToday = set2.has(todayN);
+  let cursor = activeToday ? todayN : todayN - 1;
+  let current = 0;
+  while (set2.has(cursor)) {
+    current++;
+    cursor--;
+  }
+  return { current, longest, activeToday };
+}
+var isActiveDay = (activity) => activity.answered >= 1 || activity.lessons >= 1;
+function lastSevenDays(byDay, today) {
+  return Array.from({ length: 7 }, (_, i) => {
+    const day = shiftDay(today, i - 6);
+    return byDay.get(day) ?? { day, answered: 0, correct: 0, lessons: 0 };
+  });
+}
+
+// server/progressRepo.ts
+async function getProfile(userId) {
+  const { rows } = await pool().query(
+    "SELECT daily_goal, timezone FROM user_profiles WHERE user_id = $1",
+    [userId]
+  );
+  return rows[0] ?? { daily_goal: 10, timezone: "UTC" };
+}
+async function updateProfile(userId, patch) {
+  const timezone = patch.timezone && isValidTimeZone(patch.timezone) ? patch.timezone : void 0;
+  await pool().query(
+    `INSERT INTO user_profiles (user_id, daily_goal, timezone)
+     VALUES ($1, COALESCE($2::int, 10), COALESCE($3::text, 'UTC'))
+     ON CONFLICT (user_id) DO UPDATE SET
+       daily_goal = COALESCE($2::int, user_profiles.daily_goal),
+       timezone = COALESCE($3::text, user_profiles.timezone),
+       updated_at = now()`,
+    [userId, patch.dailyGoal ?? null, timezone ?? null]
+  );
+}
+async function recordActivity(userId, delta) {
+  const { timezone } = await getProfile(userId);
+  const day = localDay(/* @__PURE__ */ new Date(), timezone);
+  await pool().query(
+    `INSERT INTO daily_activity (user_id, day, answered, correct, lessons_completed)
+     VALUES ($1, $2::date, $3, $4, $5)
+     ON CONFLICT (user_id, day) DO UPDATE SET
+       answered = daily_activity.answered + EXCLUDED.answered,
+       correct = daily_activity.correct + EXCLUDED.correct,
+       lessons_completed = daily_activity.lessons_completed + EXCLUDED.lessons_completed`,
+    [userId, day, delta.answered ?? 0, delta.correct ?? 0, delta.lessons ?? 0]
+  );
+}
+async function getSummary(userId) {
+  const profile = await getProfile(userId);
+  const today = localDay(/* @__PURE__ */ new Date(), profile.timezone);
+  const { rows } = await pool().query(
+    `SELECT to_char(day, 'YYYY-MM-DD') AS day, answered, correct, lessons_completed
+     FROM daily_activity WHERE user_id = $1 ORDER BY day`,
+    [userId]
+  );
+  const byDay = new Map(
+    rows.map((r) => [r.day, { day: r.day, answered: r.answered, correct: r.correct, lessons: r.lessons_completed }])
+  );
+  const streaks = computeStreaks(
+    [...byDay.values()].filter(isActiveDay).map((a) => a.day),
+    today
+  );
+  const week = lastSevenDays(byDay, today);
+  return {
+    timezone: profile.timezone,
+    dailyGoal: profile.daily_goal,
+    currentStreak: streaks.current,
+    longestStreak: streaks.longest,
+    today: week[6],
+    last7: week
+  };
+}
+async function syncIdentity(userId, identity) {
+  if (!identity.name && !identity.email) return;
+  await pool().query(
+    `INSERT INTO user_profiles (user_id, display_name, email) VALUES ($1, $2, $3)
+     ON CONFLICT (user_id) DO UPDATE SET
+       display_name = COALESCE($2, user_profiles.display_name),
+       email = COALESCE($3, user_profiles.email)
+     WHERE user_profiles.display_name IS DISTINCT FROM COALESCE($2, user_profiles.display_name)
+        OR user_profiles.email IS DISTINCT FROM COALESCE($3, user_profiles.email)`,
+    [userId, identity.name ?? null, identity.email ?? null]
+  );
+}
+
+// server/quizRepo.ts
+async function listQuizzes(filter = {}, canEdit = false, userId = null) {
+  const values = [userId];
+  let difficultyCondition = "";
+  if (filter.difficulty) {
+    values.push(filter.difficulty);
+    difficultyCondition = `AND d.code = $${values.length}`;
+  }
+  let subjectCondition = "";
+  if (filter.subject === "none") subjectCondition = "AND q.subject_id IS NULL";
+  else if (filter.subject) {
+    values.push(filter.subject);
+    subjectCondition = `AND s.code = $${values.length}`;
+  }
+  const order = filter.sort === "popular" ? "plays DESC, q.updated_at DESC" : "q.updated_at DESC";
+  const { rows } = await pool().query(
+    `SELECT q.id, q.title, q.description, q.created_at, q.updated_at, q.sample_size, d.code AS difficulty, s.code AS subject,
+            (SELECT COUNT(*)::int FROM questions qu WHERE qu.quiz_id = q.id) AS question_count,
+            (SELECT COALESCE(SUM(qu.points), 0)::int FROM questions qu WHERE qu.quiz_id = q.id) AS total_points,
+            (SELECT COUNT(*)::int FROM quiz_attempts a WHERE a.quiz_id = q.id) AS plays,
+            (SELECT COUNT(*)::int FROM quiz_attempts a WHERE a.quiz_id = q.id AND a.user_id = $1) AS my_attempts,
+            (SELECT MAX(a.percent)::int FROM quiz_attempts a WHERE a.quiz_id = q.id AND a.user_id = $1) AS my_best
+     FROM quizzes q
+     LEFT JOIN difficulty_levels d ON d.id = q.difficulty_id
+     LEFT JOIN subjects s ON s.id = q.subject_id
+     WHERE q.kind = 'manual' ${difficultyCondition} ${subjectCondition}
+     ORDER BY ${order}`,
+    values
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    difficulty: row.difficulty,
+    subject: row.subject,
+    canEdit,
+    plays: row.plays,
+    myAttempts: row.my_attempts,
+    myBestPercent: row.my_best,
+    questionCount: row.question_count,
+    sampleSize: row.sample_size,
+    totalPoints: row.total_points,
+    createdAt: row.created_at.toISOString(),
+    updatedAt: row.updated_at.toISOString()
+  }));
+}
+async function getQuiz(id, withAnswers, canEdit = false) {
+  const db = pool();
+  const quizzes = await db.query(
+    `SELECT q.*, d.code AS difficulty, s.code AS subject
+     FROM quizzes q
+     LEFT JOIN difficulty_levels d ON d.id = q.difficulty_id
+     LEFT JOIN subjects s ON s.id = q.subject_id
+     WHERE q.id = $1`,
+    [id]
+  );
+  const quiz = quizzes.rows[0];
+  if (!quiz) return null;
+  const questions = await db.query(
+    "SELECT id, type, prompt, explanation, points, config FROM questions WHERE quiz_id = $1 ORDER BY position",
+    [id]
+  );
+  const options = await db.query(
+    `SELECT o.id, o.question_id, o.text, o.is_correct
+     FROM options o JOIN questions q ON q.id = o.question_id
+     WHERE q.quiz_id = $1 ORDER BY o.position`,
+    [id]
+  );
+  return {
+    id: quiz.id,
+    title: quiz.title,
+    description: quiz.description,
+    kind: quiz.kind,
+    source: quiz.source,
+    difficulty: quiz.difficulty,
+    subject: quiz.subject,
+    courseId: quiz.course_id,
+    canEdit,
+    shuffleQuestions: quiz.shuffle_questions,
+    shuffleOptions: quiz.shuffle_options,
+    sampleSize: quiz.sample_size,
+    createdAt: quiz.created_at.toISOString(),
+    updatedAt: quiz.updated_at.toISOString(),
+    questions: questions.rows.map((question) => {
+      const own2 = options.rows.filter((o) => o.question_id === question.id);
+      const full = {
+        type: question.type,
+        // the accepted answers of `text` questions never reach the player
+        options: own2.map((o) => ({ id: o.id, text: o.text, isCorrect: o.is_correct })),
+        config: question.config ?? void 0
+      };
+      const view = withAnswers ? full : typeDef(question.type).playerView(full, Math.random, false);
+      return {
+        id: question.id,
+        type: question.type,
+        prompt: question.prompt,
+        points: question.points,
+        ...withAnswers ? { explanation: question.explanation } : {},
+        options: view.options,
+        ...view.config === void 0 ? {} : { config: view.config }
+      };
+    })
+  };
+}
+function toGradable(quiz) {
+  return quiz.questions.map((q) => ({
+    id: q.id,
+    type: q.type,
+    points: q.points,
+    explanation: q.explanation ?? "",
+    options: q.options.map((o) => ({ id: o.id, text: o.text, isCorrect: o.isCorrect ?? false })),
+    config: q.config
+  }));
+}
+async function insertQuestions(client, quizId, questions) {
+  for (const [qi, question] of questions.entries()) {
+    const inserted = await client.query(
+      `INSERT INTO questions (quiz_id, position, type, prompt, explanation, points, verb_id, config)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+      [
+        quizId,
+        qi,
+        question.type,
+        question.prompt,
+        question.explanation,
+        question.points,
+        question.verbId ?? null,
+        question.config === void 0 || question.config === null ? null : JSON.stringify(question.config)
+      ]
+    );
+    const questionId = inserted.rows[0].id;
+    for (const [oi, option] of question.options.entries()) {
+      await client.query(
+        "INSERT INTO options (question_id, position, text, is_correct) VALUES ($1, $2, $3, $4)",
+        [questionId, oi, option.text, option.isCorrect]
+      );
+    }
+  }
+}
+async function inTransaction(work) {
+  const client = await pool().connect();
+  try {
+    await client.query("BEGIN");
+    const result = await work(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (error62) {
+    await client.query("ROLLBACK");
+    throw error62;
+  } finally {
+    client.release();
+  }
+}
+async function createQuiz(input2, meta3) {
+  return inTransaction(async (client) => {
+    const created = await client.query(
+      `INSERT INTO quizzes (title, description, kind, source, course_id, owner_id, difficulty_id,
+                            shuffle_questions, shuffle_options, sample_size, subject_id)
+       VALUES ($1, $2, $3, $4, $5, $6, (SELECT id FROM difficulty_levels WHERE code = $7), $8, $9, $10,
+               (SELECT id FROM subjects WHERE code = $11))
+       RETURNING id`,
+      [
+        input2.title,
+        input2.description,
+        meta3.kind,
+        meta3.source ?? null,
+        meta3.courseId ?? null,
+        meta3.ownerId ?? null,
+        meta3.difficulty ?? null,
+        input2.shuffleQuestions ?? null,
+        input2.shuffleOptions ?? false,
+        input2.sampleSize ?? null,
+        input2.subject ?? null
+      ]
+    );
+    const id = created.rows[0].id;
+    await insertQuestions(client, id, input2.questions);
+    return id;
+  });
+}
+async function replaceQuiz(id, input2) {
+  return inTransaction(async (client) => {
+    const updated = await client.query(
+      `UPDATE quizzes
+       SET title = $2, description = $3, updated_at = now(),
+           difficulty_id = (SELECT id FROM difficulty_levels WHERE code = $4),
+           shuffle_questions = $5, shuffle_options = $6, sample_size = $7,
+           subject_id = (SELECT id FROM subjects WHERE code = $8)
+       WHERE id = $1 RETURNING id`,
+      [
+        id,
+        input2.title,
+        input2.description,
+        input2.difficulty ?? null,
+        input2.shuffleQuestions ?? null,
+        input2.shuffleOptions ?? false,
+        input2.sampleSize ?? null,
+        input2.subject ?? null
+      ]
+    );
+    if (updated.rowCount === 0) return false;
+    await client.query("DELETE FROM questions WHERE quiz_id = $1", [id]);
+    await insertQuestions(client, id, input2.questions);
+    return true;
+  });
+}
+async function deleteQuiz(id) {
+  const result = await pool().query("DELETE FROM quizzes WHERE id = $1", [id]);
+  return (result.rowCount ?? 0) > 0;
+}
+async function getOwnerId(id) {
+  const { rows } = await pool().query(
+    "SELECT owner_id FROM quizzes WHERE id = $1",
+    [id]
+  );
+  return rows[0]?.owner_id ?? null;
+}
+async function saveAttempt(attempt) {
+  const { result } = attempt;
+  const inserted = await pool().query(
+    `INSERT INTO quiz_attempts
+       (quiz_id, quiz_title, user_id, course_id, passed, score, max_score, percent, answers, results)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+    [
+      attempt.quizId,
+      attempt.quizTitle,
+      attempt.userId,
+      attempt.courseId,
+      attempt.passed,
+      result.score,
+      result.maxScore,
+      result.percent,
+      JSON.stringify(attempt.answers),
+      JSON.stringify(result.results)
+    ]
+  );
+  return inserted.rows[0].id;
+}
+async function listAttempts(userId, limit = 50) {
+  const { rows } = await pool().query(
+    `SELECT id, quiz_id, quiz_title, course_id, passed, score::float AS score,
+            max_score::float AS max_score, percent, created_at
+     FROM quiz_attempts
+     WHERE user_id IS NOT DISTINCT FROM $1
+     ORDER BY created_at DESC LIMIT $2`,
+    [userId, limit]
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    quizId: row.quiz_id,
+    quizTitle: row.quiz_title,
+    score: row.score,
+    maxScore: row.max_score,
+    percent: row.percent,
+    courseId: row.course_id,
+    passed: row.passed,
+    createdAt: row.created_at.toISOString()
+  }));
+}
+async function getQuestionVerbs(quizId) {
+  const { rows } = await pool().query(
+    "SELECT id, verb_id FROM questions WHERE quiz_id = $1 AND verb_id IS NOT NULL",
+    [quizId]
+  );
+  return new Map(rows.map((r) => [r.id, r.verb_id]));
+}
+
+// src/shared/quiz/spaced.ts
+var BOX_INTERVAL_DAYS = [0, 1, 2, 4, 8, 16, 32];
+var MAX_BOX = BOX_INTERVAL_DAYS.length - 1;
+var newReviewState = () => ({ box: 0, repetitions: 0, lapses: 0, attempts: 0, correct: 0 });
+var DAY_MS2 = 864e5;
+function nextReview(state, correct, now) {
+  if (!correct) {
+    return {
+      box: 0,
+      repetitions: 0,
+      lapses: state.lapses + 1,
+      attempts: state.attempts + 1,
+      correct: state.correct,
+      dueAt: now
+    };
+  }
+  const box = Math.min(state.box + 1, MAX_BOX);
+  return {
+    box,
+    repetitions: state.repetitions + 1,
+    lapses: state.lapses,
+    attempts: state.attempts + 1,
+    correct: state.correct + 1,
+    dueAt: new Date(now.getTime() + BOX_INTERVAL_DAYS[box] * DAY_MS2)
+  };
+}
+
+// src/shared/quiz/weak.ts
+var MIN_ATTEMPTS = 3;
+var WEAK_ACCURACY = 0.75;
+var RECOVERED_BOX = 4;
+var accuracyOf = (stat) => stat.attempts === 0 ? 1 : stat.correct / stat.attempts;
+var isWeak = (stat) => stat.attempts >= MIN_ATTEMPTS && accuracyOf(stat) < WEAK_ACCURACY && stat.box < RECOVERED_BOX;
+function rankWeak(items, limit) {
+  return items.filter(isWeak).sort(
+    (a, b) => accuracyOf(a) - accuracyOf(b) || b.attempts - a.attempts || (b.lastWrongAt ?? "").localeCompare(a.lastWrongAt ?? "")
+  ).slice(0, limit);
+}
+
+// server/reviewsRepo.ts
+async function getReviewSummary(userId) {
+  const { rows } = await pool().query(
+    `SELECT COUNT(*) FILTER (WHERE due_at <= now())::int AS due,
+            COUNT(*) FILTER (WHERE due_at <= now() AND attempts = 0)::int AS new_due,
+            COUNT(*)::int AS tracked,
+            MIN(due_at) FILTER (WHERE due_at > now()) AS next_due
+     FROM verb_reviews WHERE user_id = $1`,
+    [userId]
+  );
+  const r = rows[0];
+  return {
+    dueCount: r.due,
+    newCount: r.new_due,
+    trackedCount: r.tracked,
+    nextDueAt: r.due > 0 ? null : r.next_due?.toISOString() ?? null
+  };
+}
+async function dueVerbIds(userId, limit) {
+  const { rows } = await pool().query(
+    "SELECT verb_id FROM verb_reviews WHERE user_id = $1 AND due_at <= now() ORDER BY due_at, verb_id LIMIT $2",
+    [userId, limit]
+  );
+  return rows.map((r) => r.verb_id);
+}
+async function enqueueLessonVerbs(userId, lessonId) {
+  await pool().query(
+    `INSERT INTO verb_reviews (user_id, verb_id)
+     SELECT $1, lv.verb_id FROM lesson_verbs lv WHERE lv.lesson_id = $2
+     ON CONFLICT (user_id, verb_id) DO NOTHING`,
+    [userId, lessonId]
+  );
+}
+async function applyResults(userId, results) {
+  if (results.length === 0) return;
+  const ids = results.map((r) => r.verbId);
+  const { rows } = await pool().query(
+    `SELECT verb_id, box, repetitions, lapses, attempts, correct
+     FROM verb_reviews WHERE user_id = $1 AND verb_id = ANY($2::int[])`,
+    [userId, ids]
+  );
+  const current = new Map(rows.map((r) => [r.verb_id, r]));
+  const now = /* @__PURE__ */ new Date();
+  const updates = results.map((r) => ({ verbId: r.verbId, ...nextReview(current.get(r.verbId) ?? newReviewState(), r.correct, now) }));
+  await pool().query(
+    `INSERT INTO verb_reviews
+       (user_id, verb_id, box, due_at, repetitions, lapses, attempts, correct, last_reviewed_at, last_wrong_at)
+     SELECT $1, u.verb_id, u.box, u.due_at, u.repetitions, u.lapses, u.attempts, u.correct, now(),
+            CASE WHEN u.wrong THEN now() END
+     FROM unnest($2::int[], $3::int[], $4::timestamptz[], $5::int[], $6::int[], $7::int[], $8::int[], $9::boolean[])
+       AS u(verb_id, box, due_at, repetitions, lapses, attempts, correct, wrong)
+     ON CONFLICT (user_id, verb_id) DO UPDATE SET
+       box = EXCLUDED.box, due_at = EXCLUDED.due_at, repetitions = EXCLUDED.repetitions,
+       lapses = EXCLUDED.lapses, attempts = EXCLUDED.attempts, correct = EXCLUDED.correct,
+       last_reviewed_at = EXCLUDED.last_reviewed_at,
+       last_wrong_at = COALESCE(EXCLUDED.last_wrong_at, verb_reviews.last_wrong_at)`,
+    [
+      userId,
+      updates.map((u) => u.verbId),
+      updates.map((u) => u.box),
+      updates.map((u) => u.dueAt.toISOString()),
+      updates.map((u) => u.repetitions),
+      updates.map((u) => u.lapses),
+      updates.map((u) => u.attempts),
+      updates.map((u) => u.correct),
+      results.map((r) => !r.correct)
+    ]
+  );
+}
+async function weakVerbs(userId, limit) {
+  const { rows } = await pool().query(
+    "SELECT verb_id, attempts, correct, box, last_wrong_at FROM verb_reviews WHERE user_id = $1 AND attempts >= 1",
+    [userId]
+  );
+  const stats = rows.map((r) => ({
+    verbId: r.verb_id,
+    attempts: r.attempts,
+    correct: r.correct,
+    box: r.box,
+    lastWrongAt: r.last_wrong_at?.toISOString() ?? null,
+    accuracy: 0
+  }));
+  return rankWeak(stats, limit).map((s) => ({ ...s, accuracy: accuracyOf(s) }));
+}
+
+// server/learningGradeHooks.ts
+var coursePass = async ({ quiz, result }) => {
+  if (!quiz.courseId) return { response: { course: null } };
+  const course = await coursePassInfo(quiz.courseId);
+  const passed = course ? result.percent >= course.passPercent : null;
+  return {
+    courseId: course?.id ?? null,
+    passed,
+    response: { course: course ? { ...course, passed: passed === true } : null }
+  };
+};
+var spacedRepetition = async ({ quizId, user, result }) => {
+  const verbOfQuestion = await getQuestionVerbs(quizId);
+  await applyResults(
+    user,
+    result.results.flatMap((r) => {
+      const verbId = verbOfQuestion.get(r.questionId);
+      return verbId === void 0 ? [] : [{ verbId, correct: r.correct }];
+    })
+  );
+};
+var dailyActivity = async ({ user, answers, result }) => {
+  await recordActivity(user, {
+    answered: Object.values(answers).filter((a) => isAnswered(a)).length,
+    correct: result.results.filter((r) => r.correct).length
+  });
+};
+function registerLearningGradeHooks(registry2) {
+  registry2.onBeforeSave(coursePass);
+  registry2.onAfterSave(spacedRepetition);
+  registry2.onAfterSave(dailyActivity);
+}
 
 // node_modules/zod/v3/helpers/util.js
 var util;
@@ -73331,18 +74619,6 @@ async function listMyClasses(userId) {
   return rows.map((r) => ({ id: r.id, name: r.name, joinedAt: r.joined_at.toISOString() }));
 }
 
-// src/shared/quiz/weak.ts
-var MIN_ATTEMPTS = 3;
-var WEAK_ACCURACY = 0.75;
-var RECOVERED_BOX = 4;
-var accuracyOf = (stat) => stat.attempts === 0 ? 1 : stat.correct / stat.attempts;
-var isWeak = (stat) => stat.attempts >= MIN_ATTEMPTS && accuracyOf(stat) < WEAK_ACCURACY && stat.box < RECOVERED_BOX;
-function rankWeak(items, limit) {
-  return items.filter(isWeak).sort(
-    (a, b) => accuracyOf(a) - accuracyOf(b) || b.attempts - a.attempts || (b.lastWrongAt ?? "").localeCompare(a.lastWrongAt ?? "")
-  ).slice(0, limit);
-}
-
 // server/classes/assignments.ts
 var ASSIGNMENT_SELECT = `
   SELECT a.id, a.class_id, a.kind, a.course_id, a.quiz_id, a.due_at, a.created_at,
@@ -73497,428 +74773,6 @@ async function classReport(classId2) {
       };
     })
   };
-}
-
-// src/shared/quiz/engine.ts
-var QUESTION_TYPES = ["single", "multiple", "truefalse", "text", "numeric", "ordering", "matching", "cloze"];
-var countCorrect = (options) => options.filter((o) => o.isCorrect).length;
-var ORDERING_MAX_ITEMS = 50;
-var CONFIG_ID_MAX_LENGTH = 64;
-var idTooLong = (id) => [...id].length > CONFIG_ID_MAX_LENGTH;
-var orderingConfig = (config2) => {
-  if (!config2 || typeof config2 !== "object") return null;
-  const { items } = config2;
-  if (!Array.isArray(items) || items.length < 2 || items.length > ORDERING_MAX_ITEMS) return null;
-  const parsed = [];
-  for (const item of items) {
-    if (!item || typeof item !== "object") return null;
-    const { id, text: text2 } = item;
-    if (typeof id !== "string" || !id || typeof text2 !== "string") return null;
-    parsed.push({ id, text: text2 });
-  }
-  return { items: parsed };
-};
-var MATCHING_MAX_PAIRS = 20;
-var matchingConfig = (config2) => {
-  if (!config2 || typeof config2 !== "object") return null;
-  const { pairs } = config2;
-  if (!Array.isArray(pairs) || pairs.length < 2 || pairs.length > MATCHING_MAX_PAIRS) return null;
-  const parsed = [];
-  for (const pair of pairs) {
-    if (!pair || typeof pair !== "object") return null;
-    const { id, rightId, left, right } = pair;
-    if (typeof id !== "string" || !id) return null;
-    if (typeof rightId !== "string" || !rightId) return null;
-    if (typeof left !== "string" || typeof right !== "string") return null;
-    parsed.push({ id, rightId, left, right });
-  }
-  return { pairs: parsed };
-};
-var CLOZE_MAX_GAPS = 8;
-var CLOZE_MAX_VARIANTS = 10;
-var CLOZE_MAX_ANSWER_LENGTH = 200;
-var CLOZE_NUMBER = String.raw`[1-9]\d*`;
-var CLOZE_MARKER = new RegExp(String.raw`\{\{(${CLOZE_NUMBER})\}\}`);
-var CLOZE_MARKER_PLAIN = String.raw`\{\{${CLOZE_NUMBER}\}\}`;
-var clozeMarkers = (prompt) => [...prompt.matchAll(new RegExp(CLOZE_MARKER_PLAIN, "g"))].map((match) => Number(match[0].slice(2, -2)));
-var clozeConfig = (config2) => {
-  if (!config2 || typeof config2 !== "object") return null;
-  const { gaps } = config2;
-  if (!Array.isArray(gaps) || gaps.length < 1 || gaps.length > CLOZE_MAX_GAPS) return null;
-  const parsed = [];
-  for (const gap of gaps) {
-    if (!gap || typeof gap !== "object") return null;
-    const { answers } = gap;
-    if (!Array.isArray(answers) || answers.length < 1) return null;
-    if (answers.some((answer) => typeof answer !== "string")) return null;
-    parsed.push({ answers });
-  }
-  return { gaps: parsed };
-};
-var parseNumeric = (raw) => {
-  const compact = raw.trim().replace(/\u2212/g, "-").replace(/[\s\u00a0\u202f]/g, "");
-  if (!compact) return null;
-  const fraction = /^(-?\d+(?:[.,]\d+)?)\/(\d+(?:[.,]\d+)?)$/.exec(compact);
-  if (fraction) {
-    const numerator = Number(fraction[1].replace(",", "."));
-    const denominator = Number(fraction[2].replace(",", "."));
-    if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator === 0) return null;
-    return numerator / denominator;
-  }
-  const value = Number(compact.replace(",", "."));
-  return Number.isFinite(value) ? value : null;
-};
-var numericConfig = (config2) => {
-  if (!config2 || typeof config2 !== "object") return null;
-  const { answer, tolerance } = config2;
-  if (typeof answer !== "number" || !Number.isFinite(answer)) return null;
-  if (tolerance !== void 0) {
-    if (!tolerance || typeof tolerance !== "object") return null;
-    const { kind, value } = tolerance;
-    if (kind !== "absolute" && kind !== "relative") return null;
-    if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return null;
-  }
-  return { answer, ...tolerance === void 0 ? {} : { tolerance: { kind: tolerance.kind, value: tolerance.value } } };
-};
-var TYPOGRAPHIC = {
-  "\u2018": "'",
-  "\u2019": "'",
-  "\u02BC": "'",
-  "`": "'",
-  "\u201C": '"',
-  "\u201D": '"',
-  "\u201E": '"',
-  "\u2013": "-",
-  "\u2014": "-",
-  "\u2011": "-",
-  "\u2212": "-"
-};
-var TYPOGRAPHIC_PATTERN = new RegExp(`[${Object.keys(TYPOGRAPHIC).join("")}]`, "g");
-var normalizeText = (value) => value.normalize("NFC").trim().replace(/\s+/g, " ").replace(TYPOGRAPHIC_PATTERN, (ch) => TYPOGRAPHIC[ch] ?? ch).toLocaleLowerCase();
-var normalizeGapAnswer = (value) => normalizeText(value).replace(/[.!?]+$/, "");
-var newItemId = () => Math.random().toString(36).slice(2, 10);
-var shuffleWith = (items, rng) => {
-  for (let i = items.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    const swap = items[i];
-    items[i] = items[j];
-    items[j] = swap;
-  }
-  return items;
-};
-var gradeChoice = (question, answer) => {
-  const selected = new Set(answer?.optionIds ?? []);
-  const correct = new Set(question.options.filter((o) => o.isCorrect).map((o) => o.id));
-  if (selected.size !== correct.size) return 0;
-  for (const id of selected) if (!correct.has(id)) return 0;
-  return 1;
-};
-var publicOptions = (question) => question.options.map((o) => ({ id: o.id, text: o.text }));
-var choiceAnswerText = (question, answer) => (answer?.optionIds ?? []).map((id) => question.options.find((o) => o.id === id)?.text).filter((text2) => Boolean(text2)).join(", ");
-var correctOptionTexts = (question) => question.options.filter((o) => o.isCorrect).map((o) => o.text);
-var questionTypeDefs = {
-  single: {
-    label: "Jednokrotny wyb\xF3r",
-    usesOptions: true,
-    defaultOptions: () => [
-      { text: "", isCorrect: true },
-      { text: "", isCorrect: false }
-    ],
-    validate: (q) => q.options.length < 2 ? "Dodaj co najmniej dwie opcje" : countCorrect(q.options) !== 1 ? "Zaznacz dok\u0142adnie jedn\u0105 poprawn\u0105 odpowied\u017A" : null,
-    grade: gradeChoice,
-    playerView: (question) => ({ options: publicOptions(question) }),
-    describe: (question, answer) => ({
-      answerText: choiceAnswerText(question, answer),
-      correctAnswers: correctOptionTexts(question)
-    })
-  },
-  multiple: {
-    label: "Wielokrotny wyb\xF3r",
-    usesOptions: true,
-    defaultOptions: () => [
-      { text: "", isCorrect: true },
-      { text: "", isCorrect: false }
-    ],
-    validate: (q) => q.options.length < 2 ? "Dodaj co najmniej dwie opcje" : countCorrect(q.options) < 1 ? "Zaznacz co najmniej jedn\u0105 poprawn\u0105 odpowied\u017A" : null,
-    grade: gradeChoice,
-    playerView: (question) => ({ options: publicOptions(question) }),
-    describe: (question, answer) => ({
-      answerText: choiceAnswerText(question, answer),
-      correctAnswers: correctOptionTexts(question)
-    })
-  },
-  truefalse: {
-    label: "Prawda / Fa\u0142sz",
-    usesOptions: true,
-    defaultOptions: () => [
-      { text: "Prawda", isCorrect: true },
-      { text: "Fa\u0142sz", isCorrect: false }
-    ],
-    validate: (q) => q.options.length !== 2 || countCorrect(q.options) !== 1 ? "Pytanie Prawda/Fa\u0142sz wymaga dw\xF3ch opcji i jednej poprawnej" : null,
-    grade: gradeChoice,
-    playerView: (question) => ({ options: publicOptions(question) }),
-    describe: (question, answer) => ({
-      answerText: choiceAnswerText(question, answer),
-      correctAnswers: correctOptionTexts(question)
-    })
-  },
-  text: {
-    label: "Odpowied\u017A tekstowa",
-    usesOptions: true,
-    defaultOptions: () => [{ text: "", isCorrect: true }],
-    validate: (q) => q.options.length < 1 || q.options.some((o) => !o.isCorrect) ? "Podaj co najmniej jedn\u0105 akceptowan\u0105 odpowied\u017A" : null,
-    grade: (question, answer) => {
-      const given = normalizeText(answer?.text ?? "");
-      if (!given) return 0;
-      return question.options.some((o) => o.isCorrect && normalizeText(o.text) === given) ? 1 : 0;
-    },
-    // the accepted answers must not leak to the player, so the view carries no options
-    playerView: () => ({ options: [] }),
-    describe: (question, answer) => ({
-      answerText: (answer?.text ?? "").trim(),
-      correctAnswers: correctOptionTexts(question)
-    })
-  },
-  numeric: {
-    label: "Odpowied\u017A liczbowa",
-    usesOptions: false,
-    defaultOptions: () => [],
-    defaultConfig: () => ({ answer: 0 }),
-    validate: (q) => {
-      const config2 = numericConfig(q.config);
-      if (!config2) return "Podaj poprawn\u0105 odpowied\u017A liczbow\u0105";
-      if (config2.tolerance?.kind === "relative" && config2.answer === 0) {
-        return "Dla odpowiedzi 0 u\u017Cyj tolerancji bezwzgl\u0119dnej";
-      }
-      return null;
-    },
-    grade: (question, answer) => {
-      const config2 = numericConfig(question.config);
-      if (!config2) return 0;
-      const value = parseNumeric(answer?.text ?? "");
-      if (value === null) return 0;
-      const tolerance = config2.tolerance === void 0 ? 0 : config2.tolerance.kind === "absolute" ? config2.tolerance.value : Math.abs(config2.answer) * config2.tolerance.value;
-      const epsilon = 1e-9 * Math.max(1, Math.abs(config2.answer));
-      return Math.abs(value - config2.answer) <= tolerance + epsilon ? 1 : 0;
-    },
-    // the expected value and the tolerance must never reach the player
-    playerView: () => ({ options: [] }),
-    describe: (question, answer) => {
-      const config2 = numericConfig(question.config);
-      return {
-        answerText: (answer?.text ?? "").trim(),
-        correctAnswers: config2 ? [String(config2.answer)] : []
-      };
-    }
-  },
-  ordering: {
-    label: "Uporz\u0105dkowanie element\xF3w",
-    usesOptions: false,
-    defaultOptions: () => [],
-    defaultConfig: () => ({
-      items: [
-        { id: newItemId(), text: "" },
-        { id: newItemId(), text: "" }
-      ]
-    }),
-    validate: (q) => {
-      const config2 = orderingConfig(q.config);
-      if (!config2) return "Dodaj co najmniej dwa elementy do uporz\u0105dkowania";
-      if (config2.items.some((item) => !item.text.trim())) return "Uzupe\u0142nij tre\u015B\u0107 wszystkich element\xF3w";
-      if (config2.items.some((item) => idTooLong(item.id))) {
-        return `Identyfikator elementu jest za d\u0142ugi (maks. ${CONFIG_ID_MAX_LENGTH} znaki)`;
-      }
-      if (new Set(config2.items.map((item) => item.id)).size !== config2.items.length) {
-        return "Elementy musz\u0105 mie\u0107 unikalne identyfikatory";
-      }
-      return null;
-    },
-    // 0/1 compared by normalized text, so the answer must be a permutation of every item
-    grade: (question, answer) => {
-      const config2 = orderingConfig(question.config);
-      const submitted = answer?.order;
-      if (!config2 || !submitted || submitted.length !== config2.items.length) return 0;
-      if (new Set(submitted).size !== submitted.length) return 0;
-      const byId = new Map(config2.items.map((item) => [item.id, item.text]));
-      const texts = submitted.map((id) => byId.get(id));
-      if (texts.some((text2) => text2 === void 0)) return 0;
-      return texts.every((text2, i) => normalizeText(text2) === normalizeText(config2.items[i].text)) ? 1 : 0;
-    },
-    // the server shuffles: a client-side shuffle would hand the correct order to the player
-    playerView: (question, rng, withAnswers) => {
-      const config2 = orderingConfig(question.config);
-      if (!config2) return { options: [] };
-      if (withAnswers) return { options: [], config: config2 };
-      const items = shuffleWith([...config2.items], rng);
-      return { options: [], config: { items: items.map(({ id, text: text2 }) => ({ id, text: text2 })) } };
-    },
-    describe: (question, answer) => {
-      const config2 = orderingConfig(question.config);
-      if (!config2) return { answerText: "", correctAnswers: [] };
-      const byId = new Map(config2.items.map((item) => [item.id, item.text]));
-      const given = (answer?.order ?? []).map((id) => byId.get(id)).filter((text2) => Boolean(text2));
-      return {
-        answerText: given.map((text2, i) => `${i + 1}. ${text2}`).join(", "),
-        correctAnswers: [config2.items.map((item) => item.text).join(" \u2192 ")]
-      };
-    }
-  },
-  matching: {
-    label: "Dopasowanie par",
-    usesOptions: false,
-    defaultOptions: () => [],
-    defaultConfig: () => ({
-      pairs: [
-        { id: newItemId(), rightId: newItemId(), left: "", right: "" },
-        { id: newItemId(), rightId: newItemId(), left: "", right: "" }
-      ]
-    }),
-    validate: (q) => {
-      const config2 = matchingConfig(q.config);
-      if (!config2) return "Dodaj co najmniej dwie pary";
-      if (config2.pairs.some((pair) => !pair.left.trim() || !pair.right.trim())) {
-        return "Uzupe\u0142nij obie strony ka\u017Cdej pary";
-      }
-      if (config2.pairs.some((pair) => idTooLong(pair.id) || idTooLong(pair.rightId))) {
-        return `Identyfikator pary jest za d\u0142ugi (maks. ${CONFIG_ID_MAX_LENGTH} znaki)`;
-      }
-      if (new Set(config2.pairs.map((pair) => pair.id)).size !== config2.pairs.length) {
-        return "Pary musz\u0105 mie\u0107 unikalne identyfikatory";
-      }
-      if (new Set(config2.pairs.map((pair) => pair.rightId)).size !== config2.pairs.length) {
-        return "Ka\u017Cda para musi mie\u0107 w\u0142asny kafelek po prawej stronie";
-      }
-      return null;
-    },
-    // proportional: one point per pair, a right tile can be used by a single pair
-    grade: (question, answer) => {
-      const config2 = matchingConfig(question.config);
-      const submitted = answer?.pairs;
-      if (!config2 || !submitted) return 0;
-      const textOfRight = new Map(config2.pairs.map((pair) => [pair.rightId, normalizeText(pair.right)]));
-      const used = /* @__PURE__ */ new Set();
-      let correct = 0;
-      for (const pair of config2.pairs) {
-        const chosen = submitted[pair.id];
-        if (!chosen || used.has(chosen)) continue;
-        const chosenText = textOfRight.get(chosen);
-        if (chosenText === void 0) continue;
-        used.add(chosen);
-        if (chosenText === normalizeText(pair.right)) correct += 1;
-      }
-      return correct / config2.pairs.length;
-    },
-    // lefts keep the author order; rights are shuffled and nothing links them to their left
-    playerView: (question, rng, withAnswers) => {
-      const config2 = matchingConfig(question.config);
-      if (!config2) return { options: [] };
-      if (withAnswers) return { options: [], config: config2 };
-      const rights = shuffleWith(
-        config2.pairs.map((pair) => ({ id: pair.rightId, text: pair.right })),
-        rng
-      );
-      return {
-        options: [],
-        config: { lefts: config2.pairs.map((pair) => ({ id: pair.id, text: pair.left })), rights }
-      };
-    },
-    // one correct answer per pair: the review lists cut/join the array (`slice(0, 3)`, `join(' / ')`)
-    describe: (question, answer) => {
-      const config2 = matchingConfig(question.config);
-      if (!config2) return { answerText: "", correctAnswers: [] };
-      const textOfRight = new Map(config2.pairs.map((pair) => [pair.rightId, pair.right]));
-      const given = config2.pairs.map((pair) => {
-        const chosen = answer?.pairs?.[pair.id];
-        const text2 = chosen ? textOfRight.get(chosen) : void 0;
-        return text2 === void 0 ? null : `${pair.left} \u2192 ${text2}`;
-      }).filter((entry) => entry !== null);
-      return {
-        answerText: given.join("; "),
-        correctAnswers: config2.pairs.map((pair) => `${pair.left} \u2192 ${pair.right}`)
-      };
-    }
-  },
-  cloze: {
-    label: "Uzupe\u0142nianie luk",
-    usesOptions: false,
-    defaultOptions: () => [],
-    defaultConfig: () => ({ gaps: [{ answers: [] }] }),
-    // the markers in the prompt and the gap list must describe the same thing
-    validate: (q) => {
-      const config2 = clozeConfig(q.config);
-      if (!config2) return "Dodaj co najmniej jedn\u0105 luk\u0119";
-      if (config2.gaps.some((gap) => gap.answers.length > CLOZE_MAX_VARIANTS)) {
-        return `Luka mo\u017Ce mie\u0107 najwy\u017Cej ${CLOZE_MAX_VARIANTS} akceptowanych odpowiedzi`;
-      }
-      if (config2.gaps.some((gap) => gap.answers.some((answer) => !answer.trim()))) {
-        return "Usu\u0144 puste akceptowane odpowiedzi";
-      }
-      if (config2.gaps.some((gap) => gap.answers.some((answer) => answer.length > CLOZE_MAX_ANSWER_LENGTH))) {
-        return `Akceptowana odpowied\u017A mo\u017Ce mie\u0107 najwy\u017Cej ${CLOZE_MAX_ANSWER_LENGTH} znak\xF3w`;
-      }
-      const markers = clozeMarkers(q.prompt ?? "");
-      const expected = config2.gaps.map((_, i) => i + 1);
-      if (markers.length !== expected.length || markers.some((marker, i) => marker !== expected[i])) {
-        return `Tre\u015B\u0107 musi zawiera\u0107 znaczniki ${expected.map((n) => `{{${n}}}`).join(", ")} - ka\u017Cdy dok\u0142adnie raz, bez zer wiod\u0105cych`;
-      }
-      return null;
-    },
-    // proportional: every gap is worth the same, any accepted variant counts
-    grade: (question, answer) => {
-      const config2 = clozeConfig(question.config);
-      if (!config2) return 0;
-      const given = answer?.gaps ?? {};
-      let correct = 0;
-      config2.gaps.forEach((gap, i) => {
-        const value = normalizeGapAnswer(given[String(i + 1)] ?? "");
-        if (!value) return;
-        if (gap.answers.some((accepted) => normalizeGapAnswer(accepted) === value)) correct += 1;
-      });
-      return correct / config2.gaps.length;
-    },
-    // the accepted answers never reach the player: the view carries only how many gaps there are
-    playerView: (question, _rng, withAnswers) => {
-      const config2 = clozeConfig(question.config);
-      if (!config2) return { options: [] };
-      return { options: [], config: withAnswers ? config2 : { gaps: config2.gaps.length } };
-    },
-    // one correct answer per gap: the review lists cut/join the array
-    describe: (question, answer) => {
-      const config2 = clozeConfig(question.config);
-      if (!config2) return { answerText: "", correctAnswers: [] };
-      const given = config2.gaps.map((_, i) => ({ number: i + 1, text: (answer?.gaps?.[String(i + 1)] ?? "").trim() })).filter((gap) => gap.text);
-      return {
-        answerText: given.map((gap) => `${gap.number}: ${gap.text}`).join("; "),
-        correctAnswers: config2.gaps.map((gap, i) => `${i + 1}: ${gap.answers.join(" / ")}`)
-      };
-    }
-  }
-};
-var questionTypes = questionTypeDefs;
-var typeDef = (type) => questionTypeDefs[type];
-var isAnswered = (answer) => Boolean(
-  answer?.optionIds?.length || answer?.text?.trim() || answer?.order?.length || Object.keys(answer?.pairs ?? {}).length || Object.values(answer?.gaps ?? {}).some((value) => value.trim())
-);
-var promptText = (prompt) => prompt.replace(new RegExp(CLOZE_MARKER_PLAIN, "g"), "___");
-function gradeQuiz(questions, answers) {
-  const results = questions.map((question) => {
-    const def = typeDef(question.type);
-    const fraction = def.grade(question, answers[question.id]);
-    const described = def.describe(question, answers[question.id]);
-    return {
-      questionId: question.id,
-      correct: fraction === 1,
-      earned: Math.round(fraction * question.points * 100) / 100,
-      points: question.points,
-      correctOptionIds: question.options.filter((o) => o.isCorrect).map((o) => o.id),
-      correctAnswers: described.correctAnswers,
-      explanation: question.explanation,
-      answerText: described.answerText
-    };
-  });
-  const score = results.reduce((sum, r) => sum + r.earned, 0);
-  const maxScore = results.reduce((sum, r) => sum + r.points, 0);
-  return { score, maxScore, percent: maxScore ? Math.round(score / maxScore * 100) : 0, results };
 }
 
 // server/classes/results.ts
@@ -74449,283 +75303,6 @@ function analyzeClass(report, now = /* @__PURE__ */ new Date()) {
   };
 }
 
-// server/verbQuizBuilder.ts
-var pick2 = (items) => items[Math.floor(Math.random() * items.length)];
-function shuffled(items) {
-  const copy = [...items];
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
-}
-var regularForm = (base) => base.endsWith("e") ? `${base}d` : /[^aeiou]y$/.test(base) ? `${base.slice(0, -1)}ied` : `${base}ed`;
-var FORM_LABEL = { pastSimple: "past simple", pastParticiple: "past participle" };
-var summary = (verb) => `${verb.base} \u2013 ${verb.pastSimple.join("/")} \u2013 ${verb.pastParticiple.join("/")} (${verb.meanings.join(", ")})`;
-var meaning = (verb) => verb.meanings.join(", ");
-function formTyping(verb, form) {
-  return {
-    type: "text",
-    prompt: `Podaj ${FORM_LABEL[form]} czasownika \u201E${verb.base}\u201D (${meaning(verb)})`,
-    explanation: summary(verb),
-    points: 1,
-    options: verb[form].map((text2) => ({ text: text2, isCorrect: true }))
-  };
-}
-function buildChoice(prompt, verb, correct, forbidden, candidates, extraDistractor) {
-  const taken = new Set(forbidden);
-  const distractors = [];
-  const add = (candidate) => {
-    if (!taken.has(candidate) && !distractors.includes(candidate)) distractors.push(candidate);
-  };
-  if (extraDistractor) add(extraDistractor);
-  for (const candidate of shuffled(candidates)) {
-    if (distractors.length >= 3) break;
-    add(candidate);
-  }
-  const options = shuffled([
-    { text: correct, isCorrect: true },
-    ...distractors.slice(0, 3).map((text2) => ({ text: text2, isCorrect: false }))
-  ]);
-  return { type: "single", prompt, explanation: summary(verb), points: 1, options };
-}
-function formChoice(verb, form, pool2) {
-  const other = form === "pastSimple" ? "pastParticiple" : "pastSimple";
-  const candidates = pool2.flatMap((v) => v[pick2(["pastSimple", "pastParticiple"])]);
-  return buildChoice(
-    `Wybierz poprawny ${FORM_LABEL[form]} czasownika \u201E${verb.base}\u201D (${meaning(verb)})`,
-    verb,
-    pick2(verb[form]),
-    [...verb[form], ...verb[other], verb.base],
-    candidates,
-    regularForm(verb.base)
-  );
-}
-var synonyms = (verb, pool2) => pool2.filter((v) => v.id === verb.id || v.meanings.some((m) => verb.meanings.includes(m)));
-function translationTyping(verb, pool2) {
-  return {
-    type: "text",
-    prompt: `Jak jest po angielsku: \u201E${meaning(verb)}\u201D? (podaj bezokolicznik)`,
-    explanation: summary(verb),
-    points: 1,
-    options: synonyms(verb, pool2).map((v) => ({ text: v.base, isCorrect: true }))
-  };
-}
-function translationChoice(verb, pool2) {
-  const same = synonyms(verb, pool2).map((v) => v.base);
-  return buildChoice(
-    `Kt\xF3ry czasownik oznacza: \u201E${meaning(verb)}\u201D?`,
-    verb,
-    verb.base,
-    same,
-    pool2.map((v) => v.base)
-  );
-}
-function buildVerbQuiz(verbs, pool2, variant, title, description) {
-  const questions = verbs.map((verb) => {
-    const form = pick2(["pastSimple", "pastParticiple"]);
-    const question = (() => {
-      switch (variant) {
-        case "typing":
-          return formTyping(verb, form);
-        case "choice":
-          return formChoice(verb, form, pool2);
-        case "translation":
-          return Math.random() < 0.5 ? translationTyping(verb, pool2) : translationChoice(verb, pool2);
-        default:
-          return Math.random() < 0.5 ? formTyping(verb, form) : formChoice(verb, form, pool2);
-      }
-    })();
-    return { ...question, verbId: verb.id };
-  });
-  return { title, description, shuffleOptions: false, questions };
-}
-var randomSample = (items, count) => shuffled(items).slice(0, count);
-
-// server/irregularVerbs.ts
-var VERB_SELECT = `
-  SELECT v.id, v.base, v.cefr_level, d.code AS difficulty, p.code AS popularity, pt.code AS pattern,
-         v.example_en, v.example_pl,
-         ARRAY(SELECT f.form FROM verb_forms f WHERE f.verb_id = v.id AND f.form_type = 'past_simple'
-               ORDER BY f.position) AS past_simple,
-         ARRAY(SELECT f.form FROM verb_forms f WHERE f.verb_id = v.id AND f.form_type = 'past_participle'
-               ORDER BY f.position) AS past_participle,
-         ARRAY(SELECT m.translation_pl FROM verb_meanings m WHERE m.verb_id = v.id
-               ORDER BY m.position) AS meanings
-  FROM irregular_verbs v
-  JOIN difficulty_levels d ON d.id = v.difficulty_id
-  JOIN popularity_tiers p ON p.id = v.popularity_id
-  JOIN verb_patterns pt ON pt.id = v.pattern_id`;
-var toVerb = (row) => ({
-  id: row.id,
-  base: row.base,
-  cefrLevel: row.cefr_level,
-  difficulty: row.difficulty,
-  popularity: row.popularity,
-  pattern: row.pattern,
-  pastSimple: row.past_simple,
-  pastParticiple: row.past_participle,
-  meanings: row.meanings,
-  exampleEn: row.example_en,
-  examplePl: row.example_pl
-});
-var query = async (text2, values = []) => await pool().query(text2, values);
-async function listVerbs(filter = {}) {
-  const conditions = ["v.cefr_level = $1"];
-  const values = [filter.level ?? "B2"];
-  const add = (sql, value) => {
-    values.push(value);
-    conditions.push(sql.replace("?", `$${values.length}`));
-  };
-  if (filter.difficulty) add("d.code = ?", filter.difficulty);
-  if (filter.popularity) add("p.code = ?", filter.popularity);
-  if (filter.pattern) add("pt.code = ?", filter.pattern);
-  if (filter.ids) add("v.id = ANY(?::int[])", filter.ids);
-  const { rows } = await query(`${VERB_SELECT} WHERE ${conditions.join(" AND ")} ORDER BY v.base`, values);
-  return rows.map(toVerb);
-}
-var VARIANT_LABEL = {
-  mixed: "losowy quiz",
-  typing: "wpisywanie odpowiedzi",
-  choice: "wyb\xF3r odpowiedzi",
-  translation: "t\u0142umaczenie"
-};
-async function generateIrregularVerbsQuiz(options) {
-  const pool2 = await listVerbs();
-  const filtered = pool2.filter(
-    (v) => (!options.difficulty || v.difficulty === options.difficulty) && (!options.popularity || v.popularity === options.popularity)
-  );
-  const chosen = randomSample(filtered, options.count);
-  const groups = [options.difficulty && `trudno\u015B\u0107: ${options.difficulty}`, options.popularity && `popularno\u015B\u0107: ${options.popularity}`].filter(Boolean).join(", ");
-  const quiz = buildVerbQuiz(
-    chosen,
-    pool2,
-    options.variant,
-    `Czasowniki nieregularne B2 \u2013 ${VARIANT_LABEL[options.variant]}`,
-    `${chosen.length} pyta\u0144 z czasownik\xF3w nieregularnych (poziom B2${groups ? `; ${groups}` : ""}).`
-  );
-  return { quiz, difficulty: options.difficulty ?? null };
-}
-
-// server/coursesRepo.ts
-var COURSE_SELECT = `
-  SELECT c.id, c.slug, c.title, c.description, c.pass_percent, d.code AS difficulty, p.code AS popularity,
-         (SELECT COUNT(*)::int FROM lessons l WHERE l.course_id = c.id) AS lesson_count,
-         (SELECT COUNT(*)::int FROM lesson_progress lp JOIN lessons l ON l.id = lp.lesson_id
-           WHERE l.course_id = c.id AND lp.user_id IS NOT DISTINCT FROM $1) AS completed_lessons,
-         (SELECT COUNT(*)::int FROM lesson_verbs lv JOIN lessons l ON l.id = lv.lesson_id
-           WHERE l.course_id = c.id) AS verb_count,
-         (SELECT MAX(a.percent) FROM quiz_attempts a
-           WHERE a.course_id = c.id AND a.user_id IS NOT DISTINCT FROM $1) AS best_percent,
-         EXISTS (SELECT 1 FROM quiz_attempts a
-           WHERE a.course_id = c.id AND a.user_id IS NOT DISTINCT FROM $1 AND a.passed) AS passed
-  FROM courses c
-  LEFT JOIN difficulty_levels d ON d.id = c.difficulty_id
-  LEFT JOIN popularity_tiers p ON p.id = c.popularity_id`;
-var toSummary2 = (row) => ({
-  id: row.id,
-  slug: row.slug,
-  title: row.title,
-  description: row.description,
-  difficulty: row.difficulty,
-  popularity: row.popularity,
-  passPercent: row.pass_percent,
-  lessonCount: row.lesson_count,
-  completedLessons: row.completed_lessons,
-  verbCount: row.verb_count,
-  bestPercent: row.best_percent,
-  passed: row.passed
-});
-async function listCourses(userId) {
-  const { rows } = await pool().query(`${COURSE_SELECT} ORDER BY c.position, c.title`, [userId]);
-  return rows.map(toSummary2);
-}
-async function getCourse(id, userId) {
-  const { rows } = await pool().query(`${COURSE_SELECT} WHERE c.id = $2`, [userId, id]);
-  if (!rows[0]) return null;
-  const lessons = await pool().query(
-    `SELECT l.id, l.position, l.title,
-            (SELECT COUNT(*)::int FROM lesson_verbs lv WHERE lv.lesson_id = l.id) AS verb_count,
-            EXISTS (SELECT 1 FROM lesson_progress lp
-                    WHERE lp.lesson_id = l.id AND lp.user_id IS NOT DISTINCT FROM $2) AS completed
-     FROM lessons l WHERE l.course_id = $1 ORDER BY l.position`,
-    [id, userId]
-  );
-  return {
-    ...toSummary2(rows[0]),
-    lessons: lessons.rows.map((l) => ({
-      id: l.id,
-      position: l.position,
-      title: l.title,
-      verbCount: l.verb_count,
-      completed: l.completed
-    }))
-  };
-}
-async function getLesson(courseId, lessonId, userId) {
-  const db = pool();
-  const lesson = await db.query(
-    `SELECT l.id, l.course_id, l.position, l.title, l.intro, c.title AS course_title,
-            EXISTS (SELECT 1 FROM lesson_progress lp
-                    WHERE lp.lesson_id = l.id AND lp.user_id IS NOT DISTINCT FROM $3) AS completed
-     FROM lessons l JOIN courses c ON c.id = l.course_id
-     WHERE l.id = $2 AND l.course_id = $1`,
-    [courseId, lessonId, userId]
-  );
-  const row = lesson.rows[0];
-  if (!row) return null;
-  const neighbours = await db.query(
-    `SELECT id, position FROM lessons WHERE course_id = $1 AND position IN ($2, $3)`,
-    [courseId, row.position - 1, row.position + 1]
-  );
-  const verbIds = await db.query(
-    "SELECT verb_id FROM lesson_verbs WHERE lesson_id = $1 ORDER BY position",
-    [lessonId]
-  );
-  const ids = verbIds.rows.map((v) => v.verb_id);
-  const verbs = await listVerbs({ ids });
-  const byId = new Map(verbs.map((v) => [v.id, v]));
-  return {
-    id: row.id,
-    courseId: row.course_id,
-    courseTitle: row.course_title,
-    position: row.position,
-    title: row.title,
-    intro: row.intro,
-    completed: row.completed,
-    prevLessonId: neighbours.rows.find((n) => n.position === row.position - 1)?.id ?? null,
-    nextLessonId: neighbours.rows.find((n) => n.position === row.position + 1)?.id ?? null,
-    verbs: ids.flatMap((id) => byId.get(id) ?? [])
-  };
-}
-async function completeLesson(courseId, lessonId, userId) {
-  const lesson = await pool().query("SELECT 1 FROM lessons WHERE id = $1 AND course_id = $2", [
-    lessonId,
-    courseId
-  ]);
-  if (lesson.rows.length === 0) return { found: false, created: false };
-  const inserted = await pool().query(
-    "INSERT INTO lesson_progress (user_id, lesson_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
-    [userId, lessonId]
-  );
-  return { found: true, created: (inserted.rowCount ?? 0) > 0 };
-}
-async function courseVerbIds(courseId) {
-  const { rows } = await pool().query(
-    `SELECT DISTINCT lv.verb_id FROM lesson_verbs lv JOIN lessons l ON l.id = lv.lesson_id
-     WHERE l.course_id = $1`,
-    [courseId]
-  );
-  return rows.map((r) => r.verb_id);
-}
-async function coursePassInfo(courseId) {
-  const { rows } = await pool().query(
-    "SELECT id, title, pass_percent FROM courses WHERE id = $1",
-    [courseId]
-  );
-  return rows[0] ? { id: rows[0].id, title: rows[0].title, passPercent: rows[0].pass_percent } : null;
-}
-
 // server/mcp/tools/shared.ts
 var classId = external_exports.string().uuid().describe("Id klasy (UUID) z class_list");
 var studentId = auth0UserId.describe(
@@ -74998,118 +75575,6 @@ function maskEmail(email3) {
   if (at < 1) return "***";
   const local = email3.slice(0, at);
   return `${local.slice(0, Math.min(2, Math.max(1, local.length - 1)))}***${email3.slice(at)}`;
-}
-
-// src/shared/quiz/spaced.ts
-var BOX_INTERVAL_DAYS = [0, 1, 2, 4, 8, 16, 32];
-var MAX_BOX = BOX_INTERVAL_DAYS.length - 1;
-var newReviewState = () => ({ box: 0, repetitions: 0, lapses: 0, attempts: 0, correct: 0 });
-var DAY_MS = 864e5;
-function nextReview(state, correct, now) {
-  if (!correct) {
-    return {
-      box: 0,
-      repetitions: 0,
-      lapses: state.lapses + 1,
-      attempts: state.attempts + 1,
-      correct: state.correct,
-      dueAt: now
-    };
-  }
-  const box = Math.min(state.box + 1, MAX_BOX);
-  return {
-    box,
-    repetitions: state.repetitions + 1,
-    lapses: state.lapses,
-    attempts: state.attempts + 1,
-    correct: state.correct + 1,
-    dueAt: new Date(now.getTime() + BOX_INTERVAL_DAYS[box] * DAY_MS)
-  };
-}
-
-// server/reviewsRepo.ts
-async function getReviewSummary(userId) {
-  const { rows } = await pool().query(
-    `SELECT COUNT(*) FILTER (WHERE due_at <= now())::int AS due,
-            COUNT(*) FILTER (WHERE due_at <= now() AND attempts = 0)::int AS new_due,
-            COUNT(*)::int AS tracked,
-            MIN(due_at) FILTER (WHERE due_at > now()) AS next_due
-     FROM verb_reviews WHERE user_id = $1`,
-    [userId]
-  );
-  const r = rows[0];
-  return {
-    dueCount: r.due,
-    newCount: r.new_due,
-    trackedCount: r.tracked,
-    nextDueAt: r.due > 0 ? null : r.next_due?.toISOString() ?? null
-  };
-}
-async function dueVerbIds(userId, limit) {
-  const { rows } = await pool().query(
-    "SELECT verb_id FROM verb_reviews WHERE user_id = $1 AND due_at <= now() ORDER BY due_at, verb_id LIMIT $2",
-    [userId, limit]
-  );
-  return rows.map((r) => r.verb_id);
-}
-async function enqueueLessonVerbs(userId, lessonId) {
-  await pool().query(
-    `INSERT INTO verb_reviews (user_id, verb_id)
-     SELECT $1, lv.verb_id FROM lesson_verbs lv WHERE lv.lesson_id = $2
-     ON CONFLICT (user_id, verb_id) DO NOTHING`,
-    [userId, lessonId]
-  );
-}
-async function applyResults(userId, results) {
-  if (results.length === 0) return;
-  const ids = results.map((r) => r.verbId);
-  const { rows } = await pool().query(
-    `SELECT verb_id, box, repetitions, lapses, attempts, correct
-     FROM verb_reviews WHERE user_id = $1 AND verb_id = ANY($2::int[])`,
-    [userId, ids]
-  );
-  const current = new Map(rows.map((r) => [r.verb_id, r]));
-  const now = /* @__PURE__ */ new Date();
-  const updates = results.map((r) => ({ verbId: r.verbId, ...nextReview(current.get(r.verbId) ?? newReviewState(), r.correct, now) }));
-  await pool().query(
-    `INSERT INTO verb_reviews
-       (user_id, verb_id, box, due_at, repetitions, lapses, attempts, correct, last_reviewed_at, last_wrong_at)
-     SELECT $1, u.verb_id, u.box, u.due_at, u.repetitions, u.lapses, u.attempts, u.correct, now(),
-            CASE WHEN u.wrong THEN now() END
-     FROM unnest($2::int[], $3::int[], $4::timestamptz[], $5::int[], $6::int[], $7::int[], $8::int[], $9::boolean[])
-       AS u(verb_id, box, due_at, repetitions, lapses, attempts, correct, wrong)
-     ON CONFLICT (user_id, verb_id) DO UPDATE SET
-       box = EXCLUDED.box, due_at = EXCLUDED.due_at, repetitions = EXCLUDED.repetitions,
-       lapses = EXCLUDED.lapses, attempts = EXCLUDED.attempts, correct = EXCLUDED.correct,
-       last_reviewed_at = EXCLUDED.last_reviewed_at,
-       last_wrong_at = COALESCE(EXCLUDED.last_wrong_at, verb_reviews.last_wrong_at)`,
-    [
-      userId,
-      updates.map((u) => u.verbId),
-      updates.map((u) => u.box),
-      updates.map((u) => u.dueAt.toISOString()),
-      updates.map((u) => u.repetitions),
-      updates.map((u) => u.lapses),
-      updates.map((u) => u.attempts),
-      updates.map((u) => u.correct),
-      results.map((r) => !r.correct)
-    ]
-  );
-}
-async function weakVerbs(userId, limit) {
-  const { rows } = await pool().query(
-    "SELECT verb_id, attempts, correct, box, last_wrong_at FROM verb_reviews WHERE user_id = $1 AND attempts >= 1",
-    [userId]
-  );
-  const stats = rows.map((r) => ({
-    verbId: r.verb_id,
-    attempts: r.attempts,
-    correct: r.correct,
-    box: r.box,
-    lastWrongAt: r.last_wrong_at?.toISOString() ?? null,
-    accuracy: 0
-  }));
-  return rankWeak(stats, limit).map((s) => ({ ...s, accuracy: accuracyOf(s) }));
 }
 
 // server/mcp/tools/students.ts
@@ -75494,273 +75959,6 @@ var quiz_schema_default = {
   }
 };
 
-// server/quizRepo.ts
-async function listQuizzes(filter = {}, canEdit = false, userId = null) {
-  const values = [userId];
-  let difficultyCondition = "";
-  if (filter.difficulty) {
-    values.push(filter.difficulty);
-    difficultyCondition = `AND d.code = $${values.length}`;
-  }
-  let subjectCondition = "";
-  if (filter.subject === "none") subjectCondition = "AND q.subject_id IS NULL";
-  else if (filter.subject) {
-    values.push(filter.subject);
-    subjectCondition = `AND s.code = $${values.length}`;
-  }
-  const order = filter.sort === "popular" ? "plays DESC, q.updated_at DESC" : "q.updated_at DESC";
-  const { rows } = await pool().query(
-    `SELECT q.id, q.title, q.description, q.created_at, q.updated_at, q.sample_size, d.code AS difficulty, s.code AS subject,
-            (SELECT COUNT(*)::int FROM questions qu WHERE qu.quiz_id = q.id) AS question_count,
-            (SELECT COALESCE(SUM(qu.points), 0)::int FROM questions qu WHERE qu.quiz_id = q.id) AS total_points,
-            (SELECT COUNT(*)::int FROM quiz_attempts a WHERE a.quiz_id = q.id) AS plays,
-            (SELECT COUNT(*)::int FROM quiz_attempts a WHERE a.quiz_id = q.id AND a.user_id = $1) AS my_attempts,
-            (SELECT MAX(a.percent)::int FROM quiz_attempts a WHERE a.quiz_id = q.id AND a.user_id = $1) AS my_best
-     FROM quizzes q
-     LEFT JOIN difficulty_levels d ON d.id = q.difficulty_id
-     LEFT JOIN subjects s ON s.id = q.subject_id
-     WHERE q.kind = 'manual' ${difficultyCondition} ${subjectCondition}
-     ORDER BY ${order}`,
-    values
-  );
-  return rows.map((row) => ({
-    id: row.id,
-    title: row.title,
-    description: row.description,
-    difficulty: row.difficulty,
-    subject: row.subject,
-    canEdit,
-    plays: row.plays,
-    myAttempts: row.my_attempts,
-    myBestPercent: row.my_best,
-    questionCount: row.question_count,
-    sampleSize: row.sample_size,
-    totalPoints: row.total_points,
-    createdAt: row.created_at.toISOString(),
-    updatedAt: row.updated_at.toISOString()
-  }));
-}
-async function getQuiz(id, withAnswers, canEdit = false) {
-  const db = pool();
-  const quizzes = await db.query(
-    `SELECT q.*, d.code AS difficulty, s.code AS subject
-     FROM quizzes q
-     LEFT JOIN difficulty_levels d ON d.id = q.difficulty_id
-     LEFT JOIN subjects s ON s.id = q.subject_id
-     WHERE q.id = $1`,
-    [id]
-  );
-  const quiz = quizzes.rows[0];
-  if (!quiz) return null;
-  const questions = await db.query(
-    "SELECT id, type, prompt, explanation, points, config FROM questions WHERE quiz_id = $1 ORDER BY position",
-    [id]
-  );
-  const options = await db.query(
-    `SELECT o.id, o.question_id, o.text, o.is_correct
-     FROM options o JOIN questions q ON q.id = o.question_id
-     WHERE q.quiz_id = $1 ORDER BY o.position`,
-    [id]
-  );
-  return {
-    id: quiz.id,
-    title: quiz.title,
-    description: quiz.description,
-    kind: quiz.kind,
-    source: quiz.source,
-    difficulty: quiz.difficulty,
-    subject: quiz.subject,
-    courseId: quiz.course_id,
-    canEdit,
-    shuffleQuestions: quiz.shuffle_questions,
-    shuffleOptions: quiz.shuffle_options,
-    sampleSize: quiz.sample_size,
-    createdAt: quiz.created_at.toISOString(),
-    updatedAt: quiz.updated_at.toISOString(),
-    questions: questions.rows.map((question) => {
-      const own2 = options.rows.filter((o) => o.question_id === question.id);
-      const full = {
-        type: question.type,
-        // the accepted answers of `text` questions never reach the player
-        options: own2.map((o) => ({ id: o.id, text: o.text, isCorrect: o.is_correct })),
-        config: question.config ?? void 0
-      };
-      const view = withAnswers ? full : typeDef(question.type).playerView(full, Math.random, false);
-      return {
-        id: question.id,
-        type: question.type,
-        prompt: question.prompt,
-        points: question.points,
-        ...withAnswers ? { explanation: question.explanation } : {},
-        options: view.options,
-        ...view.config === void 0 ? {} : { config: view.config }
-      };
-    })
-  };
-}
-function toGradable(quiz) {
-  return quiz.questions.map((q) => ({
-    id: q.id,
-    type: q.type,
-    points: q.points,
-    explanation: q.explanation ?? "",
-    options: q.options.map((o) => ({ id: o.id, text: o.text, isCorrect: o.isCorrect ?? false })),
-    config: q.config
-  }));
-}
-async function insertQuestions(client, quizId, questions) {
-  for (const [qi, question] of questions.entries()) {
-    const inserted = await client.query(
-      `INSERT INTO questions (quiz_id, position, type, prompt, explanation, points, verb_id, config)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-      [
-        quizId,
-        qi,
-        question.type,
-        question.prompt,
-        question.explanation,
-        question.points,
-        question.verbId ?? null,
-        question.config === void 0 || question.config === null ? null : JSON.stringify(question.config)
-      ]
-    );
-    const questionId = inserted.rows[0].id;
-    for (const [oi, option] of question.options.entries()) {
-      await client.query(
-        "INSERT INTO options (question_id, position, text, is_correct) VALUES ($1, $2, $3, $4)",
-        [questionId, oi, option.text, option.isCorrect]
-      );
-    }
-  }
-}
-async function inTransaction(work) {
-  const client = await pool().connect();
-  try {
-    await client.query("BEGIN");
-    const result = await work(client);
-    await client.query("COMMIT");
-    return result;
-  } catch (error62) {
-    await client.query("ROLLBACK");
-    throw error62;
-  } finally {
-    client.release();
-  }
-}
-async function createQuiz(input2, meta3) {
-  return inTransaction(async (client) => {
-    const created = await client.query(
-      `INSERT INTO quizzes (title, description, kind, source, course_id, owner_id, difficulty_id,
-                            shuffle_questions, shuffle_options, sample_size, subject_id)
-       VALUES ($1, $2, $3, $4, $5, $6, (SELECT id FROM difficulty_levels WHERE code = $7), $8, $9, $10,
-               (SELECT id FROM subjects WHERE code = $11))
-       RETURNING id`,
-      [
-        input2.title,
-        input2.description,
-        meta3.kind,
-        meta3.source ?? null,
-        meta3.courseId ?? null,
-        meta3.ownerId ?? null,
-        meta3.difficulty ?? null,
-        input2.shuffleQuestions ?? null,
-        input2.shuffleOptions ?? false,
-        input2.sampleSize ?? null,
-        input2.subject ?? null
-      ]
-    );
-    const id = created.rows[0].id;
-    await insertQuestions(client, id, input2.questions);
-    return id;
-  });
-}
-async function replaceQuiz(id, input2) {
-  return inTransaction(async (client) => {
-    const updated = await client.query(
-      `UPDATE quizzes
-       SET title = $2, description = $3, updated_at = now(),
-           difficulty_id = (SELECT id FROM difficulty_levels WHERE code = $4),
-           shuffle_questions = $5, shuffle_options = $6, sample_size = $7,
-           subject_id = (SELECT id FROM subjects WHERE code = $8)
-       WHERE id = $1 RETURNING id`,
-      [
-        id,
-        input2.title,
-        input2.description,
-        input2.difficulty ?? null,
-        input2.shuffleQuestions ?? null,
-        input2.shuffleOptions ?? false,
-        input2.sampleSize ?? null,
-        input2.subject ?? null
-      ]
-    );
-    if (updated.rowCount === 0) return false;
-    await client.query("DELETE FROM questions WHERE quiz_id = $1", [id]);
-    await insertQuestions(client, id, input2.questions);
-    return true;
-  });
-}
-async function deleteQuiz(id) {
-  const result = await pool().query("DELETE FROM quizzes WHERE id = $1", [id]);
-  return (result.rowCount ?? 0) > 0;
-}
-async function getOwnerId(id) {
-  const { rows } = await pool().query(
-    "SELECT owner_id FROM quizzes WHERE id = $1",
-    [id]
-  );
-  return rows[0]?.owner_id ?? null;
-}
-async function saveAttempt(attempt) {
-  const { result } = attempt;
-  const inserted = await pool().query(
-    `INSERT INTO quiz_attempts
-       (quiz_id, quiz_title, user_id, course_id, passed, score, max_score, percent, answers, results)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
-    [
-      attempt.quizId,
-      attempt.quizTitle,
-      attempt.userId,
-      attempt.courseId,
-      attempt.passed,
-      result.score,
-      result.maxScore,
-      result.percent,
-      JSON.stringify(attempt.answers),
-      JSON.stringify(result.results)
-    ]
-  );
-  return inserted.rows[0].id;
-}
-async function listAttempts(userId, limit = 50) {
-  const { rows } = await pool().query(
-    `SELECT id, quiz_id, quiz_title, course_id, passed, score::float AS score,
-            max_score::float AS max_score, percent, created_at
-     FROM quiz_attempts
-     WHERE user_id IS NOT DISTINCT FROM $1
-     ORDER BY created_at DESC LIMIT $2`,
-    [userId, limit]
-  );
-  return rows.map((row) => ({
-    id: row.id,
-    quizId: row.quiz_id,
-    quizTitle: row.quiz_title,
-    score: row.score,
-    maxScore: row.max_score,
-    percent: row.percent,
-    courseId: row.course_id,
-    passed: row.passed,
-    createdAt: row.created_at.toISOString()
-  }));
-}
-async function getQuestionVerbs(quizId) {
-  const { rows } = await pool().query(
-    "SELECT id, verb_id FROM questions WHERE quiz_id = $1 AND verb_id IS NOT NULL",
-    [quizId]
-  );
-  return new Map(rows.map((r) => [r.id, r.verb_id]));
-}
-
 // server/mcp/quizTools.ts
 var uuid3 = external_exports.string().uuid().describe("Id quizu (UUID)");
 function registerQuizTools(server, ctx) {
@@ -75918,133 +76116,6 @@ async function saveAppSettings(settings, userId) {
     `INSERT INTO app_settings (key, value, updated_by, updated_at) VALUES ('score_thresholds', $1, $2, now())
      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_by = EXCLUDED.updated_by, updated_at = now()`,
     [JSON.stringify(settings.scoreThresholds), userId]
-  );
-}
-
-// src/shared/quiz/streaks.ts
-function localDay(instant, timeZone) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).formatToParts(instant);
-  const get = (type) => parts.find((part) => part.type === type)?.value ?? "";
-  return `${get("year")}-${get("month")}-${get("day")}`;
-}
-function isValidTimeZone(timeZone) {
-  try {
-    new Intl.DateTimeFormat("en", { timeZone });
-    return true;
-  } catch {
-    return false;
-  }
-}
-var DAY_MS2 = 864e5;
-var dayNumber = (day) => {
-  const [y, m, d] = day.split("-").map(Number);
-  return Math.round(Date.UTC(y, m - 1, d) / DAY_MS2);
-};
-function shiftDay(day, n) {
-  return new Date((dayNumber(day) + n) * DAY_MS2).toISOString().slice(0, 10);
-}
-function computeStreaks(activeDays, today) {
-  const days = [...new Set(activeDays)].map(dayNumber).sort((a, b) => a - b);
-  const todayN = dayNumber(today);
-  let longest = 0;
-  let run = 0;
-  let previous = Number.NaN;
-  for (const n of days) {
-    run = n === previous + 1 ? run + 1 : 1;
-    longest = Math.max(longest, run);
-    previous = n;
-  }
-  const set2 = new Set(days);
-  const activeToday = set2.has(todayN);
-  let cursor = activeToday ? todayN : todayN - 1;
-  let current = 0;
-  while (set2.has(cursor)) {
-    current++;
-    cursor--;
-  }
-  return { current, longest, activeToday };
-}
-var isActiveDay = (activity) => activity.answered >= 1 || activity.lessons >= 1;
-function lastSevenDays(byDay, today) {
-  return Array.from({ length: 7 }, (_, i) => {
-    const day = shiftDay(today, i - 6);
-    return byDay.get(day) ?? { day, answered: 0, correct: 0, lessons: 0 };
-  });
-}
-
-// server/progressRepo.ts
-async function getProfile(userId) {
-  const { rows } = await pool().query(
-    "SELECT daily_goal, timezone FROM user_profiles WHERE user_id = $1",
-    [userId]
-  );
-  return rows[0] ?? { daily_goal: 10, timezone: "UTC" };
-}
-async function updateProfile(userId, patch) {
-  const timezone = patch.timezone && isValidTimeZone(patch.timezone) ? patch.timezone : void 0;
-  await pool().query(
-    `INSERT INTO user_profiles (user_id, daily_goal, timezone)
-     VALUES ($1, COALESCE($2::int, 10), COALESCE($3::text, 'UTC'))
-     ON CONFLICT (user_id) DO UPDATE SET
-       daily_goal = COALESCE($2::int, user_profiles.daily_goal),
-       timezone = COALESCE($3::text, user_profiles.timezone),
-       updated_at = now()`,
-    [userId, patch.dailyGoal ?? null, timezone ?? null]
-  );
-}
-async function recordActivity(userId, delta) {
-  const { timezone } = await getProfile(userId);
-  const day = localDay(/* @__PURE__ */ new Date(), timezone);
-  await pool().query(
-    `INSERT INTO daily_activity (user_id, day, answered, correct, lessons_completed)
-     VALUES ($1, $2::date, $3, $4, $5)
-     ON CONFLICT (user_id, day) DO UPDATE SET
-       answered = daily_activity.answered + EXCLUDED.answered,
-       correct = daily_activity.correct + EXCLUDED.correct,
-       lessons_completed = daily_activity.lessons_completed + EXCLUDED.lessons_completed`,
-    [userId, day, delta.answered ?? 0, delta.correct ?? 0, delta.lessons ?? 0]
-  );
-}
-async function getSummary(userId) {
-  const profile = await getProfile(userId);
-  const today = localDay(/* @__PURE__ */ new Date(), profile.timezone);
-  const { rows } = await pool().query(
-    `SELECT to_char(day, 'YYYY-MM-DD') AS day, answered, correct, lessons_completed
-     FROM daily_activity WHERE user_id = $1 ORDER BY day`,
-    [userId]
-  );
-  const byDay = new Map(
-    rows.map((r) => [r.day, { day: r.day, answered: r.answered, correct: r.correct, lessons: r.lessons_completed }])
-  );
-  const streaks = computeStreaks(
-    [...byDay.values()].filter(isActiveDay).map((a) => a.day),
-    today
-  );
-  const week = lastSevenDays(byDay, today);
-  return {
-    timezone: profile.timezone,
-    dailyGoal: profile.daily_goal,
-    currentStreak: streaks.current,
-    longestStreak: streaks.longest,
-    today: week[6],
-    last7: week
-  };
-}
-async function syncIdentity(userId, identity) {
-  if (!identity.name && !identity.email) return;
-  await pool().query(
-    `INSERT INTO user_profiles (user_id, display_name, email) VALUES ($1, $2, $3)
-     ON CONFLICT (user_id) DO UPDATE SET
-       display_name = COALESCE($2, user_profiles.display_name),
-       email = COALESCE($3, user_profiles.email)
-     WHERE user_profiles.display_name IS DISTINCT FROM COALESCE($2, user_profiles.display_name)
-        OR user_profiles.email IS DISTINCT FROM COALESCE($3, user_profiles.email)`,
-    [userId, identity.name ?? null, identity.email ?? null]
   );
 }
 
@@ -76476,7 +76547,51 @@ function resolveGradedIds(allIds, requested, sampleSize) {
   return requested.every((id) => known.has(id)) ? [...requested] : null;
 }
 
+// server/sentry.ts
+import * as Sentry from "@sentry/node";
+var dsn = process.env.SENTRY_DSN;
+var ready = false;
+function initSentry() {
+  if (!dsn || ready) return;
+  Sentry.init({
+    dsn,
+    environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "development",
+    release: process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GIT_COMMIT_SHA,
+    tracesSampleRate: 0
+  });
+  ready = true;
+}
+async function reportServerError(error62, context) {
+  if (!ready) return void 0;
+  const eventId = Sentry.withScope((scope) => {
+    scope.setTag("request_id", context.requestId);
+    scope.setUser(context.userId ? { id: context.userId } : null);
+    scope.setContext("request", { method: context.method, path: context.path });
+    return Sentry.captureException(error62);
+  });
+  await Sentry.flush(2e3).catch(() => void 0);
+  return eventId;
+}
+
 // server/routes/quizzes.ts
+var reportHookError = (req, res) => async (error62, hookIndex) => {
+  const requestId = String(res.locals.requestId ?? "");
+  const userId = currentUserId(req);
+  console.error(
+    JSON.stringify({
+      level: "error",
+      event: "grade.afterSave",
+      hook: hookIndex,
+      requestId,
+      method: req.method,
+      path: req.path,
+      userId,
+      message: error62 instanceof Error ? error62.message : String(error62),
+      stack: error62 instanceof Error ? error62.stack : void 0
+    })
+  );
+  await reportServerError(error62, { requestId, userId, method: req.method, path: req.path }).catch(() => void 0);
+};
 var listQuery = external_exports.object({
   difficulty: external_exports.enum(DIFFICULTIES).optional(),
   subject: external_exports.enum([...SUBJECTS, "none"]).optional(),
@@ -76591,34 +76706,20 @@ function registerQuizRoutes(router) {
       toGradable(quiz).filter((q) => graded.has(q.id)),
       answers
     );
-    const course = quiz.courseId ? await coursePassInfo(quiz.courseId) : null;
-    const passed = course ? result.percent >= course.passPercent : null;
-    const attemptId = await saveAttempt({
-      quizId: id,
-      quizTitle: quiz.title,
-      userId,
-      courseId: course?.id ?? null,
-      passed,
-      answers,
-      result
-    });
-    const verbOfQuestion = await getQuestionVerbs(id);
-    await applyResults(
-      userOf(req),
-      result.results.flatMap((r) => {
-        const verbId = verbOfQuestion.get(r.questionId);
-        return verbId === void 0 ? [] : [{ verbId, correct: r.correct }];
-      })
+    const { attemptId, response } = await gradeRegistry.run(
+      { quiz, quizId: id, userId, user: userOf(req), answers, result },
+      (outcome) => saveAttempt({
+        quizId: id,
+        quizTitle: quiz.title,
+        userId,
+        courseId: outcome.courseId,
+        passed: outcome.passed,
+        answers,
+        result
+      }),
+      reportHookError(req, res)
     );
-    await recordActivity(userOf(req), {
-      answered: Object.values(answers).filter((a) => isAnswered(a)).length,
-      correct: result.results.filter((r) => r.correct).length
-    });
-    res.json({
-      ...result,
-      attemptId,
-      course: course ? { ...course, passed: passed === true } : null
-    });
+    res.json({ ...result, attemptId, ...response });
   });
 }
 
@@ -76653,35 +76754,10 @@ function registerTokenRoutes(router) {
   });
 }
 
-// server/sentry.ts
-import * as Sentry from "@sentry/node";
-var dsn = process.env.SENTRY_DSN;
-var ready = false;
-function initSentry() {
-  if (!dsn || ready) return;
-  Sentry.init({
-    dsn,
-    environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "development",
-    release: process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GIT_COMMIT_SHA,
-    tracesSampleRate: 0
-  });
-  ready = true;
-}
-async function reportServerError(error62, context) {
-  if (!ready) return void 0;
-  const eventId = Sentry.withScope((scope) => {
-    scope.setTag("request_id", context.requestId);
-    scope.setUser(context.userId ? { id: context.userId } : null);
-    scope.setContext("request", { method: context.method, path: context.path });
-    return Sentry.captureException(error62);
-  });
-  await Sentry.flush(2e3).catch(() => void 0);
-  return eventId;
-}
-
 // server/app.ts
 function createApp() {
   initSentry();
+  registerLearningGradeHooks(gradeRegistry);
   const app2 = (0, import_express.default)();
   app2.disable("x-powered-by");
   app2.use((req, res, next) => {

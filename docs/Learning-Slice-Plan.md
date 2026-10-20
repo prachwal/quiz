@@ -110,7 +110,7 @@ Każdy krok to osobny commit; przed commitem `npm run lint`, `npm test`, `npm ru
 | # | Krok | Zakres | Ryzyko |
 | --- | --- | --- | --- |
 | 1 | **`pool` do `server/db.ts`** (zrobione) | mechaniczna zmiana 11 importów; bez re-eksportu z `quizRepo` | niskie |
-| 2 | **Zdarzenie po ocenie** | `grade` publikuje `onGraded({ quiz, userId, result, attemptId })`; `learning` rejestruje obsługę: `passed` kursu, `reviews.applyResults`, `progress.recordActivity`; `course` w odpowiedzi dokłada `learning` | średnie (kolejność skutków ubocznych, błąd obsługi nie może zgubić zapisanego podejścia) |
+| 2 | **Zdarzenie po ocenie** (zrobione: `server/gradeHooks.ts`, rejestracja w `server/learningGradeHooks.ts`) | `grade` publikuje `onGraded({ quiz, userId, result, attemptId })`; `learning` rejestruje obsługę: `passed` kursu, `reviews.applyResults`, `progress.recordActivity`; `course` w odpowiedzi dokłada `learning` | średnie (kolejność skutków ubocznych, błąd obsługi nie może zgubić zapisanego podejścia) |
 | 3 | **UI quizów bez nauki** | `ResultView` dostaje `outcome?: ReactNode` i `backLink`; `QuizPlay` (poziom routingu) składa je z komponentów `learning`; `QuizPlayer` traci wpisany `/learn/...` | niskie |
 | 4 | **RTK Query na slice'y** | `api.injectEndpoints` w każdym module; baza i tagi zostają w `app/api.ts` | niskie |
 | 5 | **Klasy przez publiczne API nauki** | `learning.progressFacts(userIds)` zamiast SQL na `lessons`/`lesson_progress`/`courses` w `classes`, `attemptsRepo`, MCP | średnie |
@@ -130,6 +130,8 @@ Każdy krok to osobny commit; przed commitem `npm run lint`, `npm test`, `npm ru
 - Obsługa **sekwencyjna i w tym samym żądaniu** (serverless: zadania „fire and forget” po odpowiedzi mogą zostać ucięte).
 - `passed` i `courseId` muszą być znane **przed** `saveAttempt`, więc zdarzenie ma dwie fazy: `beforeSave` (zwraca `{ passed, courseId }` oraz dane do odpowiedzi) i `afterSave` (skutki uboczne). Alternatywa: najpierw zapis podejścia, potem `UPDATE quiz_attempts SET passed` — gorsza, bo daje stan pośredni.
 - Test: `tests/` z atrapą rejestru — ocena bez zarejestrowanych obsług zwraca wynik bez `course`; z obsługą `learning` zachowanie jak dziś.
+
+**Zrobione (krok 2).** Handler `grade` przechodzi przez rejestr (`createGradeRegistry`); `learning` rejestruje `beforeSave` (pass mark, `course` w odpowiedzi) i dwa `afterSave` (przeglądy, aktywność dzienna). Zmiana zamierzona: błąd `afterSave` jest logowany (JSON + Sentry) i **nie kończy żądania** — podejście jest już zapisane, a 500 skłaniałoby klienta do ponowienia i zdublowania podejścia. Znane zostawione na później: sprawdzenie „egzamin kursu jest osobisty” (401/403) nadal stoi w handlerze `grade`, obok `resolveGradedIds`; przeniesie się do `learning` przy kroku 3 albo przy zmianie schematu (krok 8).
 
 ## Moduł media (S3)
 

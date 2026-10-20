@@ -1,18 +1,41 @@
-import type { Router } from 'express'
+import type { Request, Response, Router } from 'express'
 import { z } from 'zod'
-import { gradeQuiz, isAnswered } from '../../src/shared/quiz/engine'
+import { gradeQuiz } from '../../src/shared/quiz/engine'
 import { resolveGradedIds } from '../../src/shared/quiz/sampling'
 import { DIFFICULTIES, generateInput, gradeInput, quizInput, retryWrongInput } from '../../src/shared/quiz/schema'
 import { SUBJECTS } from '../../src/shared/quiz/types'
 import { WRITE_QUIZZES, currentUserId, hasPermission, requirePermission } from '../auth'
-import * as courses from '../coursesRepo'
+import { gradeRegistry } from '../gradeRegistry'
 import { HttpError, notFound, parseId, userOf } from '../http'
 import { buildVerbQuiz, generateIrregularVerbsQuiz, listVerbs, randomSample } from '../irregularVerbs'
-import * as progress from '../progressRepo'
 import * as repo from '../quizRepo'
 import * as reviews from '../reviewsRepo'
+import { reportServerError } from '../sentry'
 
 /** Quizzes (list, editor, generated variants), grading and the caller's attempts. */
+
+/**
+ * A failed afterSave hook: the attempt is already saved, so the client still gets its result. Log it
+ * like an unexpected error (structured line + Sentry) instead of swallowing it.
+ */
+const reportHookError = (req: Request, res: Response) => async (error: unknown, hookIndex: number) => {
+  const requestId = String(res.locals.requestId ?? '')
+  const userId = currentUserId(req)
+  console.error(
+    JSON.stringify({
+      level: 'error',
+      event: 'grade.afterSave',
+      hook: hookIndex,
+      requestId,
+      method: req.method,
+      path: req.path,
+      userId,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    }),
+  )
+  await reportServerError(error, { requestId, userId, method: req.method, path: req.path }).catch(() => undefined)
+}
 
 const listQuery = z.object({
   difficulty: z.enum(DIFFICULTIES).optional(),
@@ -144,33 +167,20 @@ export function registerQuizRoutes(router: Router) {
       repo.toGradable(quiz).filter((q) => graded.has(q.id)),
       answers,
     )
-    const course = quiz.courseId ? await courses.coursePassInfo(quiz.courseId) : null
-    const passed = course ? result.percent >= course.passPercent : null
-    const attemptId = await repo.saveAttempt({
-      quizId: id,
-      quizTitle: quiz.title,
-      userId,
-      courseId: course?.id ?? null,
-      passed,
-      answers,
-      result,
-    })
-    const verbOfQuestion = await repo.getQuestionVerbs(id)
-    await reviews.applyResults(
-      userOf(req),
-      result.results.flatMap((r) => {
-        const verbId = verbOfQuestion.get(r.questionId)
-        return verbId === undefined ? [] : [{ verbId, correct: r.correct }]
-      }),
+    const { attemptId, response } = await gradeRegistry.run(
+      { quiz, quizId: id, userId, user: userOf(req), answers, result },
+      (outcome) =>
+        repo.saveAttempt({
+          quizId: id,
+          quizTitle: quiz.title,
+          userId,
+          courseId: outcome.courseId,
+          passed: outcome.passed,
+          answers,
+          result,
+        }),
+      reportHookError(req, res),
     )
-    await progress.recordActivity(userOf(req), {
-      answered: Object.values(answers).filter((a) => isAnswered(a)).length,
-      correct: result.results.filter((r) => r.correct).length,
-    })
-    res.json({
-      ...result,
-      attemptId,
-      course: course ? { ...course, passed: passed === true } : null,
-    })
+    res.json({ ...result, attemptId, ...response })
   })
 }

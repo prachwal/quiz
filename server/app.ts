@@ -4,7 +4,9 @@ import { randomUUID } from 'node:crypto'
 import { ZodError } from 'zod'
 import { authenticate, currentUserId, requireAuthenticated } from './auth'
 import * as auth0 from './auth0Management'
+import { gradeRegistry } from './gradeRegistry'
 import { HttpError } from './http'
+import { registerLearningGradeHooks } from './learningGradeHooks'
 import { mcpHandler, mcpNotAllowed } from './mcp'
 import { MCP_PATH, METADATA_PATH, protectedResourceMetadata, publicOrigin } from './protectedResource'
 import { registerAdminRoutes } from './routes/admin'
@@ -24,6 +26,8 @@ import { initSentry, reportServerError } from './sentry'
  */
 export function createApp() {
   initSentry()
+  // grade side effects of other modules (course pass, spaced repetition, streak); see server/gradeHooks.ts
+  registerLearningGradeHooks(gradeRegistry)
   const app = express()
   app.disable('x-powered-by')
   // correlate logs, Sentry events, the error screen and feedback reports
