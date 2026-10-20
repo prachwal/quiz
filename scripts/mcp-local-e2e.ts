@@ -735,11 +735,19 @@ try {
     const listed = (Array.isArray(withImageBody.body) ? withImageBody.body : withImageBody.body?.verbs ?? []) as any[]
     check('GET /irregular-verbs carries the media map when a verb has an image', mediaOf(withImageBody.body)?.[verbImgId]?.url === `https://media.test/media/2026/${verbImgId}.png` && listed.find((v) => v.id === illVerb.id)?.imageMediaId === verbImgId, withImageBody.body?.media)
 
+    // weak-verb list (Media-Storage-Plan L2): the plain user gets this verb as weak (3 attempts, none correct)
+    await pool().query('INSERT INTO verb_reviews (user_id, verb_id, box, due_at, attempts, correct, last_wrong_at) VALUES ($1, $2, 0, now(), 3, 0, now())', [PLAIN, illVerb.id])
+    const weakWithImage = await rest('/progress/weak-verbs', { method: 'GET', bearer: plainBearer })
+    const weakItems = (Array.isArray(weakWithImage.body) ? weakWithImage.body : weakWithImage.body?.items ?? []) as any[]
+    check('GET /progress/weak-verbs carries the media map and the verb image', mediaOf(weakWithImage.body)?.[verbImgId]?.url === `https://media.test/media/2026/${verbImgId}.png` && weakItems.find((w) => w.verb.id === illVerb.id)?.verb.imageMediaId === verbImgId, weakWithImage.body)
+
     ok('verb_set_image clears the image', await call(tAdminWrite, 'verb_set_image', { verbId: illVerb.id, mediaId: null }), (d) => d.imageMediaId === null)
     check('media_refs: the verb row is gone after the clear', (await verbRefs()).length === 0 && (await verbImage()) === null, await verbRefs())
     const clearedBody = await rest('/irregular-verbs', { method: 'GET', bearer: plainBearer })
     const clearedList = (Array.isArray(clearedBody.body) ? clearedBody.body : clearedBody.body?.verbs ?? []) as any[]
     check('GET /irregular-verbs: the cleared verb has no image key and no map entry', clearedList.every((v) => !(v.id === illVerb.id && 'imageMediaId' in v)) && mediaOf(clearedBody.body)?.[verbImgId] === undefined, clearedBody.body?.media)
+    const weakCleared = await rest('/progress/weak-verbs', { method: 'GET', bearer: plainBearer })
+    check('GET /progress/weak-verbs: no image left means the plain array again', Array.isArray(weakCleared.body) && weakCleared.body.every((w: any) => !('imageMediaId' in w.verb)), weakCleared.body)
 
     const verbAudit = await pool().query<{ before: string | null; after: string | null }>(
       `SELECT details->>'mediaBefore' AS before, details->>'mediaAfter' AS after FROM admin_audit_log
@@ -749,6 +757,7 @@ try {
     check('audit: verb_set_image logs only the two successful changes, before and after', JSON.stringify(verbAudit.rows) === JSON.stringify([{ before: null, after: verbImgId }, { before: verbImgId, after: null }]), verbAudit.rows)
   } finally {
     // restore the verb's previous illustration (the media rows of this run are removed by cleanup afterwards)
+    await pool().query('DELETE FROM verb_reviews WHERE user_id = $1 AND verb_id = $2', [PLAIN, illVerb.id])
     const restored = await call(tAdminWrite, 'verb_set_image', { verbId: illVerb.id, mediaId: illVerb.image })
     if (restored.err || (await verbImage()) !== illVerb.image) failures.push(`verb ${illVerb.id} image was not restored`)
   }

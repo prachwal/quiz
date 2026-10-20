@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { imageField, verbImageIds, verbListBody } from '../server/verbMedia.ts'
+import { imageField, verbImageIds, verbListBody, weakVerbBody, weakVerbImageIds } from '../server/verbMedia.ts'
 import type { IrregularVerb } from '../src/shared/quiz/types.ts'
 
 const verb = (id: number, base: string, imageMediaId?: string | null): IrregularVerb => ({
@@ -72,4 +72,31 @@ test('verbListBody adds the media map next to the verbs when there is one', () =
   const verbs = [verb(1, 'go', IMAGE)]
   const media = { [IMAGE]: { url: `https://media.test/media/2026/${IMAGE}.webp`, width: 400, height: 300 } }
   assert.deepEqual(verbListBody(verbs, media), { verbs, media })
+})
+
+const weak = (verb: IrregularVerb) => ({ verb, attempts: 4, correct: 1, accuracy: 0.25, lastWrongAt: null })
+
+test('weakVerbBody answers the plain list when the media map is empty (JSON unchanged)', () => {
+  const items = [weak(fromRow(7, null)), weak(fromRow(8, null))]
+  const body = weakVerbBody(items, {})
+  assert.equal(body, items)
+  assert.equal(
+    JSON.stringify(body),
+    JSON.stringify([
+      { verb: fromRow(7, null), attempts: 4, correct: 1, accuracy: 0.25, lastWrongAt: null },
+      { verb: fromRow(8, null), attempts: 4, correct: 1, accuracy: 0.25, lastWrongAt: null },
+    ]),
+  )
+  assert.equal(JSON.stringify(body).includes('imageMediaId'), false)
+})
+
+test('weakVerbBody wraps the list with the media map when a verb has an image', () => {
+  const items = [weak(verb(1, 'go', IMAGE)), weak(verb(2, 'do', null))]
+  const media = { [IMAGE]: { url: `https://media.test/media/2026/${IMAGE}.webp`, width: 400, height: 300 } }
+  assert.deepEqual(weakVerbBody(items, media), { items, media })
+})
+
+test('weakVerbImageIds collects the image ids of the weak verbs only', () => {
+  assert.deepEqual(weakVerbImageIds([weak(verb(1, 'go', IMAGE)), weak(verb(2, 'do', null))]), [IMAGE])
+  assert.deepEqual(weakVerbImageIds([weak(verb(2, 'do', null))]), [])
 })

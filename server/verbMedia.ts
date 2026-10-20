@@ -22,3 +22,18 @@ export function verbImageIds(verbs: readonly Pick<IrregularVerb, 'imageMediaId'>
 export function verbListBody(verbs: IrregularVerb[], media: MediaMap): IrregularVerb[] | { verbs: IrregularVerb[]; media: MediaMap } {
   return Object.keys(media).length === 0 ? verbs : { verbs, media }
 }
+
+/**
+ * Body of the weak-verb list (`GET /progress/weak-verbs`). Each entry carries its verb, so the plain array is answered
+ * (JSON unchanged) unless the map has an entry, then `{ items, media }`. Clients accept both shapes.
+ */
+export function weakVerbBody<T extends { verb: Pick<IrregularVerb, 'imageMediaId'> }>(
+  items: T[],
+  media: MediaMap,
+): T[] | { items: T[]; media: MediaMap } {
+  return Object.keys(media).length === 0 ? items : { items, media }
+}
+
+/** Image ids of the verbs of weak-verb entries (see `weakVerbBody`). */
+export const weakVerbImageIds = (items: readonly { verb: Pick<IrregularVerb, 'imageMediaId'> }[]): string[] =>
+  verbImageIds(items.map((item) => item.verb))

@@ -197,12 +197,12 @@ export default function Home() {
               <Switch
                 checked={onlyWeak}
                 onChange={setOnlyWeak}
-                disabled={!weakVerbs?.length}
+                disabled={!weakVerbs?.items.length}
                 aria-label="Tylko moje słabe czasowniki"
               />
-              <Typography.Text type={weakVerbs?.length ? undefined : 'secondary'} style={{ fontSize: 16 }}>
+              <Typography.Text type={weakVerbs?.items.length ? undefined : 'secondary'} style={{ fontSize: 16 }}>
                 Tylko moje słabe czasowniki
-                {!weakVerbs?.length && ' (pojawią się po kilku quizach)'}
+                {!weakVerbs?.items.length && ' (pojawią się po kilku quizach)'}
               </Typography.Text>
             </Flex>
             <Button

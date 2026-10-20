@@ -63679,6 +63679,10 @@ function verbImageIds(verbs) {
 function verbListBody(verbs, media) {
   return Object.keys(media).length === 0 ? verbs : { verbs, media };
 }
+function weakVerbBody(items, media) {
+  return Object.keys(media).length === 0 ? items : { items, media };
+}
+var weakVerbImageIds = (items) => verbImageIds(items.map((item) => item.verb));
 
 // server/irregularVerbs.ts
 var VERB_SELECT = `
@@ -79426,12 +79430,11 @@ function registerProgressRoutes(router) {
     const stats = await weakVerbs(userOf(req), limit);
     const verbs = await listVerbs({ ids: stats.map((s) => s.verbId) });
     const byId = new Map(verbs.map((v) => [v.id, v]));
-    res.json(
-      stats.flatMap((s) => {
-        const verb = byId.get(s.verbId);
-        return verb ? [{ verb, attempts: s.attempts, correct: s.correct, accuracy: s.accuracy, lastWrongAt: s.lastWrongAt }] : [];
-      })
-    );
+    const items = stats.flatMap((s) => {
+      const verb = byId.get(s.verbId);
+      return verb ? [{ verb, attempts: s.attempts, correct: s.correct, accuracy: s.accuracy, lastWrongAt: s.lastWrongAt }] : [];
+    });
+    res.json(weakVerbBody(items, await resolveMedia(weakVerbImageIds(items))));
   });
   router.get("/progress/summary", async (req, res) => {
     const identity = identityOf(req);

@@ -4,9 +4,11 @@ import { profileInput, reviewSessionInput } from '../../src/shared/quiz/schema'
 import { identityOf } from '../auth'
 import { HttpError, userOf } from '../http'
 import { buildVerbQuiz, listVerbs } from '../irregularVerbs'
+import { resolveMedia } from '../media/resolve'
 import * as progress from '../progressRepo'
 import * as repo from '../quizRepo'
 import * as reviews from '../reviewsRepo'
+import { weakVerbBody, weakVerbImageIds } from '../verbMedia'
 
 /** Spaced repetition (Leitner reviews), the streak/daily goal and the weak-verb ranking. */
 
@@ -38,14 +40,14 @@ export function registerProgressRoutes(router: Router) {
     const stats = await reviews.weakVerbs(userOf(req), limit)
     const verbs = await listVerbs({ ids: stats.map((s) => s.verbId) })
     const byId = new Map(verbs.map((v) => [v.id, v]))
-    res.json(
-      stats.flatMap((s) => {
-        const verb = byId.get(s.verbId)
-        return verb
-          ? [{ verb, attempts: s.attempts, correct: s.correct, accuracy: s.accuracy, lastWrongAt: s.lastWrongAt }]
-          : []
-      }),
-    )
+    const items = stats.flatMap((s) => {
+      const verb = byId.get(s.verbId)
+      return verb
+        ? [{ verb, attempts: s.attempts, correct: s.correct, accuracy: s.accuracy, lastWrongAt: s.lastWrongAt }]
+        : []
+    })
+    // illustrations: the `media` map only when a verb has one (weakVerbBody keeps the plain array otherwise)
+    res.json(weakVerbBody(items, await resolveMedia(weakVerbImageIds(items))))
   })
 
   router.get('/progress/summary', async (req, res) => {
