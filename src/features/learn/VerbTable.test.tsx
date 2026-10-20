@@ -38,4 +38,30 @@ describe('VerbTable', () => {
     )
     expect(screen.getByText('go')).toBeInTheDocument()
   })
+  it('renders the badge supplied through renderBadge in the group column', () => {
+    const store = configureStore({ reducer: { [api.reducerPath]: api.reducer, settings: settingsReducer, feedbackUi: feedbackReducer }, middleware: (g) => g().concat(api.middleware) })
+    render(
+      <Provider store={store}>
+        <ConfigProvider>
+          <MemoryRouter>
+            <VerbTable verbs={[verb as any]} loading={false} pageSize={10} renderBadge={(id) => <span>odznaka {id}</span>} />
+          </MemoryRouter>
+        </ConfigProvider>
+      </Provider>,
+    )
+    expect(screen.getByText('odznaka 1')).toBeInTheDocument()
+  })
+  it('renders no badge without renderBadge', () => {
+    const store = configureStore({ reducer: { [api.reducerPath]: api.reducer, settings: settingsReducer, feedbackUi: feedbackReducer }, middleware: (g) => g().concat(api.middleware) })
+    render(
+      <Provider store={store}>
+        <ConfigProvider>
+          <MemoryRouter>
+            <VerbTable verbs={[verb as any]} loading={false} pageSize={10} />
+          </MemoryRouter>
+        </ConfigProvider>
+      </Provider>,
+    )
+    expect(screen.queryByText(/odznaka/)).not.toBeInTheDocument()
+  })
 })

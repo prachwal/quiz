@@ -10,6 +10,7 @@ import { useAppSelector } from '../app/hooks'
 import { verbSpeechParts } from '../features/audio/speech'
 import { useSpeech } from '../features/audio/useSpeech'
 import VerbSlide from '../features/learn/VerbSlide'
+import WeakMark from '../features/progress/WeakMark'
 import type { SwipeDirection } from '../features/learn/swipe'
 import { MediaProvider } from '../features/media/MediaProvider'
 import { RichText } from '../features/media/RichText'
@@ -159,7 +160,7 @@ function Slides({ lesson, withIntro }: { lesson: LessonDetail; withIntro: boolea
     <>
       <div ref={slideRef} className="swipe-area">
         {current ? (
-          <VerbSlide verb={current} index={index} total={total} />
+          <VerbSlide verb={current} index={index} total={total} renderBadge={(id) => <WeakMark verbId={id} />} />
         ) : (
           <IntroSlide intro={lesson.intro} index={index} total={total} />
         )}

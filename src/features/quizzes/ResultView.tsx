@@ -10,14 +10,12 @@ import { Button, Card, Flex, Progress, Tag, Typography, App as AntdApp, theme } 
 import type { ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { errorMessage } from '../../app/api'
-import { useStartReviewMutation } from '../progress/api'
 import { useGenerateIrregularVerbsQuizMutation, useRetryWrongMutation } from './api'
 import { MediaProvider } from '../media/MediaProvider'
 import { RichText } from '../media/RichText'
 import SpeakButton from '../audio/SpeakButton'
 import { recallGenerate, rememberGenerate } from './lastGenerate'
-import { GENERATE_COUNT, REVIEW_COUNT, clampCount } from './counts'
-import ProgressLine from '../progress/ProgressLine'
+import { GENERATE_COUNT, clampCount } from './counts'
 import { useScoreColors } from '../results/useScoreColors'
 import { IMAGE_OPTION_TYPES, type Answer } from '../../shared/quiz/engine'
 import type { GradedAttempt, QuizDetail } from '../../shared/quiz/types'
@@ -239,6 +237,8 @@ export default function ResultView({
   showExplanations,
   onRestart,
   outcome,
+  footer,
+  reviewAction,
 }: {
   quiz: QuizDetail
   questions: QuizDetail['questions']
@@ -247,11 +247,14 @@ export default function ResultView({
   showExplanations: boolean
   onRestart: () => void
   outcome?: ResultOutcome
+  /** Optional line under the hero (e.g. the daily-goal recap), supplied by the route. */
+  footer?: ReactNode
+  /** Optional "next review" action of a review quiz; without it a review quiz gets the default restart button. */
+  reviewAction?: ReactNode
 }) {
   const { token } = theme.useToken()
   const navigate = useNavigate()
   const [generate, { isLoading: generating }] = useGenerateIrregularVerbsQuizMutation()
-  const [startReview, { isLoading: startingReview }] = useStartReviewMutation()
   const isGenerated = quiz.source === 'irregular-verbs'
   const isReview = quiz.source === 'review'
   const { message } = AntdApp.useApp()
@@ -286,15 +289,6 @@ export default function ResultView({
       navigate(`/quizzes/${next.id}/play`)
     } catch (e) {
       void message.error(errorMessage(e))
-    }
-  }
-  const nextReview = async () => {
-    try {
-      const next = await startReview({ count: clampCount(quiz.questions.length, REVIEW_COUNT) }).unwrap()
-      navigate(`/quizzes/${next.id}/play`)
-    } catch (e) {
-      void message.info(errorMessage(e)) // e.g. nothing left to review today
-      navigate('/')
     }
   }
   const byId = new Map(result.results.map((r) => [r.questionId, r]))
@@ -370,10 +364,8 @@ export default function ResultView({
                   <Button type="primary" size="large" icon={<ReloadOutlined />} loading={generating} onClick={() => void nextTraining()}>
                     Kolejny trening błędów
                   </Button>
-                ) : isReview ? (
-                  <Button type="primary" size="large" icon={<ReloadOutlined />} loading={startingReview} onClick={() => void nextReview()}>
-                    Kolejna powtórka
-                  </Button>
+                ) : isReview && reviewAction ? (
+                  reviewAction
                 ) : isGenerated ? (
                   <Button type="primary" size="large" icon={<ReloadOutlined />} loading={generating} onClick={() => void drawAnother()}>
                     Losuj nowy quiz
@@ -403,7 +395,7 @@ export default function ResultView({
           </Flex>
         </Card>
 
-        <ProgressLine />
+        {footer}
 
         <Typography.Title level={3} style={{ margin: '8px 0 0' }}>
           Przegląd odpowiedzi

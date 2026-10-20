@@ -7,6 +7,7 @@ import { PHONE_QUERY, useMediaQuery } from '../app/useMediaQuery'
 import { difficultyOptions, popularityOptions } from '../components/groupOptions'
 import { formsText } from '../features/learn/format'
 import VerbTable from '../features/learn/VerbTable'
+import WeakMark from '../features/progress/WeakMark'
 import { MediaProvider } from '../features/media/MediaProvider'
 import type { DifficultyCode, PatternCode, PopularityCode } from '../shared/quiz/types'
 
@@ -68,7 +69,7 @@ export default function Verbs() {
           )}
         </Flex>
         <MediaProvider media={data?.media}>
-          <VerbTable verbs={filtered} loading={isFetching} pageSize={20} />
+          <VerbTable verbs={filtered} loading={isFetching} pageSize={20} renderBadge={(id) => <WeakMark verbId={id} />} />
         </MediaProvider>
       </Card>
     </>
