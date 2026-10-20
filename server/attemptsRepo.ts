@@ -2,6 +2,8 @@ import type { StudentAttemptQuestion } from '../src/shared/quiz/types'
 import { questionDetails } from './classes/results'
 import type { AttemptRow } from './classes/results'
 import { pool } from './db'
+import { parseQuestionsSnapshot } from '../src/shared/quiz/questionsSnapshot'
+import type { SnapshotQuestion } from '../src/shared/quiz/questionsSnapshot'
 
 /**
  * Read path over every saved attempt, for admins: filtered lists, one attempt with its answers and the raw results
@@ -148,11 +150,37 @@ export async function getAttempt(id: string): Promise<AttemptDetail | null> {
   }
 }
 
-/** Raw per-question results of every attempt of a quiz (input of the item analysis). */
-export async function attemptsOfQuiz(quizId: string): Promise<{ attemptId: string; percent: number; results: NonNullable<AttemptRow['results']> }[]> {
-  const { rows } = await pool().query<{ id: string; percent: number; results: AttemptRow['results'] }>(
-    'SELECT id, percent, results FROM quiz_attempts WHERE quiz_id = $1 ORDER BY created_at DESC',
+/** Raw per-question results of every attempt of a quiz (input of the item analysis), newest first. */
+export async function attemptsOfQuiz(quizId: string): Promise<{
+  attemptId: string
+  percent: number
+  results: NonNullable<AttemptRow['results']>
+  /** null for attempts saved before the snapshot existed. */
+  questionsSnapshot: SnapshotQuestion[] | null
+}[]> {
+  const { rows } = await pool().query<{ id: string; percent: number; results: AttemptRow['results']; questions_snapshot: unknown }>(
+    'SELECT id, percent, results, questions_snapshot FROM quiz_attempts WHERE quiz_id = $1 ORDER BY created_at DESC',
     [quizId],
   )
-  return rows.map((r) => ({ attemptId: r.id, percent: r.percent, results: r.results ?? [] }))
+  return rows.map((r) => ({
+    attemptId: r.id,
+    percent: r.percent,
+    results: r.results ?? [],
+    questionsSnapshot: parseQuestionsSnapshot(r.questions_snapshot),
+  }))
+}
+
+/** The quiz as it is now (title, sample size, questions in order) for the statistics; null when deleted. */
+export async function quizForStats(quizId: string): Promise<{ title: string; sampleSize: number | null; questions: SnapshotQuestion[] } | null> {
+  const quiz = await pool().query<{ title: string; sample_size: number | null }>('SELECT title, sample_size FROM quizzes WHERE id = $1', [quizId])
+  if (!quiz.rows[0]) return null
+  const questions = await pool().query<{ id: string; type: string; prompt: string; points: number }>(
+    'SELECT id, type, prompt, points FROM questions WHERE quiz_id = $1 ORDER BY position',
+    [quizId],
+  )
+  return {
+    title: quiz.rows[0].title,
+    sampleSize: quiz.rows[0].sample_size,
+    questions: questions.rows.map((q) => ({ id: q.id, type: q.type, prompt: q.prompt, points: q.points })),
+  }
 }

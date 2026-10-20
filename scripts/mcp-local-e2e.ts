@@ -92,8 +92,8 @@ try {
   const getOk = await fetch(`${base}/mcp`, { headers: { Authorization: `Bearer ${await token(PLAIN, [])}` } })
   check('GET /mcp -> 405', getOk.status === 405, getOk.status)
   const names = (await tPlain.listTools()).tools.map((t) => t.name).sort()
-  check('27 tools listed', names.length === 27, names.length)
-  for (const required of ['quiz_create', 'class_create', 'student_search', 'student_add', 'class_analyze', 'assignment_create', 'attempt_list', 'attempt_get'])
+  check('28 tools listed', names.length === 28, names.length)
+  for (const required of ['quiz_create', 'class_create', 'student_search', 'student_add', 'class_analyze', 'assignment_create', 'attempt_list', 'attempt_get', 'quiz_stats'])
     check(`tool ${required} exists`, names.includes(required))
 
   // ---- quizzes ---------------------------------------------------------------------------
@@ -235,6 +235,20 @@ try {
   ok('attempt_get', await call(tAdmin, 'attempt_get', { attemptId }), (d) => d.quiz?.id === quizId && d.user.email === 'ala.uczennica@szkola.pl' && d.questions.length === 4 && d.questions.some((q: any) => q.type === 'text' && q.prompt === 'P1'))
   denied('attempt_get unknown', await call(tAdmin, 'attempt_get', { attemptId: '00000000-0000-4000-8000-000000000000' }), 'Nie znaleziono')
   denied('attempt_get as teacher', await call(tTeacher, 'attempt_get', { attemptId }), 'admina')
+
+  // ---- item statistics: per question, from the attempts (snapshot first, current questions for old rows) ----
+  const stats = await call(tAdmin, 'quiz_stats', { quizId })
+  ok('quiz_stats', stats, (d) => d.attempts === 2 && d.unattributedAttempts === 0 && d.questions.length === 4 && d.total === 4 && d.hasMore === false && d.questions.every((r: any) => r.attempts === 2 && r.inCurrentQuiz === true && r.flag === 'insufficient-data'))
+  ok('quiz_stats (limit and hasMore)', await call(tAdmin, 'quiz_stats', { quizId, limit: 1 }), (d) => d.questions.length === 1 && d.total === 4 && d.hasMore === true)
+  ok('quiz_stats (quiz order first: text is the last question)', stats, (d) => d.questions[0].type === 'single' && d.questions[0].points === 2 && d.questions[0].accuracy === 0.5 && d.questions[0].topAnswers.some((t: any) => t.text === '4'))
+  await save({ [textQ.id]: { text: 'a1' } }, 1) // this attempt was graded on a snapshot
+  const { gradeQuiz: grade } = await import('../src/shared/quiz/engine')
+  const { buildQuestionsSnapshot } = await import('../src/shared/quiz/questionsSnapshot')
+  await repo.saveAttempt({ quizId, quizTitle: gradable.title, userId: STUDENT, courseId: null, passed: null, answers: {}, result: grade(repo.toGradable(gradable), {}), questionsSnapshot: buildQuestionsSnapshot(gradable.questions) })
+  ok('quiz_stats counts snapshot attempts too', await call(tAdmin, 'quiz_stats', { quizId }), (d) => d.attempts === 4 && d.unattributedAttempts === 0 && d.questions.every((r: any) => r.attempts === 4))
+  denied('quiz_stats unknown quiz', await call(tAdmin, 'quiz_stats', { quizId: '00000000-0000-4000-8000-000000000000' }), 'Nie znaleziono quizu')
+  denied('quiz_stats as teacher', await call(tTeacher, 'quiz_stats', { quizId }), 'admina')
+  denied('quiz_stats as plain', await call(tPlain, 'quiz_stats', { quizId }), 'admina')
 
   // ---- removals and archiving --------------------------------------------------------------
   denied('student_remove without confirm', await call(tTeacher, 'student_remove', { classId, userId: STUDENT2, confirm: false }))

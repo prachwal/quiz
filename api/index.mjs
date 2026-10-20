@@ -75111,6 +75111,24 @@ var assignmentInput = external_exports.object({
   dueAt: external_exports.string().datetime().nullish()
 }).refine((v) => v.kind === "course" ? Boolean(v.courseId) : Boolean(v.quizId), "Wybierz kurs lub quiz");
 
+// src/shared/quiz/questionsSnapshot.ts
+function buildQuestionsSnapshot(questions) {
+  return questions.map((q) => ({ id: q.id, type: q.type, prompt: q.prompt, points: q.points }));
+}
+var isRecord = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
+function parseQuestionsSnapshot(value) {
+  if (!Array.isArray(value)) return null;
+  const parsed = [];
+  for (const item of value) {
+    if (!isRecord(item)) continue;
+    const { id, type, prompt, points } = item;
+    if (typeof id !== "string" || typeof type !== "string" || typeof prompt !== "string") continue;
+    if (typeof points !== "number" || !Number.isFinite(points)) continue;
+    parsed.push({ id, type, prompt, points });
+  }
+  return parsed;
+}
+
 // server/attemptsRepo.ts
 var SOURCE_SQL = `CASE WHEN a.course_id IS NOT NULL THEN 'course-exam'
                          WHEN q.id IS NULL THEN NULL
@@ -75202,6 +75220,133 @@ async function getAttempt(id) {
     questions: questionsOf(row).map((q) => ({ ...q, type: types2.get(q.questionId) ?? null }))
   };
 }
+async function attemptsOfQuiz(quizId) {
+  const { rows } = await pool().query(
+    "SELECT id, percent, results, questions_snapshot FROM quiz_attempts WHERE quiz_id = $1 ORDER BY created_at DESC",
+    [quizId]
+  );
+  return rows.map((r) => ({
+    attemptId: r.id,
+    percent: r.percent,
+    results: r.results ?? [],
+    questionsSnapshot: parseQuestionsSnapshot(r.questions_snapshot)
+  }));
+}
+async function quizForStats(quizId) {
+  const quiz = await pool().query("SELECT title, sample_size FROM quizzes WHERE id = $1", [quizId]);
+  if (!quiz.rows[0]) return null;
+  const questions = await pool().query(
+    "SELECT id, type, prompt, points FROM questions WHERE quiz_id = $1 ORDER BY position",
+    [quizId]
+  );
+  return {
+    title: quiz.rows[0].title,
+    sampleSize: quiz.rows[0].sample_size,
+    questions: questions.rows.map((q) => ({ id: q.id, type: q.type, prompt: q.prompt, points: q.points }))
+  };
+}
+
+// src/shared/quiz/itemStats.ts
+var MIN_ANSWERS = 10;
+var EASY_ACCURACY = 0.85;
+var TOO_HARD_ACCURACY = 0.4;
+var AMBIGUOUS_ACCURACY = 0.7;
+var AMBIGUOUS_SHARE = 0.5;
+var TOP_ANSWERS = 5;
+var OPTION_TYPES = /* @__PURE__ */ new Set(["single", "multiple", "truefalse"]);
+var countBy = (answers) => {
+  const counts = /* @__PURE__ */ new Map();
+  for (const a of answers) counts.set(a, (counts.get(a) ?? 0) + 1);
+  return [...counts].map(([text2, count]) => ({ text: text2, count })).sort((a, b) => b.count - a.count || a.text.localeCompare(b.text));
+};
+function analyzeItem(type, observations) {
+  const attempts = observations.length;
+  const available = observations.reduce((sum, o) => sum + o.points, 0);
+  const earned = observations.reduce((sum, o) => sum + o.earned, 0);
+  const accuracy = attempts === 0 || available <= 0 ? null : earned / available;
+  const answered = observations.filter((o) => o.answer.trim() !== "");
+  const topAnswers = countBy(answered.map((o) => o.answer.trim())).slice(0, TOP_ANSWERS);
+  return {
+    attempts,
+    correct: observations.filter((o) => o.correct).length,
+    accuracy,
+    topAnswers,
+    flag: flagOf(type, accuracy, attempts, observations)
+  };
+}
+function flagOf(type, accuracy, attempts, observations) {
+  if (attempts < MIN_ANSWERS || accuracy === null) return "insufficient-data";
+  if (accuracy >= EASY_ACCURACY) return "easy";
+  if (accuracy < TOO_HARD_ACCURACY) return "too-hard";
+  if (accuracy < AMBIGUOUS_ACCURACY && OPTION_TYPES.has(type)) {
+    const wrong = countBy(observations.filter((o) => !o.correct && o.answer.trim() !== "").map((o) => o.answer.trim()));
+    const wrongTotal = observations.filter((o) => !o.correct).length;
+    if (wrongTotal > 0 && wrong[0] && wrong[0].count / wrongTotal >= AMBIGUOUS_SHARE) return "ambiguous";
+  }
+  return "ok";
+}
+
+// src/shared/quiz/quizStats.ts
+var mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
+function quizStats(input2) {
+  const { quiz, attempts, limit } = input2;
+  const currentById = new Map(quiz.questions.map((q) => [q.id, q]));
+  const currentOrder = new Map(quiz.questions.map((q, index) => [q.id, index]));
+  const currentIds = new Set(quiz.questions.map((q) => q.id));
+  const meta3 = /* @__PURE__ */ new Map();
+  for (const a of attempts) for (const q of a.questionsSnapshot ?? []) if (!meta3.has(q.id)) meta3.set(q.id, q);
+  for (const q of quiz.questions) if (!meta3.has(q.id)) meta3.set(q.id, q);
+  const observations = /* @__PURE__ */ new Map();
+  let unattributedAttempts = 0;
+  for (const a of attempts) {
+    const known = a.questionsSnapshot ? new Set(a.questionsSnapshot.map((q) => q.id)) : currentIds;
+    let unknown2 = false;
+    for (const r of a.results) {
+      if (!known.has(r.questionId)) {
+        unknown2 = true;
+        continue;
+      }
+      const list = observations.get(r.questionId) ?? [];
+      list.push({ correct: r.correct, earned: r.earned, points: r.points, answer: r.answerText ?? "" });
+      observations.set(r.questionId, list);
+    }
+    if (unknown2) unattributedAttempts += 1;
+  }
+  const rows = [...observations.entries()].map(([questionId, list]) => {
+    const question = meta3.get(questionId);
+    const type = question?.type ?? "unknown";
+    const stats = analyzeItem(type, list);
+    return {
+      ...stats,
+      questionId,
+      prompt: question?.prompt ?? "",
+      type,
+      points: question?.points ?? 0,
+      inCurrentQuiz: currentById.has(questionId),
+      earnedPercent: stats.accuracy === null ? null : Math.round(stats.accuracy * 100)
+    };
+  });
+  rows.sort((a, b) => {
+    const ia = currentOrder.get(a.questionId);
+    const ib = currentOrder.get(b.questionId);
+    if (ia !== void 0 && ib !== void 0) return ia - ib;
+    if (ia !== void 0) return -1;
+    if (ib !== void 0) return 1;
+    return b.attempts - a.attempts || a.questionId.localeCompare(b.questionId);
+  });
+  const percents = attempts.map((a) => a.percent);
+  return {
+    quiz: { title: quiz.title, sampleSize: quiz.sampleSize },
+    attempts: attempts.length,
+    avgPercent: percents.length ? Math.round(mean(percents)) : 0,
+    minPercent: percents.length ? Math.min(...percents) : 0,
+    maxPercent: percents.length ? Math.max(...percents) : 0,
+    unattributedAttempts,
+    total: rows.length,
+    hasMore: rows.length > limit,
+    questions: rows.slice(0, limit)
+  };
+}
 
 // server/mcp/tools/admin.ts
 var isoDate = external_exports.string().refine((s) => !Number.isNaN(Date.parse(s)), "Data w formacie ISO, np. 2026-10-19 albo 2026-10-19T12:00:00Z").describe("Data ISO, np. 2026-10-19");
@@ -75232,6 +75377,30 @@ function registerAdminTools(server, ctx) {
       if (!admin) return needAdmin();
       const { total, attempts: items } = await listAttemptsFiltered(filter);
       return text({ total, offset: filter.offset, hasMore: filter.offset + items.length < total, attempts: items });
+    }
+  );
+  server.registerTool(
+    "quiz_stats",
+    {
+      title: "Statystyka pyta\u0144 quizu (admin)",
+      description: "Analiza pyta\u0144 quizu na podstawie wszystkich podej\u015B\u0107: dla ka\u017Cdego pytania liczba odpowiedzi (attempts), poprawne (correct), accuracy 0..1 (zdobyte punkty / wszystkie punkty, wi\u0119c punkty cz\u0119\u015Bciowe si\u0119 licz\u0105), earnedPercent, topAnswers (najcz\u0119stsze odpowiedzi tekstem) i flag. Pytania: najpierw w kolejno\u015Bci quizu, potem usuni\u0119te przy edycji (inCurrentQuiz=false); pytania bez \u017Cadnej odpowiedzi nie s\u0105 wymienione. Zwraca liczby z quizu: attempts, avgPercent, minPercent, maxPercent, sampleSize, total, hasMore oraz unattributedAttempts (podej\u015Bcia z pytaniem nieznanym ani z migawki, ani z aktualnego quizu). Ograniczenia: quiz z sampleSize losuje pytania, wi\u0119c attempts per pytanie jest mniejsze ni\u017C liczba podej\u015B\u0107; flag insufficient-data (poni\u017Cej 10 odpowiedzi) oznacza, \u017Ce nie wolno wyci\u0105ga\u0107 wniosk\xF3w; topAnswers mo\u017Ce by\u0107 puste dla podej\u015B\u0107 zapisanych przed zapisem tekstu odpowiedzi; edycja quizu tworzy nowe id pyta\u0144 (podej\u015Bcia z migawk\u0105 dalej licz\u0105 si\u0119 poprawnie, bez migawki trafiaj\u0105 do unattributedAttempts). flag ambiguous jest tylko dla pyta\u0144 wyboru.",
+      inputSchema: {
+        quizId: external_exports.string().uuid().describe("Id quizu (UUID) z quiz_list"),
+        limit: external_exports.number().int().min(1).max(200).default(50).describe("Ile pyta\u0144 zwr\xF3ci\u0107 (domy\u015Blnie 50, maks. 200)")
+      },
+      annotations: { readOnlyHint: true }
+    },
+    async ({ quizId, limit }) => {
+      if (!admin) return needAdmin();
+      const [quiz, rows] = await Promise.all([quizForStats(quizId), attemptsOfQuiz(quizId)]);
+      if (!quiz && rows.length === 0) return failure2("Nie znaleziono quizu.");
+      return text(
+        quizStats({
+          quiz: quiz ?? { title: null, sampleSize: null, questions: [] },
+          attempts: rows.map((r) => ({ percent: r.percent, results: r.results, questionsSnapshot: r.questionsSnapshot })),
+          limit
+        })
+      );
     }
   );
   server.registerTool(
@@ -75502,12 +75671,12 @@ function registerClassCrudTools(server, ctx, guards) {
 // src/shared/quiz/studentAnalysis.ts
 var DAY2 = 24 * 60 * 60 * 1e3;
 var round = (n) => Math.round(n);
-var mean = (xs) => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
+var mean2 = (xs) => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
 function trendOf(percentsOldestFirst) {
   if (percentsOldestFirst.length < 4) return "insufficient_data";
   const recent = percentsOldestFirst.slice(-3);
   const earlier = percentsOldestFirst.slice(0, -3);
-  const delta = (mean(recent) ?? 0) - (mean(earlier) ?? 0);
+  const delta = (mean2(recent) ?? 0) - (mean2(earlier) ?? 0);
   return delta >= 5 ? "improving" : delta <= -5 ? "declining" : "stable";
 }
 function analyzeStudent(input2, now = /* @__PURE__ */ new Date()) {
@@ -75540,7 +75709,7 @@ function analyzeStudent(input2, now = /* @__PURE__ */ new Date()) {
   }
   const hardestQuestions = [...questions.values()].filter((q) => q.missed > 0).sort((a, b) => b.missed - a.missed || b.missed / b.seen - a.missed / a.seen).slice(0, 5);
   const trend = trendOf(percents);
-  const average = mean(percents);
+  const average = mean2(percents);
   const flags = [];
   if (overdue.length) flags.push(`Zadania po terminie: ${overdue.join(", ")}`);
   if (daysSinceActive === null) flags.push("Ucze\u0144 nie ma jeszcze \u017Cadnej aktywno\u015Bci");
@@ -76538,11 +76707,6 @@ function registerProgressRoutes(router) {
     await updateProfile(userOf(req), profileInput.parse(req.body));
     res.json(await getSummary(userOf(req)));
   });
-}
-
-// src/shared/quiz/questionsSnapshot.ts
-function buildQuestionsSnapshot(questions) {
-  return questions.map((q) => ({ id: q.id, type: q.type, prompt: q.prompt, points: q.points }));
 }
 
 // src/shared/quiz/sampling.ts
