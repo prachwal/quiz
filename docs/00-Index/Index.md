@@ -14,6 +14,7 @@ Mapa treści vaultu. Zacznij tutaj.
 
 - [[Architecture]] — architektura systemu
 - [[Architecture-Audit]] — audyt zależności między modułami (naruszenia granic, cykle)
+- [[Phase5C-Orchestration]] — plan cyklu orkiestracji: naprawy granic, Preview, promocja (i dziennik pracy z Haiku)
 - [[Setup]] — konfiguracja środowiska
 - [[Environment]] — zmienne środowiskowe
 - [[Database]] — baza danych i migracje

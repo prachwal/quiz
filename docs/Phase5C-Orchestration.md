@@ -1,0 +1,85 @@
+---
+tags:
+  - plan
+  - quiz
+  - backend
+  - frontend
+  - deploy
+  - testing
+  - status/in-progress
+created: 2026-10-20
+updated: 2026-10-20
+---
+
+# Faza 5.C — samodzielny cykl orkiestracji (naprawy granic → Preview → promocja)
+
+> Plan jednego pełnego cyklu, który ma dwa cele równorzędne: **(1)** domknąć naprawy granic modułów z [[Architecture-Audit]] (24 naruszenia → lista wyjątków pusta poza dwoma znanymi), **(2)** posłużyć jako ćwiczenie orkiestracji wielu subagentów: poznać możliwości Haiku, nauczyć się dzielić pracę i zlecać zadania agentowi. Dziennik doświadczeń prowadzony jest na bieżąco w sekcji [Dziennik](#dziennik-orkiestracji). Powiązane: [[Learning-Slice-Plan]], [[Roadmap]].
+
+## Role
+
+| Rola | Kto | Co robi | Czego NIE robi |
+| --- | --- | --- | --- |
+| **Orkiestrator** | Sonnet (sesja główna) | pisze specyfikacje, dzieli pracę, scala gałęzie, uruchamia bramki, decyduje o przejściu do następnej fazy, wdraża | nie pisze kodu produktu (drobne dokumenty i scalanie tak) |
+| **Wykonawca** | Haiku (`haiku-coder`) | implementuje jeden dokładnie opisany krok, jeden commit na krok, raportuje przez `SubagentHandback` | nie decyduje o zakresie, nie ruszy bazy ani migracji |
+| **Recenzent** | Haiku (osobna instancja, tylko do odczytu) | czyta cały diff fazy z listą kontrolną i zgłasza ryzyka | nie poprawia kodu, nie widzi raportu wykonawcy przed własną oceną |
+| **QA** | Haiku + orkiestrator | uruchamia skrypty przeglądarkowe i zbiera asercje; zrzuty ogląda orkiestrator | nie ocenia wyglądu |
+
+Zasada zaufania: **raport agenta jest hipotezą**. Po każdej fazie orkiestrator sam uruchamia bramkę i czyta ryzykowne fragmenty diffu (SQL, auth, usuwanie, kolejność skutków ubocznych).
+
+## Bramki
+
+- **Bramka lokalna** (`npm run gate`, tworzona w fazie 0): lint (0 ostrzeżeń), `tsc -b`, `tsc -p tsconfig.server.json`, `npm test` (w tym kanarek architektury), `npm run build`, `npm run build:api`, `npm run test:ui`, `test:mcp` pod `flock` z kontrolą portu 8888. Wersja szybka (`gate:fast`): bez build, test:ui i test:mcp.
+- **Bramka fazy** = bramka lokalna zielona **na zmergowanym drzewie** + kanarek: liczba wpisów na liście wyjątków **maleje** (zapadka) + zgodność z listą „co ma zniknąć" w specyfikacji fazy.
+- **Bramka Preview**: wdrożenie `Ready`, `GET /api/health`, kontrole bez logowania (401 / 404), z tokenem osobistym: `tools/list` (52 narzędzia), odczyty REST i MCP, `media_upload_from_url` na prawdziwym adresie, zrzuty kluczowych stron ze zmiennymi środowiska Preview.
+- **Bramka promocji**: wszystkie powyższe zielone + brak nierozwiązanych znalezisk recenzenta + plan wycofania gotowy.
+
+## Fazy
+
+| Faza | Zakres | Wykonawcy | Równolegle? | Bramka na wyjściu |
+| --- | --- | --- | --- | --- |
+| **0. Przygotowanie** | `scripts/gate.sh` + `npm run gate`, `gate:fast`; kalibracja Haiku na małym zadaniu | 1 × Haiku | nie | gate działa na czystym drzewie |
+| **1. Trzy niezależne naprawy** (worktree, rozłączne pliki) | **1A** frontend sloty: `ResultView` bierze slot (`ProgressLine`, odświeżanie postępu) z `QuizPlay`; `VerbSlide`/`VerbTable` biorą slot `badge` z `Verbs`/`LessonView` (usuwa `f-quizzes→f-progress` ×2, `f-learning→f-progress` ×2). **1B** platforma: `Viewer`/`viewerOf`/`canReadClasses` z `classAccess` do `server/viewer.ts`; schematy tokenów i uwag z `shared/quiz/schema.ts` do `src/shared/platform/` (usuwa `mcp-platform→classes` ×3, `platform→shared-quizzes`, `f-platform→shared-quizzes` ×3, `mcp-platform→shared-quizzes`). **1C** media i próby: narzędzia mediów dostają od korzenia funkcję opisującą właścicieli (zamiast `quizRepo`), `attemptsRepo` bez importu z klas (usuwa `media→quizzes`, `quizzes→classes` ×2 i wyjątek twardej reguły) | 3 × Haiku | **tak** (3 worktree) | po scaleniu: bramka lokalna + wpisy zniknęły |
+| **2. Przesunięcie granicy quizy/nauka/postęp** (jeden wykonawca, jedna gałąź — te same pliki) | **2A** rejestr zdarzenia „lekcja ukończona" w nauce; powtórki i seria rejestrują się w module postępu (`progressGradeHooks`, `lessonCompletedHooks`), `learningGradeHooks` zostaje tylko z zaliczeniem egzaminu (usuwa `learning→progress` ×4). **2B** trasy generowania quizów z czasowników (`generate/irregular-verbs`, `retry-wrong`, powtórki) i narzędzie `verbs_list` przechodzą z modułu quizów do nauki, adresy URL bez zmian (usuwa `quizzes→learning` ×2, `quizzes→progress`) | 1 × Haiku (2 commity, kolejno) | nie | bramka lokalna + `test:mcp` bez zmian liczby przypadków |
+| **3. Domknięcie** | lista wyjątków kurczy się do 2 wpisów (typy `shared-types`, znane z audytu); dokumenty; manifest | 1 × Haiku | nie | kanarek zielony, zapadka potwierdzona |
+| **4. Recenzja i QA** | niezależna recenzja całego diffu 5.C (lista kontrolna poniżej); skrypty przeglądarkowe lokalnie (quiz, wynik, lekcja, tabela czasowników, edytor) na prawdziwej bazie i buckecie; porównanie z zrzutami sprzed zmian | 1 × Haiku (recenzent) + 1 × Haiku (QA) | **tak** (recenzja i QA są niezależne) | brak znalezisk blokujących |
+| **5. Preview** | `git push vercel-neon`, czekanie na build, bramka Preview | orkiestrator | nie | bramka Preview |
+| **6. Promocja** | `vercel --prod --yes`, weryfikacja produkcji (health, bundle, MCP przez konektor, cron), plan wycofania: `vercel rollback` do wdrożenia `f1e7a5kzf` | orkiestrator | nie | produkcja zielona |
+
+### Lista kontrolna recenzenta (faza 4)
+
+1. Czy któryś adres URL, metoda, kod odpowiedzi albo JSON odpowiedzi się zmienił? (powinno: nie)
+2. Czy kolejność skutków ubocznych przy ocenie quizu i ukończeniu lekcji jest ta sama (egzamin → zapis → powtórki → aktywność)? Czy błąd haka nadal nie gubi zapisanego podejścia?
+3. Czy bramki uprawnień (`write:quizzes`, `manage:classes`, `manage:users`) zostały przeniesione razem z kodem?
+4. Czy nie dodano re-eksportów, które odtwarzają usunięte krawędzie, i czy nie pojawił się kod martwy?
+5. Czy lista wyjątków jest tylko mniejsza, a wpisy usunięte, a nie obejście (np. przez `any`/`require`)?
+6. Czy testy dotykają zmienionych zachowań, czy tylko przeszły przez przypadek?
+
+### Rozwiązywanie konfliktów przy scalaniu (faza 1)
+
+- `scripts/arch-allowlist.json` jest generowany: po scaleniu **zawsze** `node scripts/arch-audit.mjs --print-allowlist > scripts/arch-allowlist.json`.
+- `api/index.mjs` jest generowany: po scaleniu `npm run build:api`, nigdy ręcznie.
+- Agenci **nie** edytują `docs/Roadmap.md` ani `CLAUDE.md` (wpisy zbiera orkiestrator).
+
+## Ryzyka i plan wycofania
+
+| Ryzyko | Skutek | Zabezpieczenie |
+| --- | --- | --- |
+| Zmiana kolejności skutków ubocznych oceny | utrata serii/powtórek | recenzja (pkt 2) + `test:mcp` + test jednostkowy rejestru |
+| Przeniesione trasy zmieniają adres | zepsuty klient | lista kontrolna pkt 1, `test:mcp` woła te same adresy |
+| Konflikty scalania w worktree | stracony czas | rozłączne pliki, generowane pliki odtwarzane |
+| `test:mcp` na wspólnej bazie z dwoma agentami | skasowane dane testowe | `flock`, filtr właściciela |
+| Wdrożenie psuje produkcję | przerwa | `vercel rollback` do `f1e7a5kzf`; baza bez migracji w tym cyklu |
+
+## Poza zakresem tego cyklu
+
+Przenoszenie plików do `server/modules/*` i `src/features/*` (5.D), podział `shared/quiz/types.ts` (zostają dwa wpisy `shared-types`), Biblioteka obrazów, `media_view`, test `media_upload_from_url` na Vercelu (wymaga tokenu), włączenie `MEDIA_URL_FETCH` na Production.
+
+## Metryki do dziennika
+
+Dla każdego zadania: czas, liczba tokenów i wywołań narzędzi (z powiadomienia o zakończeniu), czy sprawdzenia przeszły przy pierwszym podejściu, liczba odstępstw od specyfikacji, znaleziska recenzenta, przeróbki wykonane przez orkiestratora.
+
+## Dziennik orkiestracji
+
+| Faza / zadanie | Agent | Czas | Tokeny | Wywołania | Pierwsze podejście zielone? | Odstępstwa | Wnioski |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| (wypełniane na bieżąco) | | | | | | | |
