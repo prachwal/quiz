@@ -763,6 +763,76 @@ try {
   }
   // ==== END: verb images and author access to course_list ====
 
+  // ==== BEGIN: verb quizzes and lesson completion (characterization, phase 5.C-2) ====
+  // Characterizes the verb quiz routes (generate, onlyWeak, retry-wrong) and the side effects of completing a lesson
+  // (daily activity and verb reviews) so that moving them between modules cannot change URLs, statuses or effects.
+  // Every row is keyed by P (quiz owners, users, the throwaway course); generated quizzes are never cleaned by the app.
+  const LESSON_USER = `discord|${P}-lesson`
+  const NOWEAK_USER = `discord|${P}-noweak`
+  const verbQuizCleanup = async () => {
+    await pool().query('DELETE FROM verb_reviews WHERE user_id LIKE $1', [`%${P}%`])
+    await pool().query('DELETE FROM daily_activity WHERE user_id LIKE $1', [`%${P}%`])
+    await pool().query(`DELETE FROM quizzes WHERE kind = 'generated' AND owner_id LIKE $1`, [`%${P}%`])
+    await pool().query('DELETE FROM courses WHERE slug LIKE $1', [`${P}-verbs-%`])
+  }
+  await verbQuizCleanup()
+  try {
+    // (a) generate a mixed quiz of 5 random verbs for the plain user
+    const generated = await rest('/quizzes/generate/irregular-verbs', { method: 'POST', bearer: plainBearer, body: JSON.stringify({ count: 5, variant: 'mixed' }) })
+    check('REST generate irregular-verbs (mixed, 5) -> 201', generated.status === 201, generated.body)
+    check('REST generate irregular-verbs: the quiz has the requested 5 questions', generated.body?.questions?.length === 5, generated.body?.questions?.length)
+
+    // (b) error training for a user without any review data: 409 with the Polish message
+    const noWeakBearer = await token(NOWEAK_USER, [])
+    const weakless = await rest('/quizzes/generate/irregular-verbs', { method: 'POST', bearer: noWeakBearer, body: JSON.stringify({ count: 5, onlyWeak: true }) })
+    check('REST generate onlyWeak without review data -> 409 with the Polish message', weakless.status === 409 && String(weakless.body?.error).includes('Brak danych o słabych czasownikach'), weakless.body)
+
+    // (c) retry the mistakes: the question ids of the generated quiz carry verb ids; unknown ids have none
+    const generatedId: string = generated.body?.id
+    const questionIds = (generated.body?.questions ?? []).map((q: any) => q.id)
+    const retry = await rest(`/quizzes/${generatedId}/retry-wrong`, { method: 'POST', bearer: plainBearer, body: JSON.stringify({ questionIds }) })
+    check('REST retry-wrong with the questions of a generated quiz -> 201 and a new quiz', retry.status === 201 && typeof retry.body?.id === 'string' && retry.body.id !== generatedId, retry.body)
+    const unmapped = await rest(`/quizzes/${generatedId}/retry-wrong`, { method: 'POST', bearer: plainBearer, body: JSON.stringify({ questionIds: [randomUUID()] }) })
+    check('REST retry-wrong with ids that map to no verb -> 409', unmapped.status === 409, unmapped.body)
+
+    // (d) lesson completion: a throwaway course with two real verbs; a fresh user completes the lesson twice
+    const [v1, v2] = (await listVerbs()).slice(0, 2)
+    const verbCourse = await pool().query<{ id: string }>(
+      'INSERT INTO courses (slug, title, description) VALUES ($1, $2, $3) RETURNING id',
+      [`${P}-verbs-${randomUUID()}`, `${P} kurs czasowników`, 'test'],
+    )
+    const verbCourseId = verbCourse.rows[0].id
+    const verbLesson = await pool().query<{ id: string }>(
+      "INSERT INTO lessons (course_id, position, title, intro) VALUES ($1, 1, $2, '') RETURNING id",
+      [verbCourseId, `${P} lekcja czasowników`],
+    )
+    const verbLessonId = verbLesson.rows[0].id
+    await pool().query('INSERT INTO lesson_verbs (lesson_id, verb_id, position) VALUES ($1, $2, 1), ($1, $3, 2)', [verbLessonId, v1.id, v2.id])
+    const lessonBearer = await token(LESSON_USER, [])
+    const completePath = `/courses/${verbCourseId}/lessons/${verbLessonId}/complete`
+    const lessonActivity = async () =>
+      (await pool().query<{ n: number }>('SELECT COALESCE(SUM(lessons_completed), 0)::int AS n FROM daily_activity WHERE user_id = $1', [LESSON_USER])).rows[0].n
+    const lessonReviews = async () =>
+      (await pool().query<{ verb_id: number }>('SELECT verb_id FROM verb_reviews WHERE user_id = $1 ORDER BY verb_id', [LESSON_USER])).rows.map((r) => r.verb_id)
+    const expectedVerbs = [v1.id, v2.id].sort((a, b) => a - b)
+
+    const firstComplete = await rest(completePath, { method: 'POST', bearer: lessonBearer })
+    check('lesson complete -> 200 { ok: true }', firstComplete.status === 200 && JSON.stringify(firstComplete.body) === '{"ok":true}', firstComplete.body)
+    check('lesson complete: daily activity counts one completed lesson', (await lessonActivity()) === 1, await lessonActivity())
+    check('lesson complete: verb reviews exist for exactly the lesson verbs', JSON.stringify(await lessonReviews()) === JSON.stringify(expectedVerbs), await lessonReviews())
+
+    const secondComplete = await rest(completePath, { method: 'POST', bearer: lessonBearer })
+    check('lesson complete again -> 200 { ok: true }', secondComplete.status === 200 && JSON.stringify(secondComplete.body) === '{"ok":true}', secondComplete.body)
+    check('lesson complete again: daily activity is unchanged (still one lesson)', (await lessonActivity()) === 1, await lessonActivity())
+    check('lesson complete again: no duplicate verb review rows', JSON.stringify(await lessonReviews()) === JSON.stringify(expectedVerbs), await lessonReviews())
+
+    const unknownLesson = await rest(`/courses/${verbCourseId}/lessons/${randomUUID()}/complete`, { method: 'POST', bearer: lessonBearer })
+    check('lesson complete with an unknown lesson id -> 404', unknownLesson.status === 404, unknownLesson.body)
+  } finally {
+    await verbQuizCleanup()
+  }
+  // ==== END: verb quizzes and lesson completion (characterization, phase 5.C-2) ====
+
   // ==== media cleanup (Media-Storage-Plan S1, request path) — own section, keep it together on merges =========
   // A stale pending row (older than an hour) of the same author disappears, with its object, when that author starts
   // a new upload; a fresh pending row and another author's stale row stay. Uploads go through the browser route.
