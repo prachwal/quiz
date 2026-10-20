@@ -865,7 +865,7 @@ try {
       const correctText = editorById.get(id)?.options.find((o: any) => o.isCorrect)?.text ?? ''
       answers[id] = { text: index < RIGHT_COUNT ? correctText : 'zxqv' }
     })
-    check('grade side effects: every question has a correct text in the answers view', questionIds.every((id) => answers[id].text !== '' && answers[id].text !== 'zxqv'), answers)
+    check('grade side effects: every question to be answered right has a correct text in the answers view', questionIds.slice(0, RIGHT_COUNT).every((id) => answers[id].text !== ''), answers)
 
     // the verb behind each question (questions.verb_id, set by buildVerbQuiz); the five verbs must be distinct
     const verbOf = new Map((await pool().query<{ id: string; verb_id: number }>('SELECT id, verb_id FROM questions WHERE quiz_id = $1', [gradedQuizId])).rows.map((r) => [r.id, r.verb_id]))
