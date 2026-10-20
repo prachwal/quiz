@@ -24462,8 +24462,8 @@ var require_timing_safe_equal = __commonJS({
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var crypto_1 = __require("crypto");
-    var timingSafeEqual = crypto_1.timingSafeEqual;
-    exports.default = timingSafeEqual;
+    var timingSafeEqual2 = crypto_1.timingSafeEqual;
+    exports.default = timingSafeEqual2;
   }
 });
 
@@ -63357,69 +63357,21 @@ function buildVerbQuiz(verbs, pool2, variant, title, description) {
 }
 var randomSample = (items, count) => shuffled(items).slice(0, count);
 
-// server/irregularVerbs.ts
-var VERB_SELECT = `
-  SELECT v.id, v.base, v.cefr_level, d.code AS difficulty, p.code AS popularity, pt.code AS pattern,
-         v.example_en, v.example_pl,
-         ARRAY(SELECT f.form FROM verb_forms f WHERE f.verb_id = v.id AND f.form_type = 'past_simple'
-               ORDER BY f.position) AS past_simple,
-         ARRAY(SELECT f.form FROM verb_forms f WHERE f.verb_id = v.id AND f.form_type = 'past_participle'
-               ORDER BY f.position) AS past_participle,
-         ARRAY(SELECT m.translation_pl FROM verb_meanings m WHERE m.verb_id = v.id
-               ORDER BY m.position) AS meanings
-  FROM irregular_verbs v
-  JOIN difficulty_levels d ON d.id = v.difficulty_id
-  JOIN popularity_tiers p ON p.id = v.popularity_id
-  JOIN verb_patterns pt ON pt.id = v.pattern_id`;
-var toVerb = (row) => ({
-  id: row.id,
-  base: row.base,
-  cefrLevel: row.cefr_level,
-  difficulty: row.difficulty,
-  popularity: row.popularity,
-  pattern: row.pattern,
-  pastSimple: row.past_simple,
-  pastParticiple: row.past_participle,
-  meanings: row.meanings,
-  exampleEn: row.example_en,
-  examplePl: row.example_pl
-});
-var query = async (text2, values = []) => await pool().query(text2, values);
-async function listVerbs(filter = {}) {
-  const conditions = ["v.cefr_level = $1"];
-  const values = [filter.level ?? "B2"];
+// server/verbFilter.ts
+var DEFAULT_VERB_LEVEL = "B2";
+function verbConditions(filter) {
+  const conditions = [];
+  const values = [];
   const add = (sql, value2) => {
     values.push(value2);
     conditions.push(sql.replace("?", `$${values.length}`));
   };
+  if (filter.level !== void 0 || !filter.ids) add("v.cefr_level = ?", filter.level ?? DEFAULT_VERB_LEVEL);
   if (filter.difficulty) add("d.code = ?", filter.difficulty);
   if (filter.popularity) add("p.code = ?", filter.popularity);
   if (filter.pattern) add("pt.code = ?", filter.pattern);
   if (filter.ids) add("v.id = ANY(?::int[])", filter.ids);
-  const { rows } = await query(`${VERB_SELECT} WHERE ${conditions.join(" AND ")} ORDER BY v.base`, values);
-  return rows.map(toVerb);
-}
-var VARIANT_LABEL = {
-  mixed: "losowy quiz",
-  typing: "wpisywanie odpowiedzi",
-  choice: "wyb\xF3r odpowiedzi",
-  translation: "t\u0142umaczenie"
-};
-async function generateIrregularVerbsQuiz(options) {
-  const pool2 = await listVerbs();
-  const filtered = pool2.filter(
-    (v) => (!options.difficulty || v.difficulty === options.difficulty) && (!options.popularity || v.popularity === options.popularity)
-  );
-  const chosen = randomSample(filtered, options.count);
-  const groups = [options.difficulty && `trudno\u015B\u0107: ${options.difficulty}`, options.popularity && `popularno\u015B\u0107: ${options.popularity}`].filter(Boolean).join(", ");
-  const quiz = buildVerbQuiz(
-    chosen,
-    pool2,
-    options.variant,
-    `Czasowniki nieregularne B2 \u2013 ${VARIANT_LABEL[options.variant]}`,
-    `${chosen.length} pyta\u0144 z czasownik\xF3w nieregularnych (poziom B2${groups ? `; ${groups}` : ""}).`
-  );
-  return { quiz, difficulty: options.difficulty ?? null };
+  return { conditions, values };
 }
 
 // src/shared/media/upload.ts
@@ -63443,6 +63395,8 @@ var MEDIA_CACHE_CONTROL = "public, max-age=31536000, immutable";
 var MEDIA_MEMORY_DEFAULT_BASE_URL = "https://media.test";
 var MEDIA_URL_FETCHES_PER_HOUR = 20;
 var MEDIA_PRESIGN_SECONDS = 15 * 60;
+var MEDIA_PENDING_MAX_AGE_MS = 60 * 60 * 1e3;
+var MEDIA_UNREFERENCED_MAX_AGE_MS = 24 * 60 * 60 * 1e3;
 
 // server/media/repo.ts
 var MediaRefError = class extends Error {
@@ -63573,6 +63527,64 @@ async function remove(id, db = pool()) {
     throw error62;
   }
 }
+async function stalePendingOf(ownerId, olderThan, limit = 200, db = pool()) {
+  const { rows } = await db.query(
+    `SELECT ${MEDIA_COLUMNS}
+       FROM media
+      WHERE status = 'pending'
+        AND created_at < $2
+        AND ($1::text IS NULL OR owner_id = $1)
+      ORDER BY created_at, id
+      LIMIT $3`,
+    [ownerId, olderThan.toISOString(), Math.min(Math.max(Math.trunc(limit), 1), 1e3)]
+  );
+  return rows.map(toRow);
+}
+async function unreferencedReadyBefore(olderThan, limit = 200, db = pool()) {
+  const { rows } = await db.query(
+    `SELECT ${MEDIA_COLUMNS}
+       FROM media AS m
+      WHERE m.status = 'ready'
+        AND m.created_at < $1
+        AND NOT EXISTS (SELECT 1 FROM media_refs AS r WHERE r.media_id = m.id)
+      ORDER BY m.created_at, m.id
+      LIMIT $2`,
+    [olderThan.toISOString(), Math.min(Math.max(Math.trunc(limit), 1), 1e3)]
+  );
+  return rows.map(toRow);
+}
+async function countStale(pendingBefore, unreferencedBefore, db = pool()) {
+  const { rows } = await db.query(
+    `SELECT (
+        (SELECT COUNT(*) FROM media WHERE status = 'pending' AND created_at < $1)
+        +
+        (SELECT COUNT(*) FROM media AS m
+          WHERE m.status = 'ready' AND m.created_at < $2
+            AND NOT EXISTS (SELECT 1 FROM media_refs AS r WHERE r.media_id = m.id))
+      )::int AS total`,
+    [pendingBefore.toISOString(), unreferencedBefore.toISOString()]
+  );
+  return rows[0]?.total ?? 0;
+}
+async function lockForRemoval(client, ids) {
+  if (ids.length === 0) return [];
+  const { rows: locked } = await client.query(
+    `SELECT id::text AS id, key FROM media WHERE id = ANY($1::uuid[]) ORDER BY id FOR UPDATE`,
+    [ids.filter(isMediaId)]
+  );
+  if (locked.length === 0) return [];
+  const { rows: referenced } = await client.query(
+    `SELECT DISTINCT media_id::text AS id FROM media_refs WHERE media_id = ANY($1::uuid[])`,
+    [locked.map((row) => row.id)]
+  );
+  const busy = new Set(referenced.map((row) => row.id));
+  return locked.map((row) => ({ ...row, referenced: busy.has(row.id) }));
+}
+async function deleteRows(client, ids) {
+  if (ids.length === 0) return 0;
+  const { rowCount } = await client.query(`DELETE FROM media WHERE id = ANY($1::uuid[])`, [ids.filter(isMediaId)]);
+  return rowCount ?? 0;
+}
 async function countsToday(ownerId, db = pool()) {
   const { rows } = await db.query(
     `SELECT COUNT(*)::int AS files, COALESCE(SUM(size_bytes), 0)::bigint AS bytes
@@ -63631,6 +63643,98 @@ async function syncRefs(ownerKind, ownerId, mediaIds, client) {
   } finally {
     own2.release();
   }
+}
+
+// server/verbMedia.ts
+function imageField(imageMediaId) {
+  return imageMediaId ? { imageMediaId } : {};
+}
+function verbImageIds(verbs) {
+  return verbs.flatMap((verb) => verb.imageMediaId ? [verb.imageMediaId] : []);
+}
+function verbListBody(verbs, media) {
+  return Object.keys(media).length === 0 ? verbs : { verbs, media };
+}
+
+// server/irregularVerbs.ts
+var VERB_SELECT = `
+  SELECT v.id, v.base, v.cefr_level, d.code AS difficulty, p.code AS popularity, pt.code AS pattern,
+         v.example_en, v.example_pl, v.image_media_id,
+         ARRAY(SELECT f.form FROM verb_forms f WHERE f.verb_id = v.id AND f.form_type = 'past_simple'
+               ORDER BY f.position) AS past_simple,
+         ARRAY(SELECT f.form FROM verb_forms f WHERE f.verb_id = v.id AND f.form_type = 'past_participle'
+               ORDER BY f.position) AS past_participle,
+         ARRAY(SELECT m.translation_pl FROM verb_meanings m WHERE m.verb_id = v.id
+               ORDER BY m.position) AS meanings
+  FROM irregular_verbs v
+  JOIN difficulty_levels d ON d.id = v.difficulty_id
+  JOIN popularity_tiers p ON p.id = v.popularity_id
+  JOIN verb_patterns pt ON pt.id = v.pattern_id`;
+var toVerb = (row) => ({
+  id: row.id,
+  base: row.base,
+  cefrLevel: row.cefr_level,
+  difficulty: row.difficulty,
+  popularity: row.popularity,
+  pattern: row.pattern,
+  pastSimple: row.past_simple,
+  pastParticiple: row.past_participle,
+  meanings: row.meanings,
+  exampleEn: row.example_en,
+  examplePl: row.example_pl,
+  ...imageField(row.image_media_id)
+});
+var query = async (text2, values = []) => await pool().query(text2, values);
+async function listVerbs(filter = {}) {
+  const { conditions, values } = verbConditions(filter);
+  const { rows } = await query(`${VERB_SELECT} WHERE ${conditions.join(" AND ")} ORDER BY v.base`, values);
+  return rows.map(toVerb);
+}
+async function setVerbImage(verbId, mediaId2) {
+  const client = await pool().connect();
+  try {
+    await client.query("BEGIN");
+    const current = await client.query(
+      "SELECT image_media_id FROM irregular_verbs WHERE id = $1 FOR UPDATE",
+      [verbId]
+    );
+    const row = current.rows[0];
+    if (!row) {
+      await client.query("ROLLBACK");
+      return null;
+    }
+    await syncRefs("verb", String(verbId), mediaId2 ? [mediaId2] : [], client);
+    await client.query("UPDATE irregular_verbs SET image_media_id = $2 WHERE id = $1", [verbId, mediaId2]);
+    await client.query("COMMIT");
+    return { before: row.image_media_id, after: mediaId2 };
+  } catch (error62) {
+    await client.query("ROLLBACK").catch(() => void 0);
+    throw error62;
+  } finally {
+    client.release();
+  }
+}
+var VARIANT_LABEL = {
+  mixed: "losowy quiz",
+  typing: "wpisywanie odpowiedzi",
+  choice: "wyb\xF3r odpowiedzi",
+  translation: "t\u0142umaczenie"
+};
+async function generateIrregularVerbsQuiz(options) {
+  const pool2 = await listVerbs();
+  const filtered = pool2.filter(
+    (v) => (!options.difficulty || v.difficulty === options.difficulty) && (!options.popularity || v.popularity === options.popularity)
+  );
+  const chosen = randomSample(filtered, options.count);
+  const groups = [options.difficulty && `trudno\u015B\u0107: ${options.difficulty}`, options.popularity && `popularno\u015B\u0107: ${options.popularity}`].filter(Boolean).join(", ");
+  const quiz = buildVerbQuiz(
+    chosen,
+    pool2,
+    options.variant,
+    `Czasowniki nieregularne B2 \u2013 ${VARIANT_LABEL[options.variant]}`,
+    `${chosen.length} pyta\u0144 z czasownik\xF3w nieregularnych (poziom B2${groups ? `; ${groups}` : ""}).`
+  );
+  return { quiz, difficulty: options.difficulty ?? null };
 }
 
 // server/coursesRepo.ts
@@ -77343,8 +77447,22 @@ function withinDailyLimits(today, sizeBytes) {
   return today.files < MEDIA_DAILY_FILES && today.bytes + sizeBytes <= MEDIA_DAILY_BYTES;
 }
 
+// server/media/cleanupPolicy.ts
+import { createHash as createHash3, timingSafeEqual } from "node:crypto";
+var CLEANUP_BATCH_SIZE = 200;
+var CLEANUP_TIME_BUDGET_MS = 2e4;
+var pendingCutoff = (now) => new Date(now.getTime() - MEDIA_PENDING_MAX_AGE_MS);
+var unreferencedCutoff = (now) => new Date(now.getTime() - MEDIA_UNREFERENCED_MAX_AGE_MS);
+var withinBudget = (startedAt, now, budgetMs = CLEANUP_TIME_BUDGET_MS) => now - startedAt < budgetMs;
+function cronGuard(secret, authorization) {
+  if (secret === void 0 || secret.trim() === "") return "disabled";
+  if (authorization === void 0) return "unauthorized";
+  const digest = (value2) => createHash3("sha256").update(value2).digest();
+  return timingSafeEqual(digest(authorization), digest(`Bearer ${secret}`)) ? "ok" : "unauthorized";
+}
+
 // server/media/uploads.ts
-import { createHash as createHash3 } from "node:crypto";
+import { createHash as createHash4 } from "node:crypto";
 
 // server/media/sniff.ts
 function u16be(bytes, at) {
@@ -77458,7 +77576,7 @@ function sniffUpload(bytes, maxBytes) {
   if (!image) return { ok: false, reason: NOT_SUPPORTED_TYPE };
   return { ok: true, value: image };
 }
-var sha256Of = (bytes) => createHash3("sha256").update(bytes).digest("hex");
+var sha256Of = (bytes) => createHash4("sha256").update(bytes).digest("hex");
 function verifyCompletion(input2) {
   if (input2.bytes.byteLength !== input2.declaredSize) {
     return { ok: false, reason: `Rozmiar pliku w magazynie (${input2.bytes.byteLength} B) nie zgadza si\u0119 z zadeklarowanym (${input2.declaredSize} B).` };
@@ -77591,6 +77709,31 @@ async function deleteMedia(runtime, input2) {
 async function mediaDetails(input2) {
   const row = await ownedMedia(input2.id, input2.userId, input2.isAdmin);
   return { row, references: await referencesOf(row.id) };
+}
+function warnStorageFailure(action, mediaId2, error62) {
+  console.warn(
+    JSON.stringify({
+      level: "warn",
+      event: "media.storage.remove_failed",
+      action,
+      mediaId: mediaId2,
+      message: error62 instanceof Error ? error62.message : String(error62)
+    })
+  );
+}
+async function removeStalePendingOf(runtime, ownerId, now) {
+  const stale = await stalePendingOf(ownerId, pendingCutoff(now));
+  let removed = 0;
+  for (const row of stale) {
+    try {
+      await runtime.storage.remove(row.key);
+    } catch (error62) {
+      warnStorageFailure("upload-start", row.id, error62);
+    }
+    const result = await remove(row.id);
+    if (result.status === "removed") removed += 1;
+  }
+  return removed;
 }
 var urlFetchesLastHour = (ownerId, now) => countBySourceSince(ownerId, "mcp-url", new Date(now.getTime() - 60 * 60 * 1e3));
 
@@ -77884,7 +78027,7 @@ function registerAssignmentTools(server, ctx, guards) {
       annotations: { readOnlyHint: true }
     },
     async () => {
-      if (!canReadClasses(v)) return needTeacherOrAdmin();
+      if (!canReadClasses(v) && !ctx.canWriteQuizzes) return needTeacherOrAdmin();
       const [list, lessons] = await Promise.all([listCourses(null), listLessonBriefs()]);
       return text(
         list.map((c) => ({
@@ -78570,6 +78713,31 @@ function registerQuizTools(server, ctx) {
     async ({ limit, ...filter }) => text((await listVerbs(filter)).slice(0, limit))
   );
   server.registerTool(
+    "verb_set_image",
+    {
+      title: "Ilustracja czasownika",
+      description: "Ustawia ilustracj\u0119 czasownika nieregularnego (verbId z verbs_list; mediaId z media_upload albo media_upload_from_url). Plik musi by\u0107 gotowy (nie w stanie pending). mediaId=null usuwa ilustracj\u0119. Ilustracja pokazuje si\u0119 na slajdzie lekcji i w katalogu czasownik\xF3w. Zmiana trafia do audytu (poprzednie i nowe id pliku). Wymaga write:quizzes.",
+      inputSchema: {
+        verbId: external_exports.number().int().positive().describe("Id czasownika z verbs_list"),
+        mediaId: external_exports.string().uuid().nullable().describe("Id gotowego pliku albo null, aby usun\u0105\u0107 ilustracj\u0119")
+      },
+      annotations: { idempotentHint: true }
+    },
+    async ({ verbId, mediaId: mediaId2 }) => {
+      if (!ctx.canWriteQuizzes) return needQuizWrite();
+      let change;
+      try {
+        change = await setVerbImage(verbId, mediaId2);
+      } catch (error62) {
+        if (error62 instanceof MediaRefError) return failure2(error62.message);
+        throw error62;
+      }
+      if (!change) return failure2("Nie znaleziono czasownika.");
+      await audit(ctx, "verb_set_image", { id: String(verbId) }, { verbId, mediaBefore: change.before, mediaAfter: change.after });
+      return text({ verbId, imageMediaId: change.after });
+    }
+  );
+  server.registerTool(
     "quiz_create",
     {
       title: "Utw\xF3rz quiz",
@@ -78634,7 +78802,7 @@ function buildServer(req) {
   const server = new McpServer({
     name: "quiz",
     title: "Quiz",
-    version: "2.3.0",
+    version: "2.4.0",
     icons: [{ src: "https://quiz-vercel-rho.vercel.app/mcp-icon.png", mimeType: "image/png", sizes: ["1254x1254"] }]
   });
   registerQuizTools(server, ctx);
@@ -78898,6 +79066,92 @@ function registerClassRoutes(router) {
   });
 }
 
+// server/media/cleanup.ts
+var CHUNK_SIZE = 50;
+async function removeBatch(runtime, rows, startedAt, origin) {
+  const counts = { removed: 0, failed: 0 };
+  for (let offset = 0; offset < rows.length; offset += CHUNK_SIZE) {
+    if (!withinBudget(startedAt, Date.now(), CLEANUP_TIME_BUDGET_MS)) break;
+    const chunk = rows.slice(offset, offset + CHUNK_SIZE);
+    const client = await pool().connect();
+    try {
+      await client.query("BEGIN");
+      const locked = await lockForRemoval(
+        client,
+        chunk.map((row) => row.id)
+      );
+      counts.failed += locked.filter((row) => row.referenced).length;
+      const removable = [];
+      for (const row of locked) {
+        if (row.referenced) continue;
+        if (!withinBudget(startedAt, Date.now(), CLEANUP_TIME_BUDGET_MS)) break;
+        try {
+          await runtime.storage.remove(row.key);
+          removable.push(row.id);
+        } catch (error62) {
+          counts.failed += 1;
+          warnStorageFailure(origin, row.id, error62);
+        }
+      }
+      const deleted = await deleteRows(client, removable);
+      await client.query("COMMIT");
+      counts.removed += deleted;
+    } catch (error62) {
+      await client.query("ROLLBACK").catch(() => void 0);
+      counts.failed += chunk.length;
+      console.error(
+        JSON.stringify({ level: "error", event: "media.cleanup.chunk_failed", origin, message: error62 instanceof Error ? error62.message : String(error62) })
+      );
+    } finally {
+      client.release();
+    }
+  }
+  return counts;
+}
+async function runMediaCleanup(now = /* @__PURE__ */ new Date()) {
+  const startedAt = Date.now();
+  let runtime;
+  try {
+    runtime = mediaRuntime();
+  } catch {
+    return { skipped: "storage-not-configured", pendingRemoved: 0, unreferencedRemoved: 0, failed: 0, remaining: 0, durationMs: Date.now() - startedAt };
+  }
+  const pendingBefore = pendingCutoff(now);
+  const unreferencedBefore = unreferencedCutoff(now);
+  const pending = await stalePendingOf(null, pendingBefore, CLEANUP_BATCH_SIZE);
+  const pendingCounts = await removeBatch(runtime, pending, startedAt, "pending");
+  const unreferenced = await unreferencedReadyBefore(unreferencedBefore, CLEANUP_BATCH_SIZE);
+  const readyCounts = await removeBatch(runtime, unreferenced, startedAt, "unreferenced");
+  const remaining = await countStale(pendingBefore, unreferencedBefore);
+  const result = {
+    pendingRemoved: pendingCounts.removed,
+    unreferencedRemoved: readyCounts.removed,
+    failed: pendingCounts.failed + readyCounts.failed,
+    remaining,
+    durationMs: Date.now() - startedAt
+  };
+  console.log(JSON.stringify({ level: "info", event: "media.cleanup", ...result }));
+  return result;
+}
+
+// server/media/cronRoute.ts
+var mediaCleanupRoute = async (req, res, next) => {
+  const decision = cronGuard(process.env.CRON_SECRET, req.get("authorization"));
+  if (decision === "disabled") {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  if (decision === "unauthorized") {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  try {
+    res.json(await runMediaCleanup());
+  } catch (error62) {
+    next(error62);
+  }
+};
+
 // server/media/routes.ts
 var import_express = __toESM(require_express2(), 1);
 var writer = requirePermission(WRITE_QUIZZES);
@@ -78958,6 +79212,7 @@ function registerMediaRoutes(router) {
     }
     const answer = await refusing2(async () => {
       const runtime = mediaRuntime();
+      await removeStalePendingOf(runtime, userOf(req), runtime.now());
       const started = await beginUpload(runtime, {
         ownerId: userOf(req),
         contentType: input2.contentType,
@@ -79070,7 +79325,8 @@ var examInput = external_exports.object({ count: external_exports.number().int()
 function registerLearningRoutes(router) {
   router.get("/irregular-verbs", async (req, res) => {
     const filter = verbQuery.parse(req.query);
-    res.json(await listVerbs(filter));
+    const verbs = await listVerbs(filter);
+    res.json(verbListBody(verbs, await resolveMedia(verbImageIds(verbs))));
   });
   router.get("/courses", async (req, res) => {
     res.json(await listCourses(currentUserId(req)));
@@ -79084,7 +79340,7 @@ function registerLearningRoutes(router) {
     const lessonId2 = idSchema.safeParse(req.params.lessonId);
     const lesson = lessonId2.success ? await getLesson(parseCourseId(req.params.id), lessonId2.data, currentUserId(req)) : null;
     if (!lesson) throw new HttpError(404, "Lesson not found");
-    res.json(withMedia(lesson, await resolveMedia(extractMediaIds(lesson.intro))));
+    res.json(withMedia(lesson, await resolveMedia([...extractMediaIds(lesson.intro), ...verbImageIds(lesson.verbs)])));
   });
   router.post("/courses/:id/lessons/:lessonId/complete", async (req, res) => {
     const lessonId2 = idSchema.safeParse(req.params.lessonId);
@@ -79434,6 +79690,7 @@ function createApp() {
     }
     res.set("Access-Control-Allow-Origin", "*").json(protectedResourceMetadata(origin, domain4));
   });
+  app2.get("/media/cleanup", mediaCleanupRoute);
   app2.use(authenticate, requireAuthenticated);
   app2.post("/mcp", mcpHandler);
   app2.all("/mcp", mcpNotAllowed);

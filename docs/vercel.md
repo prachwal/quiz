@@ -80,6 +80,21 @@ vercel --prod --yes
 Migracje zakładają 19 plików schematu i wypełniają dane słownikowe: 136 czasowników, 4 kursy,
 26 lekcji. Quizy użytkowników i próby trzeba wtedy odtworzyć z kopii zapasowej.
 
+### Dzienne sprzątanie mediów (Vercel Cron)
+
+`vercel.json` ma `crons`: `GET /api/media/cleanup` raz na dobę (`0 3 * * *`, UTC; limit planu Hobby to najwyżej raz
+dziennie). Endpoint nie jest za logowaniem, strzeże go `CRON_SECRET`: bez tej zmiennej odpowiada `404` i nic nie
+robi; z błędnym nagłówkiem `401`. Dodaj sekret (Production, losowe co najmniej 32 bajty):
+
+```bash
+openssl rand -base64 32 | vercel env add CRON_SECRET production
+```
+
+Vercel wysyła `Authorization: Bearer <CRON_SECRET>` przy każdym wywołaniu crona, gdy zmienna jest ustawiona dla
+projektu. Zmiana zmiennej wymaga ponownego wdrożenia. **Cron nie działa na deploymentach Preview** (tylko produkcja).
+Ręczne wywołanie produkcji: `curl -H "Authorization: Bearer $CRON_SECRET" https://quiz-vercel-rho.vercel.app/api/media/cleanup`.
+Co robi jednorazowy przebieg, opisuje [Media-Storage-Plan](Media-Storage-Plan.md) (S1).
+
 ## Weryfikacja
 
 ```bash

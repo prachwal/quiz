@@ -13,6 +13,7 @@ import { mediaKey } from './keys'
 import { withinDailyLimits } from './limits'
 import * as repo from './repo'
 import type { MediaRef, MediaRow } from './repo'
+import { pendingCutoff } from './cleanupPolicy'
 import { checkSize, DAILY_LIMIT_REASON, sha256Of, sniffUpload, verifyCompletion } from './uploads'
 
 /** A refusal the caller shows to the user (not a server error). `status` is used by the browser routes (MCP ignores it). */
@@ -201,6 +202,39 @@ export async function deleteMedia(runtime: MediaRuntime, input: { id: string; us
 export async function mediaDetails(input: { id: string; userId: string; isAdmin: boolean }): Promise<{ row: MediaRow; references: MediaRef[] }> {
   const row = await ownedMedia(input.id, input.userId, input.isAdmin)
   return { row, references: await repo.referencesOf(row.id) }
+}
+
+/** One structured warning line for a storage failure during cleanup (the request or the run goes on). */
+export function warnStorageFailure(action: string, mediaId: string, error: unknown): void {
+  console.warn(
+    JSON.stringify({
+      level: 'warn',
+      event: 'media.storage.remove_failed',
+      action,
+      mediaId,
+      message: error instanceof Error ? error.message : String(error),
+    }),
+  )
+}
+
+/**
+ * S1, request path: removes this author's `pending` rows older than an hour before a new upload starts. Each row's
+ * object goes first, best effort (a failure is logged and does not stop the request), then the row. Storage is not
+ * touched when the author has no stale rows. Returns the number of rows removed.
+ */
+export async function removeStalePendingOf(runtime: MediaRuntime, ownerId: string, now: Date): Promise<number> {
+  const stale = await repo.stalePendingOf(ownerId, pendingCutoff(now))
+  let removed = 0
+  for (const row of stale) {
+    try {
+      await runtime.storage.remove(row.key)
+    } catch (error) {
+      warnStorageFailure('upload-start', row.id, error)
+    }
+    const result = await repo.remove(row.id)
+    if (result.status === 'removed') removed += 1
+  }
+  return removed
 }
 
 /** Successful URL fetches of this author in the last hour (the rows the fetch created). */

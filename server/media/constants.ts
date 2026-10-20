@@ -32,3 +32,9 @@ export const MEDIA_URL_FETCHES_PER_HOUR = 20
 
 /** Presigned PUT lifetime for `media_create_upload` (the client should upload right away). */
 export const MEDIA_PRESIGN_SECONDS = 15 * 60
+
+/** Cleanup (Media-Storage-Plan S1): a `pending` row older than this was abandoned by its upload. */
+export const MEDIA_PENDING_MAX_AGE_MS = 60 * 60 * 1000
+
+/** Cleanup (S1): a `ready` row with no reference, older than this, is removed by the daily run (drafts stay a day). */
+export const MEDIA_UNREFERENCED_MAX_AGE_MS = 24 * 60 * 60 * 1000

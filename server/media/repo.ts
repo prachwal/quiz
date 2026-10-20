@@ -242,6 +242,91 @@ export async function remove(id: string, db: Db = pool()): Promise<RemoveResult>
   }
 }
 
+/**
+ * `pending` rows created before `olderThan`, oldest first, at most `limit`. `ownerId` null selects every author
+ * (the daily run); a string selects one author (the upload start). A pending row has no references (syncRefs only
+ * accepts `ready` files), so the result is safe to remove.
+ */
+export async function stalePendingOf(
+  ownerId: string | null,
+  olderThan: Date,
+  limit = 200,
+  db: Db = pool(),
+): Promise<MediaRow[]> {
+  const { rows } = await db.query<RawMediaRow>(
+    `SELECT ${MEDIA_COLUMNS}
+       FROM media
+      WHERE status = 'pending'
+        AND created_at < $2
+        AND ($1::text IS NULL OR owner_id = $1)
+      ORDER BY created_at, id
+      LIMIT $3`,
+    [ownerId, olderThan.toISOString(), Math.min(Math.max(Math.trunc(limit), 1), 1000)],
+  )
+  return rows.map(toRow)
+}
+
+/** `ready` rows created before `olderThan` that no reference points to, oldest first, at most `limit`. */
+export async function unreferencedReadyBefore(olderThan: Date, limit = 200, db: Db = pool()): Promise<MediaRow[]> {
+  const { rows } = await db.query<RawMediaRow>(
+    `SELECT ${MEDIA_COLUMNS}
+       FROM media AS m
+      WHERE m.status = 'ready'
+        AND m.created_at < $1
+        AND NOT EXISTS (SELECT 1 FROM media_refs AS r WHERE r.media_id = m.id)
+      ORDER BY m.created_at, m.id
+      LIMIT $2`,
+    [olderThan.toISOString(), Math.min(Math.max(Math.trunc(limit), 1), 1000)],
+  )
+  return rows.map(toRow)
+}
+
+/** How many rows the daily run would still remove (stale pending + unreferenced ready), for the run's `remaining`. */
+export async function countStale(pendingBefore: Date, unreferencedBefore: Date, db: Db = pool()): Promise<number> {
+  const { rows } = await db.query<{ total: number }>(
+    `SELECT (
+        (SELECT COUNT(*) FROM media WHERE status = 'pending' AND created_at < $1)
+        +
+        (SELECT COUNT(*) FROM media AS m
+          WHERE m.status = 'ready' AND m.created_at < $2
+            AND NOT EXISTS (SELECT 1 FROM media_refs AS r WHERE r.media_id = m.id))
+      )::int AS total`,
+    [pendingBefore.toISOString(), unreferencedBefore.toISOString()],
+  )
+  return rows[0]?.total ?? 0
+}
+
+/**
+ * Locks the given rows inside the caller's transaction (`FOR UPDATE`) and reports, for each row that still exists,
+ * its key and whether a reference exists. syncRefs takes `FOR SHARE` on the rows it references, so after this lock
+ * no reference can be added to these rows until the transaction ends. The reference check is a separate statement
+ * on purpose: it runs after the lock, so a reference committed by a racing save is seen.
+ */
+export async function lockForRemoval(
+  client: PoolClient,
+  ids: readonly string[],
+): Promise<{ id: string; key: string; referenced: boolean }[]> {
+  if (ids.length === 0) return []
+  const { rows: locked } = await client.query<{ id: string; key: string }>(
+    `SELECT id::text AS id, key FROM media WHERE id = ANY($1::uuid[]) ORDER BY id FOR UPDATE`,
+    [ids.filter(isMediaId)],
+  )
+  if (locked.length === 0) return []
+  const { rows: referenced } = await client.query<{ id: string }>(
+    `SELECT DISTINCT media_id::text AS id FROM media_refs WHERE media_id = ANY($1::uuid[])`,
+    [locked.map((row) => row.id)],
+  )
+  const busy = new Set(referenced.map((row) => row.id))
+  return locked.map((row) => ({ ...row, referenced: busy.has(row.id) }))
+}
+
+/** Deletes rows inside the caller's transaction; ON DELETE RESTRICT still refuses a referenced row (SQLSTATE 23503). */
+export async function deleteRows(client: PoolClient, ids: readonly string[]): Promise<number> {
+  if (ids.length === 0) return 0
+  const { rowCount } = await client.query(`DELETE FROM media WHERE id = ANY($1::uuid[])`, [ids.filter(isMediaId)])
+  return rowCount ?? 0
+}
+
 /** Files and bytes this author created today (UTC day, pending rows included). */
 export async function countsToday(ownerId: string, db: Db = pool()): Promise<{ files: number; bytes: number }> {
   const { rows } = await db.query<{ files: number; bytes: string }>(

@@ -748,6 +748,84 @@ try {
   }
   // ==== END: verb images and author access to course_list ====
 
+  // ==== media cleanup (Media-Storage-Plan S1, request path) — own section, keep it together on merges =========
+  // A stale pending row (older than an hour) of the same author disappears, with its object, when that author starts
+  // a new upload; a fresh pending row and another author's stale row stay. Uploads go through the browser route.
+  const uploadOf = (bytes: Buffer) => ({ contentType: 'image/png', size: bytes.length, sha256: sha(bytes) })
+  const backdate = (id: string) => pool().query(`UPDATE media SET created_at = now() - interval '2 hours' WHERE id = $1::uuid`, [id])
+  const cleanA = await token(`${ADMIN}-clean-a`, ['write:quizzes'])
+  const cleanB = await token(`${ADMIN}-clean-b`, ['write:quizzes'])
+  const staleA = await startUpload(cleanA, uploadOf(pngBytes(21, 21, 1)))
+  check('S1 upload start (author A, first stale candidate) is pending', staleA.status === 200 && staleA.body.status === 'pending', staleA.body)
+  await storage.put((await keyOf(staleA.body.mediaId)) as string, pngBytes(21, 21, 1), { contentType: 'image/png' })
+  const staleB = await startUpload(cleanB, uploadOf(pngBytes(22, 22, 1)))
+  check('S1 upload start (author B) is pending', staleB.status === 200 && staleB.body.status === 'pending', staleB.body)
+  await storage.put((await keyOf(staleB.body.mediaId)) as string, pngBytes(22, 22, 1), { contentType: 'image/png' })
+  const staleAKey = (await keyOf(staleA.body.mediaId)) as string
+  const staleBKey = (await keyOf(staleB.body.mediaId)) as string
+  await backdate(staleA.body.mediaId)
+  await backdate(staleB.body.mediaId)
+  const freshA = await startUpload(cleanA, uploadOf(pngBytes(23, 23, 1)))
+  check('S1 a new upload of author A starts', freshA.status === 200 && freshA.body.status === 'pending', freshA.body)
+  check('S1 stale pending row of the same author is removed', (await media.get(staleA.body.mediaId)) === null)
+  check('S1 stale pending object of the same author is removed from storage', (await storage.head(staleAKey)) === null)
+  check("S1 another author's stale pending row stays", (await media.get(staleB.body.mediaId)) !== null)
+  check("S1 another author's stale object stays in storage", (await storage.head(staleBKey)) !== null)
+  check('S1 the fresh pending row of author A stays', (await media.get(freshA.body.mediaId)) !== null)
+  await storage.put((await keyOf(freshA.body.mediaId)) as string, pngBytes(23, 23, 1), { contentType: 'image/png' })
+  const nextA = await startUpload(cleanA, uploadOf(pngBytes(24, 24, 1)))
+  check('S1 a second upload start keeps the fresh pending row', nextA.status === 200 && (await media.get(freshA.body.mediaId)) !== null)
+
+  // ---- daily run (S1, GET /api/media/cleanup): CRON_SECRET guard, then the stale rows of every author ----
+  if (process.env.CRON_SECRET !== 'e2e-cron-secret') throw new Error('CRON_SECRET must be e2e-cron-secret (scripts/mcp-local-e2e.sh sets it)')
+  const cronGet = (authorization?: string) => fetch(`${base}/media/cleanup`, { headers: authorization ? { Authorization: authorization } : {} })
+  check('cron without a header -> 401', (await cronGet()).status === 401)
+  check('cron with a wrong secret -> 401', (await cronGet('Bearer not-the-secret')).status === 401)
+  check('cron with the bare secret (no Bearer) -> 401', (await cronGet(process.env.CRON_SECRET)).status === 401)
+  const cronAuthor = `${ADMIN}-cron`
+  const cronBearer = await token(cronAuthor, ['write:quizzes'])
+  const oldPending = await startUpload(cronBearer, uploadOf(pngBytes(31, 31, 1)))
+  await storage.put((await keyOf(oldPending.body.mediaId)) as string, pngBytes(31, 31, 1), { contentType: 'image/png' })
+  await backdate(oldPending.body.mediaId)
+  const oldPendingKey = (await keyOf(oldPending.body.mediaId)) as string
+  const readyRow = async (seed: number, ageInterval: string | null, referencedBy?: string) => {
+    const id = randomUUID()
+    const bytes = pngBytes(seed, seed, 1)
+    const key = `media/2026/${id}.png`
+    await media.createPending({ id, key, contentType: 'image/png', sizeBytes: bytes.length, sha256: sha(bytes), source: 'script', ownerId: cronAuthor })
+    await media.markReady(id, { width: seed, height: seed })
+    await storage.put(key, bytes, { contentType: 'image/png' })
+    if (ageInterval) await pool().query(`UPDATE media SET created_at = now() - $2::interval WHERE id = $1::uuid`, [id, ageInterval])
+    if (referencedBy) await media.syncRefs('quiz', referencedBy, [id])
+    return { id, key }
+  }
+  const oldReady = await readyRow(32, '25 hours')
+  const oldReferenced = await readyRow(33, '25 hours', `${P}-cron-quiz`)
+  const freshReady = await readyRow(34, null)
+  const countSql = (sql: string) => pool().query<{ n: number }>(sql).then((r) => r.rows[0].n)
+  const preStalePending = await countSql(`SELECT COUNT(*)::int AS n FROM media WHERE status = 'pending' AND created_at < now() - interval '1 hour'`)
+  const preUnreferenced = await countSql(`SELECT COUNT(*)::int AS n FROM media AS m WHERE status = 'ready' AND created_at < now() - interval '24 hours' AND NOT EXISTS (SELECT 1 FROM media_refs AS r WHERE r.media_id = m.id)`)
+
+  const run1 = await cronGet(`Bearer ${process.env.CRON_SECRET}`)
+  const body1 = (await run1.json()) as any
+  check('cron with the secret -> 200', run1.status === 200, body1)
+  check('cron response: counts, failed, remaining, durationMs (no skipped)', typeof body1.pendingRemoved === 'number' && typeof body1.unreferencedRemoved === 'number' && body1.failed === 0 && body1.remaining === 0 && typeof body1.durationMs === 'number' && body1.skipped === undefined, body1)
+  check('cron pendingRemoved matches the stale pending rows of all authors', body1.pendingRemoved === Math.min(preStalePending, 200), { body1, preStalePending })
+  check('cron unreferencedRemoved matches the unreferenced ready rows of all authors', body1.unreferencedRemoved === Math.min(preUnreferenced, 200), { body1, preUnreferenced })
+  check('cron removed the stale pending row and its object', (await media.get(oldPending.body.mediaId)) === null && (await storage.head(oldPendingKey)) === null)
+  check('cron removed the unreferenced ready row and its object', (await media.get(oldReady.id)) === null && (await storage.head(oldReady.key)) === null)
+  check('cron kept the old ready row that has a reference (row and object)', (await media.get(oldReferenced.id)) !== null && (await storage.head(oldReferenced.key)) !== null)
+  check('cron kept the fresh ready row (row and object)', (await media.get(freshReady.id)) !== null && (await storage.head(freshReady.key)) !== null)
+  check('cron kept the fresh pending row of author A', (await media.get(freshA.body.mediaId)) !== null)
+  const run2 = (await (await cronGet(`Bearer ${process.env.CRON_SECRET}`)).json()) as any
+  check('second cron run removes nothing', body1.remaining === 0 && run2.pendingRemoved === 0 && run2.unreferencedRemoved === 0 && run2.failed === 0, run2)
+  check('a referenced file is still referenced after the cron', (await media.referencesOf(oldReferenced.id)).length === 1)
+  await pool().query(`DELETE FROM media_refs WHERE media_id = $1::uuid`, [oldReferenced.id])
+  await pool().query(`DELETE FROM media WHERE id = $1::uuid`, [oldReferenced.id])
+  await storage.remove(oldReferenced.key)
+  await pool().query(`DELETE FROM media WHERE id = $1::uuid`, [freshReady.id])
+  await storage.remove(freshReady.key)
+
   for (const c of [tTeacher, tAdminWrite, tAdmin, tOther, tPlain, writer2, quotaClient, adminBoth]) await c.close()
 } catch (error) {
   failures.push(`test crashed: ${(error as Error).stack ?? error}`)

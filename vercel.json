@@ -11,5 +11,8 @@
   ],
   "functions": {
     "api/index.mjs": { "maxDuration": 30 }
-  }
+  },
+  "crons": [
+    { "path": "/api/media/cleanup", "schedule": "0 3 * * *" }
+  ]
 }
