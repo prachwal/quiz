@@ -1,4 +1,7 @@
 import { Typography, theme } from 'antd'
+import { MediaImage } from '../media/MediaImage'
+import { RichText } from '../media/RichText'
+import { imageOnlyOption } from '../media/imageOnly'
 
 export const LETTERS = 'ABCDEFGHIJKLMNOPQRST'
 
@@ -16,19 +19,20 @@ export default function ChoiceTile({
   onClick: () => void
 }) {
   const { token } = theme.useToken()
+  const picture = imageOnlyOption(text)
   return (
     <button
       type="button"
       role={kind}
       aria-checked={selected}
-      className="choice-tile"
+      className={picture ? 'choice-tile choice-tile--image' : 'choice-tile'}
       onClick={onClick}
       style={{
         display: 'flex',
         alignItems: 'center',
         gap: 14,
         width: '100%',
-        minHeight: 76,
+        minHeight: picture ? 120 : 76,
         padding: '14px 18px',
         borderRadius: token.borderRadiusLG,
         border: `2px solid ${selected ? token.colorPrimary : token.colorBorder}`,
@@ -55,7 +59,15 @@ export default function ChoiceTile({
       >
         {label}
       </span>
-      <Typography.Text style={{ fontSize: 18, lineHeight: 1.4, fontWeight: selected ? 600 : 500, wordBreak: 'break-word' }}>{text}</Typography.Text>
+      {picture ? (
+        <span className="choice-tile__media">
+          <MediaImage mediaId={picture.mediaId} alt={picture.alt} />
+        </span>
+      ) : (
+        <Typography.Text style={{ fontSize: 18, lineHeight: 1.4, fontWeight: selected ? 600 : 500, wordBreak: 'break-word' }}>
+          <RichText text={text} />
+        </Typography.Text>
+      )}
     </button>
   )
 }

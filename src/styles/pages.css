@@ -65,6 +65,31 @@
   outline-offset: 2px;
 }
 
+/* an option that is only an image: a fixed-height box, the picture fits inside it (letter label stays) */
+.choice-tile--image {
+  align-items: stretch;
+}
+
+.choice-tile__media {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 120px;
+}
+
+.choice-tile__media .media-image {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  aspect-ratio: auto !important;
+  object-fit: contain;
+}
+
+.choice-tile__media .media-placeholder {
+  height: 100%;
+  min-height: 0;
+}
+
 /* hover effects only where hovering exists (no sticky hover after a tap) */
 @media (hover: hover) {
   .app-shell .lift-card:hover {

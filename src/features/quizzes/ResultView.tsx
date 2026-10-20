@@ -12,12 +12,14 @@ import { Link, useNavigate } from 'react-router-dom'
 import { errorMessage } from '../../app/api'
 import { useStartReviewMutation } from '../progress/api'
 import { useGenerateIrregularVerbsQuizMutation, useRetryWrongMutation } from './api'
+import { MediaProvider } from '../media/MediaProvider'
+import { RichText } from '../media/RichText'
 import SpeakButton from '../audio/SpeakButton'
 import { recallGenerate, rememberGenerate } from './lastGenerate'
 import { GENERATE_COUNT, REVIEW_COUNT, clampCount } from './counts'
 import ProgressLine from '../progress/ProgressLine'
 import { useScoreColors } from '../results/useScoreColors'
-import type { Answer } from '../../shared/quiz/engine'
+import { IMAGE_OPTION_TYPES, type Answer } from '../../shared/quiz/engine'
 import type { GradedAttempt, QuizDetail } from '../../shared/quiz/types'
 
 type Tone = 'success' | 'warning' | 'error'
@@ -119,6 +121,7 @@ function QuestionReview({
   correct,
   earned,
   points,
+  rich,
   givenText,
   correctLabel,
   correctText,
@@ -130,6 +133,8 @@ function QuestionReview({
   correct: boolean
   earned: number
   points: number
+  /** Choice questions: their option texts may hold images, so the answers go through RichText. */
+  rich: boolean
   givenText: string | undefined
   correctLabel: string
   correctText: string
@@ -156,7 +161,9 @@ function QuestionReview({
             <Typography.Text type="secondary" style={{ fontSize: 14, fontWeight: 500 }}>
               Pytanie {index + 1} · {correct ? 'dobrze' : 'źle'}
             </Typography.Text>
-            <div style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.4, wordBreak: 'break-word' }}>{prompt}</div>
+            <div style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.4, wordBreak: 'break-word' }}>
+              <RichText text={prompt} />
+            </div>
           </div>
           <Tag
             color={earned === points ? 'success' : earned > 0 ? 'warning' : 'error'}
@@ -176,13 +183,23 @@ function QuestionReview({
           <AnswerBox
             label="Twoja odpowiedź"
             tone={correct ? 'success' : 'error'}
-            value={givenText || <em style={{ color: token.colorTextTertiary }}>brak odpowiedzi</em>}
+            value={
+              givenText ? (
+                rich ? (
+                  <RichText text={givenText} />
+                ) : (
+                  givenText
+                )
+              ) : (
+                <em style={{ color: token.colorTextTertiary }}>brak odpowiedzi</em>
+              )
+            }
           />
           {!correct && (
             <AnswerBox
               label={correctLabel}
               tone="success"
-              value={correctText}
+              value={rich ? <RichText text={correctText} /> : correctText}
               action={
                 speakParts && (
                   <SpeakButton speakKey={`answer-${index}`} parts={speakParts} label="Odsłuchaj poprawną odpowiedź" />
@@ -204,7 +221,9 @@ function QuestionReview({
             }}
           >
             <BulbOutlined style={{ fontSize: 18, color: token.colorInfo, marginTop: 4 }} />
-            <Typography.Paragraph style={{ margin: 0, fontSize: 16, lineHeight: 1.6 }}>{explanation}</Typography.Paragraph>
+            <Typography.Paragraph style={{ margin: 0, fontSize: 16, lineHeight: 1.6 }}>
+              <RichText text={explanation} />
+            </Typography.Paragraph>
           </Flex>
         )}
       </Flex>
@@ -306,113 +325,116 @@ export default function ResultView({
   const subline = outcome ? outcome.subline : quiz.title
 
   return (
-    <Flex vertical gap={24}>
-      <Card
-        styles={{ body: { padding: 0 } }}
-        style={{
-          overflow: 'hidden',
-          background: `linear-gradient(160deg, ${toneBg} 0%, ${token.colorBgContainer} 55%)`,
-        }}
-      >
-        <Flex wrap align="center" justify="center" gap={32} className="result-hero">
-          <Progress
-            type="circle"
-            percent={result.percent}
-            size={168}
-            strokeWidth={9}
-            strokeColor={toneColor}
-            railColor={token.colorFillSecondary}
-            format={(p) => (
-              <Flex vertical align="center" gap={2}>
-                <span style={{ fontSize: 44, fontWeight: 700, lineHeight: 1, color: token.colorText }}>{p}%</span>
-                <span style={{ fontSize: 14, color: token.colorTextSecondary }}>wynik</span>
+    <MediaProvider media={result.media}>
+      <Flex vertical gap={24}>
+        <Card
+          styles={{ body: { padding: 0 } }}
+          style={{
+            overflow: 'hidden',
+            background: `linear-gradient(160deg, ${toneBg} 0%, ${token.colorBgContainer} 55%)`,
+          }}
+        >
+          <Flex wrap align="center" justify="center" gap={32} className="result-hero">
+            <Progress
+              type="circle"
+              percent={result.percent}
+              size={168}
+              strokeWidth={9}
+              strokeColor={toneColor}
+              railColor={token.colorFillSecondary}
+              format={(p) => (
+                <Flex vertical align="center" gap={2}>
+                  <span style={{ fontSize: 44, fontWeight: 700, lineHeight: 1, color: token.colorText }}>{p}%</span>
+                  <span style={{ fontSize: 14, color: token.colorTextSecondary }}>wynik</span>
+                </Flex>
+              )}
+            />
+            <Flex vertical gap={12} style={{ flex: '1 1 300px', minWidth: 0 }}>
+              <div className="result-headline">
+                <Typography.Title level={2} style={{ margin: 0, color: toneText, letterSpacing: -0.4 }}>
+                  {headline}
+                </Typography.Title>
+                <Typography.Text type="secondary" style={{ fontSize: 17 }}>
+                  {subline}
+                </Typography.Text>
+              </div>
+              <Flex wrap gap={12} className="stat-row">
+                <Stat label="Punkty" value={`${result.score} / ${result.maxScore}`} />
+                <Stat label="Poprawne" value={correctCount} color={token.colorSuccessText} />
+                <Stat label="Błędne" value={result.results.length - correctCount} color={token.colorErrorText} />
               </Flex>
-            )}
-          />
-          <Flex vertical gap={12} style={{ flex: '1 1 300px', minWidth: 0 }}>
-            <div className="result-headline">
-              <Typography.Title level={2} style={{ margin: 0, color: toneText, letterSpacing: -0.4 }}>
-                {headline}
-              </Typography.Title>
-              <Typography.Text type="secondary" style={{ fontSize: 17 }}>
-                {subline}
-              </Typography.Text>
-            </div>
-            <Flex wrap gap={12} className="stat-row">
-              <Stat label="Punkty" value={`${result.score} / ${result.maxScore}`} />
-              <Stat label="Poprawne" value={correctCount} color={token.colorSuccessText} />
-              <Stat label="Błędne" value={result.results.length - correctCount} color={token.colorErrorText} />
-            </Flex>
-            <Flex wrap gap={8} className="result-actions" style={{ marginTop: 4 }}>
-              {outcome ? (
-                outcome.actions
-              ) : isWeak ? (
-                <Button type="primary" size="large" icon={<ReloadOutlined />} loading={generating} onClick={() => void nextTraining()}>
-                  Kolejny trening błędów
-                </Button>
-              ) : isReview ? (
-                <Button type="primary" size="large" icon={<ReloadOutlined />} loading={startingReview} onClick={() => void nextReview()}>
-                  Kolejna powtórka
-                </Button>
-              ) : isGenerated ? (
-                <Button type="primary" size="large" icon={<ReloadOutlined />} loading={generating} onClick={() => void drawAnother()}>
-                  Losuj nowy quiz
-                </Button>
-              ) : (
-                <Button type="primary" size="large" icon={<ReloadOutlined />} onClick={onRestart}>
-                  Zagraj ponownie
-                </Button>
-              )}
-              {canRetryWrong && (
-                <Button size="large" loading={retrying} onClick={() => void retryMistakes()}>
-                  Powtórz błędne ({wrongIds.length})
-                </Button>
-              )}
-              <Link to="/results">
-                <Button size="large" icon={<HistoryOutlined />}>
-                  Historia wyników
-                </Button>
-              </Link>
-              <Link to="/">
-                <Button size="large" type="text" icon={<UnorderedListOutlined />}>
-                  Wszystkie quizy
-                </Button>
-              </Link>
+              <Flex wrap gap={8} className="result-actions" style={{ marginTop: 4 }}>
+                {outcome ? (
+                  outcome.actions
+                ) : isWeak ? (
+                  <Button type="primary" size="large" icon={<ReloadOutlined />} loading={generating} onClick={() => void nextTraining()}>
+                    Kolejny trening błędów
+                  </Button>
+                ) : isReview ? (
+                  <Button type="primary" size="large" icon={<ReloadOutlined />} loading={startingReview} onClick={() => void nextReview()}>
+                    Kolejna powtórka
+                  </Button>
+                ) : isGenerated ? (
+                  <Button type="primary" size="large" icon={<ReloadOutlined />} loading={generating} onClick={() => void drawAnother()}>
+                    Losuj nowy quiz
+                  </Button>
+                ) : (
+                  <Button type="primary" size="large" icon={<ReloadOutlined />} onClick={onRestart}>
+                    Zagraj ponownie
+                  </Button>
+                )}
+                {canRetryWrong && (
+                  <Button size="large" loading={retrying} onClick={() => void retryMistakes()}>
+                    Powtórz błędne ({wrongIds.length})
+                  </Button>
+                )}
+                <Link to="/results">
+                  <Button size="large" icon={<HistoryOutlined />}>
+                    Historia wyników
+                  </Button>
+                </Link>
+                <Link to="/">
+                  <Button size="large" type="text" icon={<UnorderedListOutlined />}>
+                    Wszystkie quizy
+                  </Button>
+                </Link>
+              </Flex>
             </Flex>
           </Flex>
+        </Card>
+
+        <ProgressLine />
+
+        <Typography.Title level={3} style={{ margin: '8px 0 0' }}>
+          Przegląd odpowiedzi
+        </Typography.Title>
+        <Flex vertical gap={16}>
+          {questions.map((question, i) => {
+            const r = byId.get(question.id)
+            if (!r) return null
+            const given = answers[question.id]
+            // attempts saved with a readable answer win; older rows keep the previous lookup
+            const givenText =
+              r.answerText ?? (question.type === 'text' ? given?.text : optionText(question.id, given?.optionIds))
+            return (
+              <QuestionReview
+                key={question.id}
+                index={i}
+                prompt={question.prompt}
+                correct={r.correct}
+                earned={r.earned}
+                points={r.points}
+                rich={IMAGE_OPTION_TYPES.includes(question.type)}
+                givenText={givenText}
+                correctLabel={question.type === 'text' ? 'Akceptowane odpowiedzi' : 'Poprawna odpowiedź'}
+                correctText={r.correctAnswers.join(', ')}
+                speakParts={quiz.source ? r.correctAnswers : undefined}
+                explanation={showExplanations ? r.explanation : null}
+              />
+            )
+          })}
         </Flex>
-      </Card>
-
-      <ProgressLine />
-
-      <Typography.Title level={3} style={{ margin: '8px 0 0' }}>
-        Przegląd odpowiedzi
-      </Typography.Title>
-      <Flex vertical gap={16}>
-        {questions.map((question, i) => {
-          const r = byId.get(question.id)
-          if (!r) return null
-          const given = answers[question.id]
-          // attempts saved with a readable answer win; older rows keep the previous lookup
-          const givenText =
-            r.answerText ?? (question.type === 'text' ? given?.text : optionText(question.id, given?.optionIds))
-          return (
-            <QuestionReview
-              key={question.id}
-              index={i}
-              prompt={question.prompt}
-              correct={r.correct}
-              earned={r.earned}
-              points={r.points}
-              givenText={givenText}
-              correctLabel={question.type === 'text' ? 'Akceptowane odpowiedzi' : 'Poprawna odpowiedź'}
-              correctText={r.correctAnswers.join(', ')}
-              speakParts={quiz.source ? r.correctAnswers : undefined}
-              explanation={showExplanations ? r.explanation : null}
-            />
-          )
-        })}
       </Flex>
-    </Flex>
+    </MediaProvider>
   )
 }

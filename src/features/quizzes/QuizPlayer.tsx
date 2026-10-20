@@ -12,6 +12,8 @@ import { effectiveShuffle, sampleFromPool, shuffle } from '../../shared/quiz/sam
 import type { GradedAttempt, QuizDetail } from '../../shared/quiz/types'
 import { isAnswered, questionRenderers } from './questionRenderers'
 import ResultView, { type ResultOutcome } from './ResultView'
+import { MediaProvider } from '../media/MediaProvider'
+import { RichText } from '../media/RichText'
 
 export interface QuizPlayerProps {
   id: string
@@ -110,7 +112,7 @@ function Runner({
                 wordBreak: 'break-word',
               }}
             >
-              {question.prompt}
+              <RichText text={question.prompt} />
             </h2>
           )}
           <div style={{ margin: '28px 0 8px' }}>
@@ -172,24 +174,26 @@ export default function QuizPlayer({ id, outcomeFor, backLinkFor }: QuizPlayerPr
   if (!data) return <Skeleton active paragraph={{ rows: 6 }} />
 
   return (
-    <div style={{ maxWidth: 880, margin: '0 auto' }}>
-      <PageHeader
-        back={backLinkFor?.(data) ?? { to: '/', label: 'Wszystkie quizy' }}
-        title={data.title}
-        subtitle={data.description || undefined}
-        meta={
-          <>
-            <DifficultyTag value={data.difficulty} />
-            <Tag>{data.questions.length} pytań</Tag>
-          </>
-        }
-      />
-      <Runner
-        key={`${data.id}:${run}`}
-        quiz={data}
-        onRestart={() => setRun((n) => n + 1)}
-        outcomeFor={outcomeFor}
-      />
-    </div>
+    <MediaProvider media={data.media}>
+      <div style={{ maxWidth: 880, margin: '0 auto' }}>
+        <PageHeader
+          back={backLinkFor?.(data) ?? { to: '/', label: 'Wszystkie quizy' }}
+          title={data.title}
+          subtitle={data.description || undefined}
+          meta={
+            <>
+              <DifficultyTag value={data.difficulty} />
+              <Tag>{data.questions.length} pytań</Tag>
+            </>
+          }
+        />
+        <Runner
+          key={`${data.id}:${run}`}
+          quiz={data}
+          onRestart={() => setRun((n) => n + 1)}
+          outcomeFor={outcomeFor}
+        />
+      </div>
+    </MediaProvider>
   )
 }

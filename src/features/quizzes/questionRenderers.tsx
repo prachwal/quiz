@@ -5,10 +5,12 @@ import { ArrowDownOutlined, ArrowUpOutlined } from '@ant-design/icons'
 import { Button, Flex, Input, Tag, Typography } from 'antd'
 import { useState } from 'react'
 import type { ComponentType } from 'react'
-import { matchingLefts, matchingRights, orderingItems, clozeGapCount, clozeParts, CLOZE_MARKER } from '../../shared/quiz/engine'
+import { matchingLefts, matchingRights, orderingItems, clozeGapCount } from '../../shared/quiz/engine'
 import type { Answer, QuestionType } from '../../shared/quiz/engine'
 import type { QuizQuestion } from '../../shared/quiz/types'
 import ChoiceTile, { LETTERS } from './ChoiceTile'
+import { MediaBlock } from '../media/RichText'
+import { clozePieces } from './clozePieces'
 
 export interface RendererProps {
   question: QuizQuestion
@@ -257,8 +259,8 @@ const Cloze = ({ question, value, onChange }: RendererProps) => {
   const answerFor = (gap: string) => value?.gaps?.[gap] ?? ''
   const setGap = (gap: string) => (text: string) => onChange({ gaps: { ...(value?.gaps ?? {}), [gap]: text } })
   const gaps = clozeGapCount(question.config)
-  // one canonical marker definition, shared with validation and the review view
-  const parts = clozeParts(question.prompt)
+  // images first, then the gaps of the text around them (see clozePieces)
+  const pieces = clozePieces(question.prompt)
 
   return (
     <>
@@ -266,10 +268,10 @@ const Cloze = ({ question, value, onChange }: RendererProps) => {
         Uzupełnij {gaps === 1 ? 'lukę' : `${gaps} luki`}.
       </Typography.Paragraph>
       <div style={{ fontSize: 'clamp(20px, 2vw + 10px, 26px)', lineHeight: 2.2 }}>
-        {parts.map((part, i) => {
-          const marker = CLOZE_MARKER.exec(part)
-          if (!marker) return <span key={i}>{part}</span>
-          const gap = marker[1]
+        {pieces.map((piece, i) => {
+          if (piece.kind === 'text') return <span key={i}>{piece.text}</span>
+          if (piece.kind === 'image') return <MediaBlock key={i} mediaId={piece.mediaId} alt={piece.alt} />
+          const gap = piece.gap
           return (
             <Input
               key={i}
