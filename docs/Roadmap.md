@@ -110,7 +110,7 @@ Rozpoczyna się po rozstrzygnięciu M0.
 | 4.1 | 🟡 **M1** fundament: migracja `media`/`media_refs`, sterownik S3 i atrapa, `sniff` — **kod gotowy, migracja do zastosowania** (commit `296e61a`; `npm run db:migrate` po stronie właściciela) | `db.ts` z 1.1 |
 | 4.2 | ✅ **M2** zapis `![opis](media:…)`, walidacja „gdzie wolno”, `syncRefs` (zrobione 2026-10-20) | `promptText` z cloze (już po D1) |
 | 4.3 | ✅ **M3** mapa `media` w odpowiedziach (zrobione 2026-10-20) | po 2.3: endpointy przez `injectEndpoints` |
-| 4.4 | **M4** renderowanie: `RichText`, `MediaImage`, `ChoiceTile`, `Cloze`, wynik, lekcja | po 2.2 |
+| 4.4 | ✅ **M4** renderowanie w quizie: `RichText`, `MediaImage`, `MediaProvider`, `ChoiceTile` z obrazem, `Cloze`, wynik (zrobione 2026-10-20; **nie zrobione:** wstęp lekcji (L1) i podgląd w edytorze (M6)) | po 2.2 |
 | 4.5 | **M5** narzędzia MCP do wysyłania (`media_upload`, `media_upload_from_url`, …) | najpierw testy `ssrf`; wydanie 2 narzędzi |
 | 4.6 | **M6** wysyłanie w edytorze (`ImageUpload`) | po M4 |
 | 4.7 | **Podział, krok 5:** klasy czytają postęp lekcji przez API nauki | przed L1, żeby narzędzia lekcji lądowały na ustalonym API |
