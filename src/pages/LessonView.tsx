@@ -1,5 +1,5 @@
 import { ArrowLeftOutlined, ArrowRightOutlined, CheckOutlined } from '@ant-design/icons'
-import { Alert, Button, Flex, Skeleton, Tag, Typography, App as AntdApp } from 'antd'
+import { Alert, Button, Card, Flex, Progress, Skeleton, Tag, Typography, App as AntdApp, theme } from 'antd'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { errorMessage } from '../app/api'
@@ -11,10 +11,56 @@ import { verbSpeechParts } from '../features/audio/speech'
 import { useSpeech } from '../features/audio/useSpeech'
 import VerbSlide from '../features/learn/VerbSlide'
 import type { SwipeDirection } from '../features/learn/swipe'
+import { MediaProvider } from '../features/media/MediaProvider'
+import { RichText } from '../features/media/RichText'
 import { useSwipe } from '../features/learn/useSwipe'
+import { introNeedsSlide } from '../shared/quiz/lessonIntro'
 import type { LessonDetail } from '../shared/quiz/types'
 
-function Slides({ lesson }: { lesson: LessonDetail }) {
+/** The lesson intro as its own first slide ("Wstęp"), with the same chrome as a verb slide. */
+function IntroSlide({ intro, index, total }: { intro: string; index: number; total: number }) {
+  const { token } = theme.useToken()
+  return (
+    <Card styles={{ body: { padding: 0 } }} style={{ overflow: 'hidden' }}>
+      <Flex vertical>
+        <Flex
+          justify="space-between"
+          align="center"
+          wrap
+          gap="small"
+          style={{ padding: '16px clamp(16px, 4vw, 28px) 12px' }}
+        >
+          <Tag color="processing">Wstęp</Tag>
+          <Typography.Text style={{ fontSize: 15, fontWeight: 600, color: token.colorTextSecondary }}>
+            <span style={{ color: token.colorPrimary }}>{index + 1}</span> / {total}
+          </Typography.Text>
+        </Flex>
+        <Progress
+          percent={Math.round(((index + 1) / total) * 100)}
+          showInfo={false}
+          size={{ height: 4 }}
+          strokeColor={{ from: token.colorPrimary, to: '#a855f7' }}
+          railColor={token.colorFillSecondary}
+          style={{ padding: '0 clamp(16px, 4vw, 28px)', margin: 0, lineHeight: 0 }}
+        />
+        <Flex vertical gap={16} style={{ padding: 'clamp(28px, 5vw, 48px) clamp(16px, 4vw, 32px)' }}>
+          <Typography.Title level={3} style={{ margin: 0 }}>
+            Wstęp
+          </Typography.Title>
+          <div style={{ fontSize: 18, lineHeight: 1.6, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+            <RichText text={intro} />
+          </div>
+        </Flex>
+      </Flex>
+    </Card>
+  )
+}
+
+/**
+ * The lesson's slides: the intro first when `withIntro` (it has an image or is long, see introNeedsSlide), then one
+ * slide per verb. Indexes and the "x / n" counter count all slides; completing happens on the last verb slide.
+ */
+function Slides({ lesson, withIntro }: { lesson: LessonDetail; withIntro: boolean }) {
   const [index, setIndex] = useState(0)
   const [complete, { isLoading: saving }] = useCompleteLessonMutation()
   const navigate = useNavigate()
@@ -24,10 +70,14 @@ function Slides({ lesson }: { lesson: LessonDetail }) {
 
   const autoSpeak = useAppSelector((state) => state.settings.autoSpeak)
   const { available, speak, stop } = useSpeech()
-  const total = lesson.verbs.length
+  const verbCount = lesson.verbs.length
+  const offset = withIntro ? 1 : 0
+  const total = offset + verbCount
   const isLast = index === total - 1
+  // index of the verb shown on this slide; -1 on the intro slide
+  const verbIndex = index - offset
   // phones: tab bar hidden, Cofnij/Dalej live in a sticky bar in the thumb zone
-  useFocusMode(total > 0)
+  useFocusMode(verbCount > 0)
 
   const finish = useCallback(async () => {
     try {
@@ -88,7 +138,7 @@ function Slides({ lesson }: { lesson: LessonDetail }) {
   }, [back, next])
 
   // optional autoplay of the whole verb when the slide changes (stops when leaving the lesson)
-  const current = lesson.verbs[index]
+  const current = verbIndex >= 0 ? lesson.verbs[verbIndex] : undefined
   useEffect(() => {
     if (!autoSpeak || !available || !current) return
     speak(`verb-${current.id}-all`, verbSpeechParts(current))
@@ -96,12 +146,23 @@ function Slides({ lesson }: { lesson: LessonDetail }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoSpeak, available, current?.id])
 
-  if (total === 0) return <Alert type="info" showIcon title="Ta lekcja nie ma jeszcze czasowników" />
+  if (verbCount === 0) {
+    return (
+      <>
+        {withIntro && <IntroSlide intro={lesson.intro} index={0} total={1} />}
+        <Alert type="info" showIcon title="Ta lekcja nie ma jeszcze czasowników" />
+      </>
+    )
+  }
 
   return (
     <>
       <div ref={slideRef} className="swipe-area">
-        <VerbSlide verb={lesson.verbs[index]} index={index} total={total} />
+        {current ? (
+          <VerbSlide verb={current} index={index} total={total} />
+        ) : (
+          <IntroSlide intro={lesson.intro} index={index} total={total} />
+        )}
       </div>
       <Typography.Text type="secondary" className="swipe-hint">
         Przesuń palcem w lewo lub w prawo, aby zmienić słowo
@@ -136,16 +197,20 @@ export default function LessonView() {
   if (error) return <Alert type="error" showIcon title={errorMessage(error)} />
   if (isLoading || !lesson) return <Skeleton active paragraph={{ rows: 8 }} />
 
+  // a long or illustrated intro moves to its own slide; a short plain one stays the page subtitle, as before
+  const withIntro = introNeedsSlide(lesson.intro)
   return (
-    <div style={{ maxWidth: 880, margin: '0 auto' }}>
-      <PageHeader
-        back={{ to: `/learn/${courseId}`, label: lesson.courseTitle }}
-        title={lesson.title}
-        subtitle={lesson.intro}
-        meta={lesson.completed ? <Tag color="success">Ukończona</Tag> : undefined}
-      />
-      {/* remount per lesson so the slide index resets */}
-      <Slides key={lesson.id} lesson={lesson} />
-    </div>
+    <MediaProvider media={lesson.media}>
+      <div style={{ maxWidth: 880, margin: '0 auto' }}>
+        <PageHeader
+          back={{ to: `/learn/${courseId}`, label: lesson.courseTitle }}
+          title={lesson.title}
+          subtitle={withIntro ? undefined : lesson.intro}
+          meta={lesson.completed ? <Tag color="success">Ukończona</Tag> : undefined}
+        />
+        {/* remount per lesson so the slide index resets */}
+        <Slides key={lesson.id} lesson={lesson} withIntro={withIntro} />
+      </div>
+    </MediaProvider>
   )
 }
