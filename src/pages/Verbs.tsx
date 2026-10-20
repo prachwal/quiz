@@ -7,6 +7,7 @@ import { PHONE_QUERY, useMediaQuery } from '../app/useMediaQuery'
 import { difficultyOptions, popularityOptions } from '../components/groupOptions'
 import { formsText } from '../features/learn/format'
 import VerbTable from '../features/learn/VerbTable'
+import { MediaProvider } from '../features/media/MediaProvider'
 import type { DifficultyCode, PatternCode, PopularityCode } from '../shared/quiz/types'
 
 const patternOptions = (['AAA', 'ABA', 'ABB', 'ABC'] as PatternCode[]).map((value) => ({
@@ -21,16 +22,17 @@ export default function Verbs() {
   const [search, setSearch] = useState('')
   const phone = useMediaQuery(PHONE_QUERY)
   const { data, error, isFetching } = useListIrregularVerbsQuery({ difficulty, popularity, pattern })
+  const verbs = data?.verbs
 
   const filtered = useMemo(() => {
     const needle = search.trim().toLocaleLowerCase()
-    if (!needle) return data
-    return data?.filter((v) =>
+    if (!needle) return verbs
+    return verbs?.filter((v) =>
       [v.base, formsText(v.pastSimple), formsText(v.pastParticiple), v.meanings.join(' ')].some((field) =>
         field.toLocaleLowerCase().includes(needle),
       ),
     )
-  }, [data, search])
+  }, [verbs, search])
 
   return (
     <>
@@ -65,7 +67,9 @@ export default function Verbs() {
             </Typography.Text>
           )}
         </Flex>
-        <VerbTable verbs={filtered} loading={isFetching} pageSize={20} />
+        <MediaProvider media={data?.media}>
+          <VerbTable verbs={filtered} loading={isFetching} pageSize={20} />
+        </MediaProvider>
       </Card>
     </>
   )

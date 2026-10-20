@@ -1,12 +1,26 @@
 import { api } from '../../app/api'
+import type { MediaMap } from '../../shared/media/types'
 import type { CourseDetail, CourseSummary, DifficultyCode, IrregularVerb, LessonDetail, PatternCode, PopularityCode, QuizDetail } from '../../shared/quiz/types'
+
+/** The verb catalog with the images of its verbs (`media` is empty when no verb has an illustration). */
+export interface VerbList {
+  verbs: IrregularVerb[]
+  media: MediaMap
+}
+
+/** The server answers the plain array while no verb has an image, otherwise `{ verbs, media }`. */
+export const toVerbList = (body: unknown): VerbList => {
+  if (Array.isArray(body)) return { verbs: body as IrregularVerb[], media: {} }
+  const wrapped = body as Partial<VerbList>
+  return { verbs: wrapped.verbs ?? [], media: wrapped.media ?? {} }
+}
 
 export const learnApi = api.injectEndpoints({
   endpoints: (build) => ({
-    listIrregularVerbs: build.query<
-      IrregularVerb[],
-      { difficulty?: DifficultyCode; popularity?: PopularityCode; pattern?: PatternCode } | void
-    >({ query: (params) => ({ url: 'irregular-verbs', params: params ?? undefined }) }),
+    listIrregularVerbs: build.query<VerbList, { difficulty?: DifficultyCode; popularity?: PopularityCode; pattern?: PatternCode } | void>({
+      query: (params) => ({ url: 'irregular-verbs', params: params ?? undefined }),
+      transformResponse: toVerbList,
+    }),
     listCourses: build.query<CourseSummary[], void>({
       query: () => 'courses',
       providesTags: ['Course'],

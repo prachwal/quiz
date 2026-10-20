@@ -2,6 +2,7 @@ import { Card, Flex, Progress, Tag, Typography, theme } from 'antd'
 import { DifficultyTag, PopularityTag } from '../../components/GroupTags'
 import SpeakButton from '../audio/SpeakButton'
 import WeakMark from '../progress/WeakMark'
+import { MediaImage } from '../media/MediaImage'
 import { verbSpeechParts } from '../audio/speech'
 import type { IrregularVerb } from '../../shared/quiz/types'
 import { PATTERN_HINTS, formsText } from './format'
@@ -128,6 +129,13 @@ export default function VerbSlide({
               {verb.meanings.join(', ')}
             </span>
           </Flex>
+
+          {/* the illustration sits between the base form and the forms; the picture is stacked on every screen */}
+          {verb.imageMediaId && (
+            <div className="verb-illustration">
+              <MediaImage mediaId={verb.imageMediaId} alt={verb.base} />
+            </div>
+          )}
 
           <div
             style={{

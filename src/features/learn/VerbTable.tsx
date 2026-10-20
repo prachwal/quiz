@@ -5,8 +5,27 @@ import { DifficultyTag, PopularityTag } from '../../components/GroupTags'
 import type { IrregularVerb } from '../../shared/quiz/types'
 import SpeakButton from '../audio/SpeakButton'
 import WeakMark from '../progress/WeakMark'
+import { MediaImage } from '../media/MediaImage'
 import { verbSpeechParts } from '../audio/speech'
 import { PATTERN_HINTS, formsText } from './format'
+
+/** A small illustration of a verb (alt = its base form); nothing for a verb without an image. */
+function VerbThumb({ verb }: { verb: IrregularVerb }) {
+  if (!verb.imageMediaId) return null
+  return (
+    <span className="verb-table-thumb">
+      <MediaImage mediaId={verb.imageMediaId} alt={verb.base} />
+    </span>
+  )
+}
+
+/** Shown after the base form only when the list has at least one illustration (image-free lists stay as they were). */
+const pictureColumn: TableColumnsType<IrregularVerb>[number] = {
+  title: '',
+  key: 'picture',
+  width: 72,
+  render: (_v, verb) => <VerbThumb verb={verb} />,
+}
 
 const verbColumns: TableColumnsType<IrregularVerb> = [
   {
@@ -61,6 +80,7 @@ const phoneColumns: TableColumnsType<IrregularVerb> = [
       <Flex vertical gap={8}>
         <Flex justify="space-between" align="baseline" gap={12} wrap>
           <Flex align="center" gap={10}>
+            <VerbThumb verb={verb} />
             <Typography.Text lang="en" strong style={{ fontSize: 20, lineHeight: 1.3 }}>
               {verb.base}
             </Typography.Text>
@@ -106,6 +126,7 @@ export default function VerbTable({
   pageSize?: number
 }) {
   const phone = useMediaQuery(PHONE_QUERY)
+  const columns = verbs?.some((verb) => verb.imageMediaId) ? [verbColumns[0], pictureColumn, ...verbColumns.slice(1)] : verbColumns
   if (phone) {
     return (
       <Table<IrregularVerb>
@@ -123,7 +144,7 @@ export default function VerbTable({
     <Table<IrregularVerb>
       rowKey="id"
       loading={loading}
-      columns={verbColumns}
+      columns={columns}
       dataSource={verbs}
       pagination={pageSize ? { pageSize, showSizeChanger: false } : false}
       scroll={{ x: 'max-content' }}

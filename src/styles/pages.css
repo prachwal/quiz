@@ -170,6 +170,44 @@
   padding: 16px 20px;
 }
 
+/* verb illustrations: a centred picture on the lesson slide, a small thumbnail in the verb table */
+.verb-illustration {
+  width: 100%;
+  max-width: 320px;
+}
+
+.verb-illustration .media-image {
+  max-height: 220px;
+  max-height: min(34vh, 220px);
+  max-height: min(34dvh, 220px);
+  margin-inline: auto;
+}
+
+.verb-table-thumb {
+  display: inline-block;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  border-radius: 8px;
+  vertical-align: middle;
+}
+
+.verb-table-thumb .media-image {
+  width: 56px;
+  height: 56px;
+  max-height: 56px;
+  object-fit: cover;
+}
+
+.verb-table-thumb .media-placeholder {
+  width: 56px;
+  height: 56px;
+  min-height: 0;
+  padding: 2px;
+  font-size: 10px;
+  overflow: hidden;
+}
+
 .verb-form-value {
   font-size: clamp(26px, 3vw + 14px, 34px);
   overflow-wrap: anywhere;
