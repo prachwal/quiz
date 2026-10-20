@@ -1,14 +1,27 @@
 name: CI
 
+# Every branch gets the full set of quality checks; pull requests into main and deploy get them too.
+# The jobs are independent, so they run in parallel. Nothing here needs secrets or a database: the
+# MCP e2e test uses the shared Neon database and is kept out of CI until it has its own branch (see e2e-mcp).
 on:
   push:
-    branches: [main, deploy]
+    branches: ['**']
   pull_request:
     branches: [main, deploy]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Read-only by default; jobs that publish test reports grant checks/pull-requests write for themselves.
+permissions:
+  contents: read
 
 jobs:
   lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -16,10 +29,35 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run lint
+      # Oxlint exits 0 with warnings, so the job also fails on any line that mentions a warning (zero warnings).
+      - name: Lint (zero warnings)
+        run: |
+          npm run lint 2>&1 | tee lint.log
+          if grep -qi 'warning' lint.log; then
+            echo "::error::npm run lint reported warnings"
+            exit 1
+          fi
+
+  typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc -b
+      - run: npx tsc -p tsconfig.server.json --noEmit
 
   unit-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,12 +66,14 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      # tests/*.test.ts is globbed, so tests/architecture.test.ts (import and layering rules) runs here too.
       - run: |
           mkdir -p reports
           npx esbuild tests/*.test.ts --bundle --platform=node --format=esm --outdir=.test-build --out-extension:.js=.mjs --log-level=warning
           node --test --test-reporter=junit --test-reporter-destination=reports/junit.xml .test-build/*.mjs
       - uses: dorny/test-reporter@v1
-        if: always()
+        # The reporter cannot write checks from a fork's pull request; skip it there instead of failing the job.
+        if: always() && github.event.pull_request.head.repo.fork != true
         with:
           name: Unit tests
           path: reports/junit.xml
@@ -41,6 +81,11 @@ jobs:
 
   ui-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -52,8 +97,63 @@ jobs:
           mkdir -p reports
           npx vitest run --reporter=junit --outputFile=reports/vitest.xml
       - uses: dorny/test-reporter@v1
-        if: always()
+        if: always() && github.event.pull_request.head.repo.fork != true
         with:
           name: UI tests
           path: reports/vitest.xml
           reporter: java-junit
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run build:api
+      # api/index.mjs is committed and deployed as-is, so a stale bundle must fail the build.
+      - name: Check the committed API bundle
+        run: |
+          if ! git diff --exit-code -- api/index.mjs; then
+            echo "::error::api/index.mjs is out of date: run npm run build:api and commit it"
+            exit 1
+          fi
+
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Advisory for now; make it blocking (drop continue-on-error) once the production dependency baseline is clean.
+      - run: npm audit --omit=dev --audit-level=high
+        continue-on-error: true
+
+  # TODO (disabled): MCP e2e against a dedicated Neon branch. Not run in CI yet: it deletes every mcp-e2e row,
+  # so it may only use a database nobody else touches. Enable it when the branch and secret exist.
+  # Intended steps: checkout, setup-node 22, npm ci, then the test below with the secret as DATABASE_URL.
+  # Required secret: NEON_E2E_DATABASE_URL (the branch's connection string, never printed).
+  # Required env: MCP_E2E_ALLOW_REMOTE_DB=1 (the script refuses a non-localhost DATABASE_URL without it).
+  e2e-mcp:
+    if: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: ${{ secrets.NEON_E2E_DATABASE_URL }}
+      MCP_E2E_ALLOW_REMOTE_DB: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run test:mcp
