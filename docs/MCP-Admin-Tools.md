@@ -3,7 +3,7 @@ tags:
   - mcp
   - backend
   - plan
-  - status/todo
+  - status/done
 created: 2026-10-19
 updated: 2026-10-20
 ---
@@ -35,7 +35,7 @@ pytania**. Reszta (quizy, klasy, uczniowie) jest już pokryta.
 
 ## 2. Co już istnieje
 
-27 narzędzi w czterech modułach (stan po commitach `46ac144`…`df65f98`):
+27 narzędzi w czterech modułach przed fazą 3 (stan po commitach `46ac144`…`df65f98`); po fazie 3 jest 42, patrz dopisek pod tabelą:
 
 | Moduł | Narzędzia |
 | --- | --- |
@@ -44,6 +44,8 @@ pytania**. Reszta (quizy, klasy, uczniowie) jest już pokryta.
 | `server/mcp/tools/students.ts` | `student_list`, `student_search`, `student_add`, `student_remove`, `student_results`, `student_analyze` |
 | `server/mcp/tools/assignments.ts` | `assignment_create`, `assignment_update_due`, `assignment_delete`, `course_list` |
 | `server/mcp/tools/admin.ts` ✅ | `attempt_list`, `attempt_get` |
+
+Po fazie 3 dochodzą (commity `74a8c9b`…`da3e980`): `quiz_stats`, `user_results`, `user_analysis` (`tools/admin.ts`), `user_list`, `user_get`, `user_search`, `user_roles_set`, `user_block` (`tools/users.ts`), `class_transfer` (`tools/admin.ts`) oraz `audit_list`, `feedback_list`, `feedback_update`, `settings_get`, `settings_set`, `system_stats` (`tools/operations.ts`). Razem **42** narzędzia.
 
 ### Co administrator może już teraz
 
@@ -61,10 +63,10 @@ pytania**. Reszta (quizy, klasy, uczniowie) jest już pokryta.
 | --- | --- | --- |
 | podejścia **poza klasą** | brak odpowiedzi na „kto i jak rozwiązał ten quiz” | ✅ `attempt_list` |
 | pojedyncze podejście z odpowiedziami | brak danych do oceny pytań | ✅ `attempt_get` |
-| statystyka pytań | brak podstaw do oceny trudności | ⬜ `quiz_stats` |
-| użytkownicy (lista, role, blokada) | tylko panel WWW (`/api/admin/*`) | ⬜ |
-| audyt, zgłoszenia, ustawienia | tylko panel WWW | ⬜ |
-| stan systemu | brak | ⬜ |
+| statystyka pytań | brak podstaw do oceny trudności | ✅ `quiz_stats` (`74a8c9b`) |
+| użytkownicy (lista, role, blokada) | tylko panel WWW (`/api/admin/*`) | ✅ `user_*` (`2145fbb`) |
+| audyt, zgłoszenia, ustawienia | tylko panel WWW | ✅ `audit_list`, `feedback_*`, `settings_*` (`da3e980`) |
+| stan systemu | brak | ✅ `system_stats` (`da3e980`) |
 
 ## 3. Zasady wspólne dla nowych narzędzi
 
@@ -164,7 +166,7 @@ w odpowiedziach modelu).
 
 ### 5.1. Grupa A — wyniki i podejścia
 
-#### `attempt_list`
+#### `attempt_list` ✅ `df65f98`
 
 Podejścia po filtrach. Domyślnie wszystkie, posortowane od najnowszego.
 
@@ -202,7 +204,7 @@ Uwagi projektowe:
 - Dodaje read path w repozytorium (`server/attemptsRepo.ts`), bo dzisiejsze
   `listAttempts` nie ma filtrów, a `allAttempts(userId)` jest zbyt wąskie.
 
-#### `attempt_get`
+#### `attempt_get` ✅ `df65f98`
 
 Jedno podejście z odpowiedziami **na każde pytanie** — to domyka pytanie
 „dlaczego 38%”.
@@ -222,7 +224,7 @@ plus `user: { userId, name, email }` i `quiz: { id, title }` (jeśli istnieje).
 Uwaga: `prompt` może być `null` (pytanie usunięte/zmienione) — pole jest
 opcjonalne i trzeba to opisać.
 
-#### `quiz_stats`
+#### `quiz_stats` ✅ `74a8c9b`
 
 Statystyka pytań quizu (item analysis). **Jedyne narzędzie, które pozwala
 uzasadnić ocenę trudności danymi.**
@@ -284,7 +286,7 @@ Ograniczenia do opisania w `description`:
   → teksty opcji);
 - po edycji quizu starsze podejścia mogą nie mieć `prompt` (D2).
 
-#### `user_results`
+#### `user_results` ✅ `e2bfc9a`
 
 Wszystkie podejścia użytkownika **bez przydziału do klasy** — to najtańsze
 narzędzie, bo `classes.allAttempts(userId)` już istnieje i zwraca komplet.
@@ -300,7 +302,7 @@ Zwraca: profil (`userId`, `name`, `email`), `attempts[]` (jak `attempt_get`),
 Różnica względem `student_results`: brak `classId` i brak ograniczenia do
 przydzielonych zadań.
 
-#### `user_analysis`
+#### `user_analysis` ✅ `e2bfc9a`
 
 Analiza jak `student_analyze`, ale po **całej historii** użytkownika.
 
@@ -314,17 +316,17 @@ ostrzeżenia) + `weakVerbs` z `reviews.weakVerbs` + mapowanie na czasowniki.
 Wymaga jedynie złożenia `allAttempts` w strukturę, którą `analyzeStudent` już
 przyjmuje — bez nowej logiki analitycznej.
 
-### 5.2. Grupa B — użytkownicy
+### 5.2. Grupa B — użytkownicy ✅ `2145fbb`
 
 | Narzędzie | Wejście | Wyjście | Źródło |
 | --- | --- | --- | --- |
-| `user_list` | `{ q?: string, page?: number }` | `AdminUsersPage` (20/stronę) | `auth0.listUsers` |
-| `user_get` | `{ userId, include?: ('attempts'\|'classes'\|'reviews')[] }` | konto + role + `blocked` + `lastLogin` + żądane sekcje | `auth0.getUser` + `classes.profileOf` |
-| `user_search` | `{ q: string /* min. 2 znaki */, limit?: number }` | `{ userId, name, email, lastActiveDay, attempts }` | `classes.searchUsers` (bez `classId`!) |
-| `user_roles_set` | `{ userId, roles: ManagedRole[], confirm: true }` | `{ userId, roles }` | `auth0.setManagedRoles` |
-| `user_block` | `{ userId, blocked: boolean, confirm: true }` | `{ userId, blocked }` | `auth0.setBlocked` |
+| `user_list` ✅ | `{ q?: string, page?: number }` | `AdminUsersPage` (20/stronę) | `auth0.listUsers` |
+| `user_get` ✅ | `{ userId, include?: ('attempts'\|'classes'\|'reviews')[] }` | konto + role + `blocked` + `lastLogin` + żądane sekcje | `auth0.getUser` + `classes.profileOf` |
+| `user_search` ✅ | `{ q: string /* min. 2 znaki */, limit?: number }` | `{ userId, name, email, lastActiveDay, attempts }` | `classes.searchUsers` (bez `classId`!) |
+| `user_roles_set` ✅ | `{ userId, roles: ManagedRole[], confirm: true }` | `{ userId, roles }` | `auth0.setManagedRoles` |
+| `user_block` ✅ | `{ userId, blocked: boolean, confirm: true }` | `{ userId, blocked }` | `auth0.setBlocked` |
 
-Zabezpieczenia przeniesione **1:1** z `server/routes/admin.ts`:
+Zabezpieczenia są **wspólne** dla REST i MCP (`server/userAdmin.ts`, reguły czyste w `server/userAdminPure.ts`, testy w `tests/userAdminPure.test.ts`); wcześniej były w `server/routes/admin.ts`:
 
 - nie można odebrać roli `admin` samemu sobie,
 - nie można odebrać roli ostatniemu adminowi (`countAdmins() <= 1`),
@@ -336,7 +338,7 @@ Zabezpieczenia przeniesione **1:1** z `server/routes/admin.ts`:
 `user_search` różni się od `student_search` brakiem `classId` i maskowania
 e-maila — uzupełnia lukę „szukam konta, którego nie ma w żadnej mojej klasie”.
 
-### 5.3. Grupa C — rozszerzenia quizów
+### 5.3. Grupa C — rozszerzenia quizów ⬜ (poza fazą 3, nie wdrożone)
 
 Bez nowych narzędzi, tylko parametry (kompatybilne wstecznie, domyślnie
 wyłączone):
@@ -351,7 +353,7 @@ Opcjonalnie `quiz_duplicate { id, title? }` — kopiowanie quizu (przydatne do
 tworzenia wariantów egzaminu); wewnętrznie `getQuiz(withAnswers)` →
 `createQuiz`, więc bez nowej logiki w repozytorium.
 
-### 5.4. Grupa D — klasy
+### 5.4. Grupa D — klasy ✅ `c20775d`
 
 Poza `class_transfer` (D3-A) nic nie brakuje:
 
@@ -362,16 +364,16 @@ class_transfer: { classId: string, newOwnerId: string, confirm: true }
 Wymaga `UPDATE classes SET owner_id = …`, walidacji, że nowy właściciel ma rolę
 `teacher` (albo `admin`), oraz wpisu audytu ze starym i nowym właścicielem.
 
-### 5.5. Grupa E — operacje
+### 5.5. Grupa E — operacje ✅ `da3e980`
 
 | Narzędzie | Wejście | Wyjście | Źródło |
 | --- | --- | --- | --- |
-| `audit_list` | `{ action?, actorId?, targetId?, from?, to?, limit? }` | `AuditEntry[]` | `adminRepo.listAudit` (dziś tylko `limit`) |
-| `feedback_list` | `{ status?, limit? }` | `FeedbackItem[]` | `listFeedback` |
-| `feedback_update` | `{ id, status, confirm: true }` | `FeedbackItem` | `setFeedbackStatus` |
-| `settings_get` | `{}` | `AppSettings` (`scoreThresholds`) | `getAppSettings` |
-| `settings_set` | `{ scoreThresholds: { low, high }, confirm: true }` | `AppSettings` | `saveAppSettings` + `normalizeThresholds` |
-| `system_stats` | `{}` | liczby i stan | nowe zapytania |
+| `audit_list` ✅ | `{ action?, actorId?, targetId?, from?, to?, limit? }` | `AuditEntry[]` | `adminRepo.listAudit` (dziś tylko `limit`) |
+| `feedback_list` ✅ | `{ status?, limit? }` | `FeedbackItem[]` | `listFeedback` |
+| `feedback_update` ✅ | `{ id, status, confirm: true }` | `FeedbackItem` | `setFeedbackStatus` |
+| `settings_get` ✅ | `{}` | `AppSettings` (`scoreThresholds`) | `getAppSettings` |
+| `settings_set` ✅ | `{ scoreThresholds: { low, high }, confirm: true }` | `AppSettings` | `saveAppSettings` + `normalizeThresholds` |
+| `system_stats` ✅ | `{}` | liczby i stan | nowe zapytania |
 
 `settings_set` musi przejść przez tę samą walidację co REST
 (`normalizeThresholds`, `low < high`) i zapisać audyt `settings.update` —
@@ -401,11 +403,11 @@ Każdy commit: zielone `npm run build`, `npm run lint`, `npm test`, `npm run tes
 | 1 | `feat(shared): item analysis helpers` | `src/shared/quiz/itemStats.ts` + `tests/itemStats.test.ts` (czysta logika, progi z §5.1) | ✅ `46ac144` |
 | 2 | `feat(api): attempt queries for admins` | `server/attemptsRepo.ts` (`listAttemptsFiltered`, `getAttempt`, `attemptsOfQuiz`), bez MCP | ✅ `ebea56a` |
 | 3 | `feat(mcp): attempt_list and attempt_get` | moduł `tools/admin.ts`, straż `adminOnly`, rejestracja w `index.ts` | ✅ `df65f98` |
-| 4 | `feat(mcp): quiz_stats` | użycie `itemStats` + `attemptsOfQuiz` z commita 2 | ⬜ |
-| 5 | `feat(mcp): user_* tools` | lista, get, search, role, blokada + zabezpieczenia z REST | ⬜ |
-| 6 | `feat(mcp): audit, feedback, settings, system_stats` | grupa E | ⬜ |
-| 7 | `docs(mcp): admin tools` | [[mcp]], [[api-admin]], `CLAUDE.md`, opis w `docs/mcp-clients.md` | 🟡 częściowo (2 narzędzia) |
-| (opc.) | `feat(db): attempt question snapshot` | tylko przy D2-A: migracja + `saveAttempt` + backfill | ⬜ |
+| 4 | `feat(mcp): quiz_stats` | użycie `itemStats` + `attemptsOfQuiz` z commita 2 | ✅ `74a8c9b` (`quiz_stats`), `e2bfc9a` (`user_results`, `user_analysis`) |
+| 5 | `feat(mcp): user_* tools` | lista, get, search, role, blokada + zabezpieczenia z REST | ✅ `2145fbb` (`user_*`), `c20775d` (`class_transfer`) |
+| 6 | `feat(mcp): audit, feedback, settings, system_stats` | grupa E | ✅ `da3e980` |
+| 7 | `docs(mcp): admin tools` | [[mcp]], [[api-admin]], `CLAUDE.md`, opis w `docs/mcp-clients.md` | ✅ ten commit (`docs(mcp): document the admin tools and bump the server version`) |
+| (opc.) | `feat(db): attempt question snapshot` | tylko przy D2-A: migracja + `saveAttempt` + backfill | ✅ `7c27039` |
 
 Uwaga do commita 2: `attemptsOfQuiz` nie ma jeszcze konsumenta — czeka na
 `quiz_stats` (commit 4). To świadomy groundwork, nie martwy kod przypadkowy.

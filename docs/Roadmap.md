@@ -20,7 +20,7 @@ updated: 2026-10-20
 
 | Obszar | Zrobione | Zostaje |
 | --- | --- | --- |
-| Narzędzia admina MCP | `itemStats`, `attemptsRepo`, `attempt_list`, `attempt_get` (kroki 1–3) | `quiz_stats`, `user_*`, `audit_list`/`feedback_*`/`settings_*`/`system_stats`, dokumentacja; decyzje D1–D4 |
+| Narzędzia admina MCP | `itemStats`, `attemptsRepo`, `attempt_*`, `quiz_stats`, `user_*`, `class_transfer`, `audit_list`/`feedback_*`/`settings_*`/`system_stats`, dokumentacja; decyzje D1–D4 (faza 3 zamknięta) | opcjonalnie 3.9 `quiz_duplicate` i rozszerzenia `quiz_list` (§5.3) |
 | Cloze | F1–F4 (znacznik, znaki typograficzne, limity, przecinek), D1 (końcowa kropka w lukach) | |
 | Uwagi z przeglądu | `key` w graczu, TLS i pula, zabezpieczenie `test:mcp`, odsyłacz do `quiz_schema`, kolejność w `ordering`/`matching` ujawniała odpowiedź, `withShownOrders` liczył nietknięte pytania, brak limitu długości `id` w `config` (faza 0) | nic |
 | Podział nauki | nic | kroki 1–8 |
@@ -85,21 +85,21 @@ Dlaczego tu: wszystkie siedzą w `QuizPlayer.tsx`, `engine.ts` i `schema.ts`, kt
 
 Po fazie 2 produkt jest nietknięty dla użytkownika, a jądro quizów nie zna kursów.
 
-### Faza 3 — narzędzia admina (około 4–5 dni)
+### Faza 3 — narzędzia admina ✅ zrobione 2026-10-20 (około 4–5 dni)
 
 | # | Zadanie | Zależność |
 | --- | --- | --- |
 | 3.1 | ✅ **Decyzje D1–D4** z [[MCP-Admin-Tools]] (zrobione: tylko OAuth, migawka pytań A, `class_transfer`, bez e-maila w liście podejść) | przed 3.2 |
 | 3.2 | 🟡 **kod gotowy, migracja do zastosowania**: migracja `quiz_attempts.questions_snapshot` + częściowe uzupełnienie istniejących wierszy, zapis w `saveAttempt` z handlera `grade` (nie z `beforeSave`: migawka to sprawa jądra quizów). Owner musi jeszcze uruchomić `npm run db:migrate` i sprawdzić `test:mcp` | po 2.1 |
-| 3.3 | **`quiz_stats`** (`itemStats` + `attemptsOfQuiz` + snapshot) | po 3.2; wydanie 1 narzędzi (razem z 3.4) |
-| 3.4 | `user_results`, `user_analysis` (cała historia użytkownika bez klasy — to one odpowiadają na pytanie, od którego zaczął się [[MCP-Admin-Tools]]; read path z `classes.allAttempts` i `analyzeStudent`) | niezależne od 3.2 |
-| 3.5 | `user_list`, `user_get`, `user_search`, `user_roles_set`, `user_block` z zabezpieczeniami przeniesionymi z REST | niezależne |
-| 3.6 | `class_transfer` (D3-A: walidacja roli nowego właściciela, audyt starego i nowego) | po rozstrzygnięciu D3 |
-| 3.7 | `audit_list`, `feedback_list`, `feedback_update`, `settings_get`, `settings_set`, `system_stats` | niezależne |
-| 3.8 | dokumentacja (`mcp.md`, `mcp-clients.md`, `CLAUDE.md`), podbicie `version` serwera | po 3.3–3.7 |
+| 3.3 | ✅ `74a8c9b` **`quiz_stats`** (`itemStats` + `attemptsOfQuiz` + snapshot) | po 3.2; wydanie 1 narzędzi (razem z 3.4) |
+| 3.4 | ✅ `e2bfc9a` `user_results`, `user_analysis` (cała historia użytkownika bez klasy — to one odpowiadają na pytanie, od którego zaczął się [[MCP-Admin-Tools]]; read path z `classes.allAttempts` i `analyzeStudent`) | niezależne od 3.2 |
+| 3.5 | ✅ `2145fbb` `user_list`, `user_get`, `user_search`, `user_roles_set`, `user_block` z zabezpieczeniami przeniesionymi z REST | niezależne |
+| 3.6 | ✅ `c20775d` `class_transfer` (D3-A: walidacja roli nowego właściciela, audyt starego i nowego) | po rozstrzygnięciu D3 |
+| 3.7 | ✅ `da3e980` `audit_list`, `feedback_list`, `feedback_update`, `settings_get`, `settings_set`, `system_stats` | niezależne |
+| 3.8 | ✅ ten commit: dokumentacja (`mcp.md`, `mcp-clients.md`, `CLAUDE.md`, `MCP-Admin-Tools.md`), `version` serwera 2.1.0 | po 3.3–3.7 |
 | 3.9 | *(opcjonalnie)* `quiz_duplicate` | — |
 
-Faza dodaje **15 narzędzi** (16 z opcjonalnym `quiz_duplicate`): `quiz_stats` 1, `user_results`/`user_analysis` 2, `user_*` 5, `class_transfer` 1, operacyjne 6. Narzędzia 3.3–3.7 wypuszczamy **jednym wydaniem**, żeby klienci odświeżyli konektor raz.
+Faza dodała **15 narzędzi** (16 z opcjonalnym `quiz_duplicate`, którego nie zrobiono): `quiz_stats` 1, `user_results`/`user_analysis` 2, `user_*` 5, `class_transfer` 1, operacyjne 6. Narzędzia 3.3–3.7 wypuszczamy **jednym wydaniem**, żeby klienci odświeżyli konektor raz.
 
 ### Faza 4 — obrazy w quizach i lekcjach (około 8 dni)
 
@@ -127,7 +127,7 @@ Rozpoczyna się po rozstrzygnięciu M0.
 
 ## Licznik narzędzi MCP
 
-Plany podają przyrosty, nie liczby bezwzględne, bo zależą od kolejności faz. Przy kolejności z tego dokumentu: dziś 27 → po fazie 3 **42** → po M5 **49** → po L1 **51** → po L2 **52**. Każdy commit, który dodaje narzędzia, aktualizuje asercję w `scripts/mcp-local-e2e.ts` i liczbę w `docs/mcp-clients.md`.
+Plany podają przyrosty, nie liczby bezwzględne, bo zależą od kolejności faz. Przy kolejności z tego dokumentu: przed fazą 3 było 27 → **po fazie 3 jest 42** (stan 2026-10-20, sprawdzany przez `npm run test:mcp`) → po M5 **49** → po L1 **51** → po L2 **52**. Każdy commit, który dodaje narzędzia, aktualizuje asercję w `scripts/mcp-local-e2e.ts` i liczbę w `docs/mcp-clients.md`.
 
 ## Zacommitowany bundle `api/index.mjs`
 

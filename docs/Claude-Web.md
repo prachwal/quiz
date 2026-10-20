@@ -4,7 +4,7 @@ tags:
   - docs
   - deploy
 created: 2026-10-19
-updated: 2026-10-19
+updated: 2026-10-20
 ---
 
 # Claude web — konektor i opis narzędzi
@@ -126,7 +126,7 @@ czego nie da się wyczytać z pojedynczego schematu.
 ## 5. Sprawdzenie po podłączeniu
 
 - Włącz konektor w rozmowie (ikona narzędzi → **Quiz**), potem poproś np. o
-  „wypisz moje quizy”. Powinno pojawić się 27 narzędzi w `tools/list`.
+  „wypisz moje quizy”. Powinno pojawić się 42 narzędzia w `tools/list` (dla admina; dla innych ról mniej).
 - Uczeń zobaczy tylko narzędzia odczytu quizów — `class_*`, `student_*`,
   `assignment_*` i `attempt_*` odmówią z komunikatem o roli.
 - Administrator wywoła `attempt_list`, ale **token `qz_…` tego nie potrafi** (nie

@@ -4,7 +4,7 @@ tags:
   - mcp
   - backend
 created: 2026-10-19
-updated: 2026-10-19
+updated: 2026-10-20
 ---
 
 # Serwer MCP – quizy w asystentach AI
@@ -26,11 +26,11 @@ Tak samo jak REST API: nagłówek `Authorization: Bearer qz_…` z **osobistym t
 | zwykły | `quiz_list`, `quiz_get` (widok gracza), `quiz_schema`, `verbs_list` |
 | z prawem zapisu (tworzy admin) | dodatkowo `quiz_get` z `withAnswers`, `quiz_create`, `quiz_update`, `quiz_delete` |
 | z dostępem do klas (tworzy nauczyciel) | `class_*`, `student_*`, `assignment_*`, `course_list` – na własnych klasach nauczyciela |
-| logowanie OAuth admina | podgląd wszystkich klas (`class_list` z `scope: "all"`, raporty, analizy) |
+| logowanie OAuth admina | podgląd wszystkich klas (`class_list` z `scope: "all"`, raporty, analizy); narzędzia administracyjne (`attempt_*`, `quiz_stats`, `user_*`, `class_transfer`, `audit_list`, `feedback_*`, `settings_*`, `system_stats`) |
 
 Token z dostępem do klas tworzysz w Ustawieniach → Tokeny API przełącznikiem „Klasy i wyniki uczniów” (widoczny dla nauczyciela; `POST /api/tokens` z `classes: true`). Pokazuje imiona, e‑maile i wyniki uczniów, więc traktuj go jak dane osobowe: podawaj go tylko usłudze, której możesz je powierzyć. Admin nie ma tego dostępu automatycznie – potrzebuje roli nauczyciela.
 
-Zarządzanie użytkownikami/uwagami i tokenami nie jest dostępne przez MCP (wymaga sesji admina, patrz `docs/api-admin.md`). Token daj asystentowi tylko wtedy, gdy ufasz temu usługodawcy – ma on prawo zapisu do wszystkich quizów.
+Zarządzanie tokenami API nie jest dostępne przez MCP (wymaga sesji, patrz `docs/api-admin.md`). Użytkownicy, zgłoszenia, ustawienia i audyt są dostępne, ale tylko przez logowanie OAuth admina (sekcja „Administrator”). Token daj asystentowi tylko wtedy, gdy ufasz temu usługodawcy – ma on prawo zapisu do wszystkich quizów.
 
 ## Narzędzia
 
@@ -100,7 +100,7 @@ Przepływy:
 
 Dodanie ucznia po id nie wymaga jego zgody – uczeń widzi klasę w „Zadania” i może ją opuścić. Nauczyciel widzi jego imię, e‑mail i wyniki z zadań klasy (patrz informacja przy dołączaniu).
 
-**Administrator** – `quiz_get`/`quiz_list` czytają **każdy** quiz (nie tylko własny), a `quiz_update`/`quiz_delete` wymagają jedynie `write:quizzes`, więc kontrola nad treścią quizów jest pełna. Wyniki poza klasą dają `attempt_list`/`attempt_get`; brakuje jeszcze statystyki pytań i operacji administracyjnych (użytkownicy, audyt, zgłoszenia, ustawienia) – projekt: [[MCP-Admin-Tools]].
+**Administrator** – `quiz_get`/`quiz_list` czytają **każdy** quiz (nie tylko własny), a `quiz_update`/`quiz_delete` wymagają jedynie `write:quizzes`, więc kontrola nad treścią quizów jest pełna. Wyniki poza klasą dają narzędzia z sekcji „Administrator” wyżej.
 
 ## Podłączenie klientów
 
@@ -158,7 +158,7 @@ npm run test:mcp
 
 `MCP_E2E_VIA_DEV=1 npm run test:mcp` powtarza te same sprawdzenia przez zbundlowaną funkcję za proxy `npm run dev:full`, a nie tylko na aplikacji w procesie.
 
-Skrypt uruchamia `scripts/dev-server.mjs`, a gdy port 8888 jest już zajęty, używa działającego serwera i niczego nie zatrzymuje. Oficjalnym klientem MCP wywołuje **wszystkie 27 narzędzi** na prawdziwej aplikacji i bazie: poprawne scenariusze, walidację, odmowy dla innego nauczyciela, admina (tylko podgląd), tokenu bez uprawnień i bez potwierdzenia oraz wpisy w audycie. Dane testowe mają prefiks `mcp-e2e` i są usuwane przed i po teście; kod wyjścia ≠ 0 przy błędzie. Test produkcji (tylko quizy, tymczasowy quiz): `node scripts/mcp-smoke.mjs`.
+Skrypt uruchamia `scripts/dev-server.mjs`, a gdy port 8888 jest już zajęty, używa działającego serwera i niczego nie zatrzymuje. Oficjalnym klientem MCP wywołuje **wszystkie 42 narzędzia** na prawdziwej aplikacji i bazie: poprawne scenariusze, walidację, odmowy dla innego nauczyciela, admina (tylko podgląd), tokenu bez uprawnień i bez potwierdzenia oraz wpisy w audycie. Dane testowe mają prefiks `mcp-e2e` i są usuwane przed i po teście; kod wyjścia ≠ 0 przy błędzie. Test produkcji (tylko quizy, tymczasowy quiz): `node scripts/mcp-smoke.mjs`.
 
 ## Szybki test z linii poleceń
 

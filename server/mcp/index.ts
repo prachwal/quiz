@@ -23,7 +23,7 @@ function buildServer(req: Request) {
   const server = new McpServer({
     name: 'quiz',
     title: 'Quiz',
-    version: '2.0.1',
+    version: '2.1.0',
     icons: [{ src: 'https://quiz-vercel-rho.vercel.app/mcp-icon.png', mimeType: 'image/png', sizes: ['1254x1254'] }],
   })
   registerQuizTools(server, ctx)
