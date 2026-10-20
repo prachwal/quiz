@@ -19,9 +19,9 @@ import {
   urlFetchesLastHour,
   urlOf,
 } from '../../media/service'
+import { referenceNames } from '../../media/ownerNames'
 import { checkImageUrl } from '../../media/ssrf'
 import { decodeBase64Image, mediaMarkdown, URL_FETCH_DISABLED_REASON, URL_FETCH_LIMIT_REASON, urlFetchAllowed, validateAlt } from '../../media/uploads'
-import { quizTitles } from '../../quizRepo'
 import { audit, failure, needQuizWrite, text } from '../context'
 import type { Ctx } from '../context'
 
@@ -44,6 +44,14 @@ async function run(work: () => Promise<CallToolResult>): Promise<CallToolResult>
     if (error instanceof MediaRequestError) return failure(error.message)
     throw error
   }
+}
+
+/**
+ * What the media tools need from the other modules. The composition root (server/mcp/index.ts) builds it, so the
+ * media module never imports quizzes: `ownerLabels` names the owners that reference a file (only quizzes have titles).
+ */
+export interface MediaToolDeps {
+  ownerLabels(ownerKind: string, ids: readonly string[]): Promise<Map<string, string>>
 }
 
 /** Audit details never contain the bytes, only the size, the source and a short hash. */
@@ -74,7 +82,7 @@ const fileInfo = (runtime: MediaRuntime, row: MediaRow) => ({
 })
 
 /** media_* tools (Media-Storage-Plan M5): upload, check, list, read and delete images. Every change is audited. */
-export function registerMediaTools(server: McpServer, ctx: Ctx) {
+export function registerMediaTools(server: McpServer, ctx: Ctx, deps: MediaToolDeps) {
   server.registerTool(
     'media_upload',
     {
@@ -237,7 +245,7 @@ export function registerMediaTools(server: McpServer, ctx: Ctx) {
       return run(async () => {
         const runtime = mediaRuntime()
         const { row, references } = await mediaDetails({ id, userId: ctx.userId, isAdmin: ctx.viewer.admin })
-        const titles = await quizTitles(references.filter((r) => r.ownerKind === 'quiz').map((r) => r.ownerId))
+        const titles = await deps.ownerLabels('quiz', references.filter((r) => r.ownerKind === 'quiz').map((r) => r.ownerId))
         return text({
           ...fileInfo(runtime, row),
           sha256: row.sha256,
@@ -261,8 +269,8 @@ export function registerMediaTools(server: McpServer, ctx: Ctx) {
       return run(async () => {
         const result = await deleteMedia(mediaRuntime(), { id, userId: ctx.userId, isAdmin: ctx.viewer.admin })
         if (result.kind === 'in-use') {
-          const titles = await quizTitles(result.references.filter((r) => r.ownerKind === 'quiz').map((r) => r.ownerId))
-          const names = result.references.map((r) => (r.ownerKind === 'quiz' ? `quiz „${titles.get(r.ownerId) ?? r.ownerId}”` : `${r.ownerKind} ${r.ownerId}`))
+          const titles = await deps.ownerLabels('quiz', result.references.filter((r) => r.ownerKind === 'quiz').map((r) => r.ownerId))
+          const names = referenceNames(result.references, titles)
           return failure(`Obraz jest używany w: ${names.join(', ')}. Najpierw usuń go z tych treści (quiz_update) albo usuń te quizy, a potem wywołaj media_delete ponownie.`)
         }
         await audit(ctx, 'media_delete', { id, label: 'obraz' }, detailsOf(result.row))

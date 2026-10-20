@@ -13,10 +13,8 @@ import { ALLOWLIST_FILE, auditRepo, checkArchitecture } from '../scripts/arch-co
 type Entry = { from: string; to: string; pair: string; reason: string }
 type Exception = { from: string; to: string }
 
-// Naprawa 14 (5.C): server/mcp/tools/media.ts wiąże obraz z quizem przez quizRepo.
-// To jedyne świadome odstępstwo od reguły media-no-domain; wyjątek ma zniknąć razem z
-// naprawą (wtedy test pada z komunikatem „usuń wyjątek”).
-const HARD_RULE_EXCEPTIONS: Exception[] = [{ from: 'server/mcp/tools/media.ts', to: 'server/quizRepo.ts' }]
+// Brak świadomych odstępstw od reguł twardych: media nie zna quizów (tytuły dostaje przez MediaToolDeps).
+const HARD_RULE_EXCEPTIONS: Exception[] = []
 
 // Dozwolone składy cykli modułów. Nowy cykl albo większy skład pada.
 const EXPECTED_CYCLES = [
