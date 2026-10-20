@@ -127,6 +127,17 @@ export async function markReady(
   return rows[0] ? toRow(rows[0]) : null
 }
 
+/** `ready` rows for the given ids in one query; pending and unknown ids are simply absent. */
+export async function getReady(ids: readonly string[], db: Db = pool()): Promise<MediaRow[]> {
+  const valid = [...new Set(ids.filter(isMediaId))]
+  if (valid.length === 0) return []
+  const { rows } = await db.query<RawMediaRow>(
+    `SELECT ${MEDIA_COLUMNS} FROM media WHERE id = ANY($1::uuid[]) AND status = 'ready'`,
+    [valid],
+  )
+  return rows.map(toRow)
+}
+
 /** An existing file of this author with the same sha256; a `ready` one is preferred over a `pending` one. */
 export async function findBySha(ownerId: string, sha256: string, db: Db = pool()): Promise<MediaRow | null> {
   const { rows } = await db.query<RawMediaRow>(

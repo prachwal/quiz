@@ -156,8 +156,10 @@ try {
     if (status === 'ready') await media.markReady(id, { width: 800, height: 450 })
   }
   const readyId = randomUUID()
+  const explainId = randomUUID() // used only in the explanation: it must not reach the player view
   const pendingId = randomUUID()
   await mediaRow(readyId, 'ready')
+  await mediaRow(explainId, 'ready')
   await mediaRow(pendingId, 'pending')
   const img = (alt: string, id: string) => `![${alt}](media:${id})`
   const withImage = (prompt: string, explanation: string, optionText: string) => ({
@@ -170,13 +172,13 @@ try {
   const refsOf = async (quizId: string) =>
     (await pool().query<{ id: string }>(`SELECT media_id::text AS id FROM media_refs WHERE owner_kind = 'quiz' AND owner_id = $1`, [quizId])).rows.map((r) => r.id)
 
-  const imageQuiz = withImage(`Co pokazuje ${img('Mapa Polski', readyId)}?`, `Patrz ${img('Schemat', readyId)}.`, img('Kot', readyId))
+  const imageQuiz = withImage(`Co pokazuje ${img('Mapa Polski', readyId)}?`, `Patrz ${img('Schemat', explainId)}.`, img('Kot', readyId))
   const imageCreated = await call(tAdminWrite, 'quiz_create', { quiz: imageQuiz })
   ok('quiz_create with a ready image in prompt, explanation and option', imageCreated, (d) => d.questions[0].prompt === imageQuiz.questions[0].prompt)
   const imageQuizId: string = imageCreated.data.id
   ok('quiz_get returns the image syntax unchanged', await call(tAdminWrite, 'quiz_get', { id: imageQuizId, withAnswers: true }), (d) =>
     d.questions[0].prompt === imageQuiz.questions[0].prompt && d.questions[0].explanation === imageQuiz.questions[0].explanation && d.questions[0].options[0].text === imageQuiz.questions[0].options[0].text)
-  check('media_refs: one reference for the quiz', JSON.stringify(await refsOf(imageQuizId)) === JSON.stringify([readyId]), await refsOf(imageQuizId))
+  check('media_refs: one reference per file', JSON.stringify((await refsOf(imageQuizId)).sort()) === JSON.stringify([readyId, explainId].sort()), await refsOf(imageQuizId))
   denied('quiz_create with an unknown media id', await call(tAdminWrite, 'quiz_create', { quiz: withImage(`P ${img('x', randomUUID())}`, '', 'a') }), 'nieistniejące')
   denied('quiz_create with a pending media id', await call(tAdminWrite, 'quiz_create', { quiz: withImage(`P ${img('x', pendingId)}`, '', 'a') }), 'jeszcze niewysłane')
   denied('quiz_create with an external https image', await call(tAdminWrite, 'quiz_create', { quiz: withImage(`P ![x](https://example.com/a.png)`, '', 'a') }), 'media_upload')
@@ -187,7 +189,42 @@ try {
   ok('quiz_update removing the image clears the reference', await call(tAdminWrite, 'quiz_update', { id: imageQuizId, quiz: withImage('Co pokazuje?', 'Patrz.', 'Kot') }), (d) => d.questions[0].prompt === 'Co pokazuje?')
   check('media_refs cleared by quiz_update', (await refsOf(imageQuizId)).length === 0, await refsOf(imageQuizId))
   ok('quiz_update adding the image back', await call(tAdminWrite, 'quiz_update', { id: imageQuizId, quiz: imageQuiz }))
-  check('media_refs restored by quiz_update', JSON.stringify(await refsOf(imageQuizId)) === JSON.stringify([readyId]))
+  check('media_refs restored by quiz_update', JSON.stringify((await refsOf(imageQuizId)).sort()) === JSON.stringify([readyId, explainId].sort()))
+
+  // ---- media map in the REST responses (Media-Storage-Plan M3) -----------------------------
+  const mediaOf = (d: any) => d.media as Record<string, { url: string; width: number | null; height: number | null }> | undefined
+  const expectedUrl = `https://media.test/media/2026/${readyId}.png`
+  const rest = async (path: string, init: RequestInit & { bearer: string }) => {
+    const { bearer, ...rest } = init
+    const response = await fetch(`${base}${path}`, { ...rest, headers: { 'content-type': 'application/json', Authorization: `Bearer ${bearer}` } })
+    return { status: response.status, body: await response.json().catch(() => null) as any }
+  }
+  const plainBearer = await token(PLAIN, [])
+  const playerView = await rest(`/quizzes/${imageQuizId}`, { method: 'GET', bearer: plainBearer })
+  check('GET quiz (player view) -> 200', playerView.status === 200, playerView.status)
+  check('GET quiz (player view) has the map of the prompt and option images', mediaOf(playerView.body)?.[readyId]?.url === expectedUrl && mediaOf(playerView.body)?.[readyId]?.width === 800 && mediaOf(playerView.body)?.[readyId]?.height === 450, playerView.body?.media)
+  check('GET quiz (player view) never maps the explanation image', mediaOf(playerView.body)?.[explainId] === undefined, playerView.body?.media)
+  check('GET quiz (player view) does not carry explanations', !('explanation' in (playerView.body?.questions?.[0] ?? {})))
+  const editorView = await rest(`/quizzes/${imageQuizId}?include=answers`, { method: 'GET', bearer: await token(`${ADMIN}-w`, ['write:quizzes']) })
+  check('GET quiz (?include=answers) maps the explanation image too', mediaOf(editorView.body)?.[explainId]?.url === `https://media.test/media/2026/${explainId}.png`, editorView.body?.media)
+  const plainQuiz = await rest(`/quizzes/${quizId}`, { method: 'GET', bearer: plainBearer })
+  check('GET quiz without images has no media key (JSON unchanged)', plainQuiz.status === 200 && !('media' in plainQuiz.body), Object.keys(plainQuiz.body ?? {}))
+
+  const questionOf = playerView.body.questions[0]
+  const graded = await rest(`/quizzes/${imageQuizId}/grade`, {
+    method: 'POST',
+    bearer: await token(STUDENT, []),
+    body: JSON.stringify({ answers: { [questionOf.id]: { optionIds: [questionOf.options[0].id] } } }),
+  })
+  check('grade with an explanation image -> the response maps it', graded.status === 200 && mediaOf(graded.body)?.[explainId]?.url === `https://media.test/media/2026/${explainId}.png`, graded.body)
+  check('grade response maps the image of the chosen option too', mediaOf(graded.body)?.[readyId]?.url === expectedUrl, graded.body?.media)
+  // a helper quiz without images, made and removed through the repository (no audit entries, no list changes)
+  const plainId = await repo.createQuiz({ title: 'MCP E2E plain grade', description: '', shuffleOptions: false, questions: [textQuestion(7)] } as never, { kind: 'manual', ownerId: null })
+  const gradedPlain = await rest(`/quizzes/${plainId}/grade`, { method: 'POST', bearer: plainBearer, body: JSON.stringify({ answers: {} }) })
+  check('grade of a quiz without images has no media key (JSON unchanged)', gradedPlain.status === 200 && !('media' in gradedPlain.body), Object.keys(gradedPlain.body ?? {}))
+  await repo.deleteQuiz(plainId)
+  check('REST create with an unknown image -> 400 with the ids', (await rest('/quizzes', { method: 'POST', bearer: await token(`${ADMIN}-w`, ['write:quizzes']), body: JSON.stringify({ ...withImage(`P ${img('x', randomUUID())}`, '', 'a') }) })).status === 400)
+
   ok('quiz_delete', await call(tAdminWrite, 'quiz_delete', { id: imageQuizId, confirm: true }), (d) => d.ok === true)
   check('media_refs cleared by quiz_delete', (await refsOf(imageQuizId)).length === 0, await refsOf(imageQuizId))
 

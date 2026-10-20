@@ -1,6 +1,6 @@
 import type { Request, Response, Router } from 'express'
 import { z } from 'zod'
-import { gradeQuiz } from '../../src/shared/quiz/engine'
+import { gradedImageIds, gradeQuiz, quizImageIds } from '../../src/shared/quiz/engine'
 import { buildQuestionsSnapshot } from '../../src/shared/quiz/questionsSnapshot'
 import { resolveGradedIds } from '../../src/shared/quiz/sampling'
 import { DIFFICULTIES, generateInput, gradeInput, quizInput, retryWrongInput } from '../../src/shared/quiz/schema'
@@ -11,6 +11,8 @@ import { HttpError, notFound, parseId, userOf } from '../http'
 import { buildVerbQuiz, generateIrregularVerbsQuiz, listVerbs, randomSample } from '../irregularVerbs'
 import * as repo from '../quizRepo'
 import { MediaRefError } from '../media/repo'
+import { resolveMedia } from '../media/resolve'
+import { withMedia } from '../media/mediaMap'
 import * as reviews from '../reviewsRepo'
 import { reportServerError } from '../sentry'
 
@@ -141,7 +143,8 @@ export function registerQuizRoutes(router: Router) {
     }
     const quiz = await repo.getQuiz(parseId(req.params.id), withAnswers, canEdit)
     if (!quiz) throw notFound()
-    res.json(quiz)
+    // the view carries only what it shows: explanations (and their images) are in the editor view only
+    res.json(withMedia(quiz, await resolveMedia(quizImageIds(quiz))))
   })
 
   router.put('/quizzes/:id', requirePermission(WRITE_QUIZZES), async (req, res) => {
@@ -193,6 +196,7 @@ export function registerQuizRoutes(router: Router) {
         }),
       reportHookError(req, res),
     )
-    res.json({ ...result, attemptId, ...response })
+    const media = await resolveMedia(gradedImageIds(gradedQuestions, answers))
+    res.json(withMedia({ ...result, attemptId, ...response }, media))
   })
 }

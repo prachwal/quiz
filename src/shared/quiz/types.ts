@@ -1,4 +1,5 @@
 import type { QuestionType, QuizResult } from './engine'
+import type { MediaMap } from '../media/types'
 
 export type DifficultyCode = 'easy' | 'medium' | 'hard'
 export type PopularityCode = 'core' | 'common' | 'rare'
@@ -79,6 +80,8 @@ export interface QuizQuestion {
 
 export interface QuizDetail {
   id: string
+  /** Images used by the content of this view; omitted when the quiz has none. */
+  media?: MediaMap
   title: string
   description: string
   kind: 'manual' | 'generated'
@@ -129,6 +132,8 @@ export interface AttemptSummary {
 export type GradedAttempt = QuizResult & {
   attemptId: string
   course: { id: string; title: string; passPercent: number; passed: boolean } | null
+  /** Images used by the explanations and the option texts of this result; omitted when there are none. */
+  media?: MediaMap
 }
 
 export interface CourseSummary {

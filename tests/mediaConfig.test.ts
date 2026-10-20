@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { resolveMediaConfig } from '../server/media/config.ts'
+import { mediaUrlFor, publicBaseUrlOf, resolveMediaConfig } from '../server/media/config.ts'
 import { getStorage } from '../server/media/driver.ts'
 
 const s3Env = {
@@ -83,4 +83,19 @@ test('getStorage fails clearly for an unconfigured s3 driver and works for the m
   await driver.put('media/2026/a.png', new Uint8Array([1, 2]), { contentType: 'image/png' })
   assert.equal(driver.publicUrl('media/2026/a.png'), 'https://media.test/media/2026/a.png')
   assert.deepEqual(await driver.head('media/2026/a.png'), { size: 2, contentType: 'image/png' })
+})
+
+test('publicBaseUrlOf needs only MEDIA_PUBLIC_BASE_URL and never throws', () => {
+  assert.equal(publicBaseUrlOf({}), null)
+  assert.equal(publicBaseUrlOf({ MEDIA_PUBLIC_BASE_URL: '   ' }), null)
+  assert.equal(publicBaseUrlOf({ MEDIA_PUBLIC_BASE_URL: 'https://media.example.com/' }), 'https://media.example.com')
+  assert.equal(publicBaseUrlOf({ MEDIA_PUBLIC_BASE_URL: 'http://media.example.com' }), null)
+  assert.equal(publicBaseUrlOf({ MEDIA_PUBLIC_BASE_URL: 'not a url' }), null)
+  // no S3 settings are needed to build an address
+  assert.equal(publicBaseUrlOf({ S3_KEY_PREFIX: 'dev/' }), null)
+})
+
+test('mediaUrlFor joins the base and the stored key without doubling slashes', () => {
+  assert.equal(mediaUrlFor('https://media.test', 'dev/media/2026/a.png'), 'https://media.test/dev/media/2026/a.png')
+  assert.equal(mediaUrlFor('https://media.test/', 'media/2026/a.webp'), 'https://media.test/media/2026/a.webp')
 })

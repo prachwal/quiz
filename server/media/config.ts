@@ -48,6 +48,23 @@ function parsePublicBaseUrl(raw: string): string {
 }
 
 /**
+ * The public base URL alone, for building `url` in API responses. Needs no other setting (the stored key
+ * already carries `S3_KEY_PREFIX`), never touches the storage driver, and never throws: null when unset or invalid.
+ */
+export function publicBaseUrlOf(env: MediaEnv): string | null {
+  const raw = value(env, 'MEDIA_PUBLIC_BASE_URL')
+  if (raw === '') return null
+  try {
+    return parsePublicBaseUrl(raw)
+  } catch {
+    return null
+  }
+}
+
+/** The public address of a stored object: `<base>/<key>` (keys are immutable, see MEDIA_CACHE_CONTROL). */
+export const mediaUrlFor = (baseUrl: string, key: string): string => `${baseUrl.replace(/\/+$/, '')}/${key}`
+
+/**
  * Resolves the media configuration. Throws a Polish error naming the missing variables when the s3 driver
  * is selected (the default) and not configured.
  */
