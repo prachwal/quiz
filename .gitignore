@@ -42,3 +42,9 @@ dist-ssr
 coverage/*
 .vercel
 .env*
+
+# bundle of scripts/mcp-local-e2e.ts written by `npm run test:mcp`
+.mcp-e2e.mjs
+
+# git worktrees of parallel subagents
+.claude/worktrees/
