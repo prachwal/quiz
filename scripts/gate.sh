@@ -13,7 +13,7 @@
 # Test hooks (for checking that the gate really fails or waits; never used in a normal run):
 #   GATE_FORCE_FAIL=<step>     that step reports FAIL without running anything.
 #                              Steps: lint, tsc-build, tsc-server, test, build, build-api, test-ui, test-mcp.
-#   GATE_TEST_MCP_CMD=<cmd>    command run by the test-mcp step through bash -c (default: npm run test:mcp).
+#   GATE_TEST_MCP_CMD=<cmd>    command run by the test-mcp step through bash -c (default: env MCP_E2E_ALLOW_REMOTE_DB=1 npm run test:mcp).
 #   GATE_LOCK_FILE=<path>      e2e lock file (default: /tmp/claude-1000/mcp-e2e.lock).
 #   GATE_PORT_WAIT_SECONDS=<n> how long the test-mcp step waits for ports 8888/5173 to free up once it holds
 #                              the lock (default: 60). Nothing is ever killed.
@@ -197,7 +197,7 @@ step_test_mcp() {
     return
   fi
   lock_file=${GATE_LOCK_FILE:-/tmp/claude-1000/mcp-e2e.lock}
-  cmd=${GATE_TEST_MCP_CMD:-npm run test:mcp}
+  cmd=${GATE_TEST_MCP_CMD:-env MCP_E2E_ALLOW_REMOTE_DB=1 npm run test:mcp}
   mkdir -p "$(dirname "$lock_file")"
   # The lock comes first: parallel runs queue here instead of failing on a port another run is using.
   exec 9>"$lock_file"

@@ -18,8 +18,7 @@ const HARD_RULE_EXCEPTIONS: Exception[] = []
 
 // Dozwolone składy cykli modułów. Nowy cykl albo większy skład pada.
 const EXPECTED_CYCLES = [
-  ['classes', 'learning', 'media', 'progress', 'quizzes'],
-  ['f-learning', 'f-progress', 'f-quizzes'],
+  ['learning', 'progress', 'quizzes'],
   ['shared-quizzes', 'shared-types'],
 ]
 
