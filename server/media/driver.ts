@@ -26,7 +26,7 @@ export interface StorageDriver {
 }
 
 export function createStorage(config: MediaConfig): StorageDriver {
-  if (config.driver === 'memory') return new MemoryStorageDriver(config.publicBaseUrl)
+  if (config.driver === 'memory') return new MemoryStorageDriver(config.publicBaseUrl, config.memoryDir)
   if (!config.s3) throw new Error('createStorage: s3 settings are missing')
   return new S3StorageDriver({ ...config.s3, publicBaseUrl: config.publicBaseUrl })
 }

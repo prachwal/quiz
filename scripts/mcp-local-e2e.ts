@@ -13,6 +13,7 @@ import * as repo from '../server/quizRepo'
 import * as adminRepo from '../server/adminRepo'
 import * as appSettings from '../server/appSettingsRepo'
 import * as media from '../server/media/repo'
+import { getStorage } from '../server/media/driver'
 
 type Result = { err: boolean; data: any }
 let passed = 0
@@ -101,8 +102,8 @@ try {
   const getOk = await fetch(`${base}/mcp`, { headers: { Authorization: `Bearer ${await token(PLAIN, [])}` } })
   check('GET /mcp -> 405', getOk.status === 405, getOk.status)
   const names = (await tPlain.listTools()).tools.map((t) => t.name).sort()
-  check('42 tools listed', names.length === 42, names.length)
-  for (const required of ['quiz_create', 'class_create', 'student_search', 'student_add', 'class_analyze', 'assignment_create', 'attempt_list', 'attempt_get', 'quiz_stats', 'user_results', 'user_analysis', 'user_list', 'user_get', 'user_search', 'user_roles_set', 'user_block', 'class_transfer', 'audit_list', 'feedback_list', 'feedback_update', 'settings_get', 'settings_set', 'system_stats'])
+  check('49 tools listed', names.length === 49, names.length)
+  for (const required of ['quiz_create', 'class_create', 'student_search', 'student_add', 'class_analyze', 'assignment_create', 'attempt_list', 'attempt_get', 'quiz_stats', 'user_results', 'user_analysis', 'user_list', 'user_get', 'user_search', 'user_roles_set', 'user_block', 'class_transfer', 'audit_list', 'feedback_list', 'feedback_update', 'settings_get', 'settings_set', 'system_stats', 'media_upload', 'media_upload_from_url', 'media_create_upload', 'media_complete', 'media_list', 'media_get', 'media_delete'])
     check(`tool ${required} exists`, names.includes(required))
 
   // ---- quizzes ---------------------------------------------------------------------------
@@ -388,6 +389,106 @@ try {
   ok('class_list after archive', await call(tTeacher, 'class_list', {}), (d) => d.length === 0)
   ok('archived class is gone from the admin overview', await call(tAdmin, 'class_list', { scope: 'all' }), (d) => d.every((c: any) => c.id !== classId))
 
+  // ---- images uploaded through MCP (Media-Storage-Plan M5): upload, reuse, refusals, references, cleanup --
+  // The bytes are checked in the other process too: MEDIA_MEMORY_DIR (set by scripts/mcp-local-e2e.sh) makes the
+  // memory driver write files, so getStorage() here sees exactly what the server stored or removed.
+  if (!process.env.MEDIA_MEMORY_DIR) throw new Error('MEDIA_MEMORY_DIR must be set (scripts/mcp-local-e2e.sh sets it)')
+  const storage = getStorage()
+  const writer2 = await open(await token(`${ADMIN}-w2`, ['write:quizzes']))
+  const quotaClient = await open(await token(`${ADMIN}-quota`, ['write:quizzes']))
+  const adminBoth = await open(await token(`${ADMIN}-both`, ['manage:users', 'write:quizzes']))
+  const pngBytes = (width: number, height: number, padding = 0) => {
+    const u32 = (n: number) => [(n >>> 24) & 0xff, (n >>> 16) & 0xff, (n >>> 8) & 0xff, n & 0xff]
+    const head = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, ...u32(13), ...Array.from('IHDR', (c) => c.charCodeAt(0)), ...u32(width), ...u32(height), 8, 2, 0, 0, 0]
+    return Buffer.from([...head, ...new Array<number>(padding).fill(0)])
+  }
+  const sha = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex')
+  const keyOf = async (id: string) => (await media.get(id))?.key ?? null
+  const small = pngBytes(3, 2)
+  const smallB64 = small.toString('base64')
+
+  const up = await call(tAdminWrite, 'media_upload', { dataBase64: smallB64, alt: 'Mały kwadrat' })
+  ok('media_upload (PNG: size and markdown from the bytes)', up, (d) => d.width === 3 && d.height === 2 && d.size === small.length && d.reused === false && d.markdown === `![Mały kwadrat](media:${d.mediaId})` && d.url.endsWith(`/${d.mediaId}.png`))
+  const mediaId: string = up.data.mediaId
+  check('media_upload wrote the object', (await storage.head((await keyOf(mediaId)) ?? '')) !== null)
+  ok('media_upload the same bytes again -> reused', await call(tAdminWrite, 'media_upload', { dataBase64: smallB64, alt: 'Inny opis' }), (d) => d.reused === true && d.mediaId === mediaId && d.markdown === `![Inny opis](media:${mediaId})`)
+  ok('media_upload of the same bytes by another author is not reused', await call(writer2, 'media_upload', { dataBase64: smallB64, alt: 'Cudzy' }), (d) => d.reused === false && d.mediaId !== mediaId)
+  const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>').toString('base64')
+  denied('media_upload SVG refused', await call(tAdminWrite, 'media_upload', { dataBase64: svg, alt: 'Wektor' }), 'PNG, JPEG i WebP')
+  const gif = Buffer.concat([Buffer.from('GIF89a'), Buffer.alloc(20)]).toString('base64')
+  denied('media_upload GIF refused', await call(tAdminWrite, 'media_upload', { dataBase64: gif, alt: 'Animacja' }), 'PNG, JPEG i WebP')
+  denied('media_upload oversize (over MEDIA_MAX_BYTES) refused', await call(tAdminWrite, 'media_upload', { dataBase64: Buffer.concat([pngBytes(1, 1), Buffer.alloc(2_097_152)]).toString('base64'), alt: 'Duży' }), 'za duży')
+  denied('media_upload over the base64 limit refused by the schema', await call(tAdminWrite, 'media_upload', { dataBase64: 'A'.repeat(2_800_001), alt: 'Za długi' }))
+  denied('media_upload bad base64 refused', await call(tAdminWrite, 'media_upload', { dataBase64: 'not base64!', alt: 'Zły' }), 'base64')
+  denied('media_upload alt with a bracket refused', await call(tAdminWrite, 'media_upload', { dataBase64: smallB64, alt: 'a]b' }), 'znaku "]"')
+  denied('media_upload without write', await call(tPlain, 'media_upload', { dataBase64: smallB64, alt: 'x' }), 'write:quizzes')
+  denied('media_create_upload without write', await call(tPlain, 'media_create_upload', { contentType: 'image/png', size: small.length, sha256: sha(small), alt: 'x' }), 'write:quizzes')
+  denied('media_complete without write', await call(tPlain, 'media_complete', { mediaId }), 'write:quizzes')
+  denied('media_get without write', await call(tPlain, 'media_get', { mediaId }), 'write:quizzes')
+  denied('media_delete without write', await call(tPlain, 'media_delete', { mediaId, confirm: true }), 'write:quizzes')
+
+  const mediaQuiz = await call(tAdminWrite, 'quiz_create', {
+    quiz: { title: 'MCP E2E media upload', difficulty: 'easy', questions: [{ type: 'single', prompt: `Co to? ${up.data.markdown}`, explanation: '', points: 1, options: [{ text: 'Kwadrat', isCorrect: true }, { text: 'Koło', isCorrect: false }] }] },
+  })
+  ok('quiz_create with the markdown from media_upload', mediaQuiz, (d) => d.questions[0].prompt === `Co to? ${up.data.markdown}`)
+  const mediaQuizId: string = mediaQuiz.data.id
+  ok('media_get shows the referencing quiz', await call(tAdminWrite, 'media_get', { mediaId }), (d) =>
+    d.referencedBy.length === 1 && d.referencedBy[0].kind === 'quiz' && d.referencedBy[0].title === 'MCP E2E media upload' && d.status === 'ready' && d.width === 3 && d.sha256 === sha(small))
+  ok('media_get by an admin of another author', await call(adminBoth, 'media_get', { mediaId }), (d) => d.mediaId === mediaId)
+  denied('media_get by another author is refused like a missing file', await call(writer2, 'media_get', { mediaId }), 'Nie znaleziono pliku')
+  denied('media_delete while referenced names the quiz', await call(tAdminWrite, 'media_delete', { mediaId, confirm: true }), 'MCP E2E media upload')
+  denied('media_delete without confirm', await call(tAdminWrite, 'media_delete', { mediaId, confirm: false }))
+  check('refused delete kept the row and the object', (await media.get(mediaId)) !== null && (await storage.head((await keyOf(mediaId)) ?? '')) !== null)
+  ok('quiz_delete (the referencing quiz)', await call(tAdminWrite, 'quiz_delete', { id: mediaQuizId, confirm: true }), (d) => d.ok === true)
+  const removedKey = await keyOf(mediaId)
+  ok('media_delete after the quiz is gone', await call(tAdminWrite, 'media_delete', { mediaId, confirm: true }), (d) => d.ok === true)
+  check('media_delete removed the object from the storage', removedKey !== null && (await storage.head(removedKey)) === null)
+  check('media_delete removed the row', (await media.get(mediaId)) === null)
+
+  denied('media_upload_from_url is off without MEDIA_URL_FETCH=true', await call(tAdminWrite, 'media_upload_from_url', { url: 'https://images.example.org/a.png', alt: 'Z sieci' }), 'MEDIA_URL_FETCH')
+  denied('media_upload_from_url without write', await call(tPlain, 'media_upload_from_url', { url: 'https://images.example.org/a.png', alt: 'Z sieci' }), 'write:quizzes')
+
+  const declared = pngBytes(5, 4)
+  const started = await call(tAdminWrite, 'media_create_upload', { contentType: 'image/png', size: declared.length, sha256: sha(declared), alt: 'Pięć na cztery' })
+  ok('media_create_upload returns a presigned PUT and the markdown', started, (d) => typeof d.uploadUrl === 'string' && d.uploadUrl.startsWith('memory://put/') && d.expiresInSeconds === 900 && d.markdown.startsWith('![Pięć na cztery](media:') && d.reused === false && Object.keys(d.headers).length > 0)
+  const startedId: string = started.data.mediaId
+  denied('media_complete before the bytes are uploaded', await call(tAdminWrite, 'media_complete', { mediaId: startedId }), 'nie został jeszcze wysłany')
+  await storage.put((await keyOf(startedId)) as string, declared, { contentType: 'image/png' }) // what the browser PUT does
+  ok('media_complete (the bytes match) -> ready', await call(tAdminWrite, 'media_complete', { mediaId: startedId }), (d) => d.status === 'ready' && d.width === 5 && d.height === 4)
+  denied('media_complete twice', await call(tAdminWrite, 'media_complete', { mediaId: startedId }), 'już gotowy')
+  denied('media_complete by another author', await call(writer2, 'media_complete', { mediaId: startedId }), 'Nie znaleziono pliku')
+  ok('media_create_upload of the same bytes -> reused', await call(tAdminWrite, 'media_create_upload', { contentType: 'image/png', size: declared.length, sha256: sha(declared), alt: 'Ponownie' }), (d) => d.reused === true && d.mediaId === startedId)
+
+  const lying = pngBytes(6, 6, 10)
+  const lied = await call(tAdminWrite, 'media_create_upload', { contentType: 'image/png', size: lying.length - 1, sha256: sha(lying), alt: 'Zły rozmiar' })
+  const liedId: string = lied.data.mediaId
+  await storage.put((await keyOf(liedId)) as string, lying, { contentType: 'image/png' })
+  const liedKey = (await keyOf(liedId)) as string
+  denied('media_complete with the wrong size is refused and cleaned up', await call(tAdminWrite, 'media_complete', { mediaId: liedId }), 'Rozmiar')
+  check('rejected upload left no row and no object', (await media.get(liedId)) === null && (await storage.head(liedKey)) === null)
+
+  const typedBytes = pngBytes(7, 7)
+  const typed = await call(tAdminWrite, 'media_create_upload', { contentType: 'image/jpeg', size: typedBytes.length, sha256: sha(typedBytes), alt: 'Zły typ' })
+  const typedId: string = typed.data.mediaId
+  await storage.put((await keyOf(typedId)) as string, typedBytes, { contentType: 'image/jpeg' })
+  denied('media_complete with a different type is refused', await call(tAdminWrite, 'media_complete', { mediaId: typedId }), 'image/png')
+  check('type mismatch left no row', (await media.get(typedId)) === null)
+
+  ok('media_list (own, paged)', await call(tAdminWrite, 'media_list', { limit: 1 }), (d) => d.items.length === 1 && d.total >= 1 && typeof d.hasMore === 'boolean')
+  ok('media_list (unreferenced, own only)', await call(tAdminWrite, 'media_list', { unreferenced: true, limit: 200 }), (d) => d.items.every((i: any) => i.ownerId === `${ADMIN}-w` && i.mediaId !== mediaId) && d.items.some((i: any) => i.mediaId === startedId))
+  denied('media_list with ownerId as author', await call(tAdminWrite, 'media_list', { ownerId: `${ADMIN}-w` }), 'tylko admin')
+  ok('media_list (admin with ownerId)', await call(adminBoth, 'media_list', { ownerId: `${ADMIN}-w`, limit: 200 }), (d) => d.items.length > 0 && d.items.every((i: any) => i.ownerId === `${ADMIN}-w`))
+  denied('media_list without write', await call(tPlain, 'media_list', {}), 'write:quizzes')
+
+  // daily limit: 100 files of this author today (pre-inserted rows, not uploads)
+  for (let i = 0; i < 100; i++) {
+    await media.createPending({ id: randomUUID(), key: `media/2026/${randomUUID()}.png`, contentType: 'image/png', sizeBytes: 1, sha256: createHash('sha256').update(`quota${i}`).digest('hex'), source: 'script', ownerId: `${ADMIN}-quota` })
+  }
+  denied('media_upload over the daily file limit', await call(quotaClient, 'media_upload', { dataBase64: smallB64, alt: 'Limit' }), 'Dzienny limit')
+  denied('media_create_upload over the daily file limit', await call(quotaClient, 'media_create_upload', { contentType: 'image/png', size: 40, sha256: sha(pngBytes(9, 9)), alt: 'Limit' }), 'Dzienny limit')
+
+  check('media audit never holds the bytes', (await pool().query("SELECT COUNT(*)::int AS n FROM admin_audit_log WHERE details::text LIKE $1", [`%${smallB64.slice(0, 24)}%`])).rows[0].n === 0)
+
   // ---- audit trail: every successful change is logged, reads and refusals are not ---------
   const audit = await pool().query<{ tool: string }>(
     "SELECT details->>'tool' AS tool FROM admin_audit_log WHERE action = 'mcp.call' AND actor_id LIKE $1 ORDER BY created_at",
@@ -398,6 +499,10 @@ try {
     'quiz_create', 'quiz_update', 'quiz_create', 'quiz_delete', 'quiz_create', 'quiz_update', 'quiz_update', 'quiz_delete', 'class_create', 'class_update', 'class_regenerate_code',
     'student_add', 'student_add', 'assignment_create', 'assignment_create', 'assignment_update_due', 'assignment_update_due',
     'student_remove', 'assignment_delete', 'class_archive',
+    // media section: uploads and changes only (reuse, refusals and reads are not changes); a rejected completion
+    // removes the row, so it is a change too
+    'media_upload', 'media_upload', 'quiz_create', 'quiz_delete', 'media_delete', 'media_create_upload', 'media_complete',
+    'media_create_upload', 'media_complete', 'media_create_upload', 'media_complete',
   ]
   check('audit log has exactly the successful changes', JSON.stringify(logged) === JSON.stringify(expected), { logged })
 
@@ -442,7 +547,7 @@ try {
   )
   check('audit: feedback_update and settings_set are logged as mcp.call', JSON.stringify(ops.rows.map((r) => r.tool)) === JSON.stringify(['feedback_update', 'settings_set']), ops.rows)
 
-  for (const c of [tTeacher, tAdminWrite, tAdmin, tOther, tPlain]) await c.close()
+  for (const c of [tTeacher, tAdminWrite, tAdmin, tOther, tPlain, writer2, quotaClient, adminBoth]) await c.close()
 } catch (error) {
   failures.push(`test crashed: ${(error as Error).stack ?? error}`)
 } finally {

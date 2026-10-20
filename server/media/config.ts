@@ -22,6 +22,8 @@ export interface MediaConfig {
   keyPrefix: string
   /** Present only for the s3 driver. */
   s3: S3Settings | null
+  /** Memory driver only: a directory that makes its objects visible to other processes (MEDIA_MEMORY_DIR). */
+  memoryDir: string | null
 }
 
 const S3_REQUIRED = ['S3_BUCKET', 'S3_REGION', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY', 'MEDIA_PUBLIC_BASE_URL'] as const
@@ -84,6 +86,7 @@ export function resolveMediaConfig(env: MediaEnv): MediaConfig {
       keyPrefix,
       publicBaseUrl: publicBaseUrl ? parsePublicBaseUrl(publicBaseUrl) : MEDIA_MEMORY_DEFAULT_BASE_URL,
       s3: null,
+      memoryDir: value(env, 'MEDIA_MEMORY_DIR') || null,
     }
   }
 
@@ -110,6 +113,7 @@ export function resolveMediaConfig(env: MediaEnv): MediaConfig {
     maxBytes,
     keyPrefix,
     publicBaseUrl: parsePublicBaseUrl(value(env, 'MEDIA_PUBLIC_BASE_URL')),
+    memoryDir: null,
     s3: {
       endpoint: endpoint.replace(/\/+$/, ''),
       region,

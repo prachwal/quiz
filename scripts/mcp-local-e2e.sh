@@ -9,10 +9,15 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-# Media: the test never uploads bytes (rows are created directly); the memory driver and a fixed public base
-# keep the URLs predictable and the bucket out of the picture. Set here, not in .env, on purpose.
+# Media: the memory driver and a fixed public base keep the URLs predictable and the bucket out of the picture.
+# MEDIA_MEMORY_DIR makes the memory driver write its objects to a temporary directory, so the dev server and this
+# script (two processes) see the same objects. URL fetching is pinned OFF: the test never makes a network request.
+# All of this is set here, not in .env, on purpose.
 export MEDIA_DRIVER=memory
 export MEDIA_PUBLIC_BASE_URL=https://media.test
+export MEDIA_URL_FETCH=false
+MEDIA_DIR="$(mktemp -d)"
+export MEDIA_MEMORY_DIR="$MEDIA_DIR"
 
 LOG="$(mktemp)"
 BUNDLE=".mcp-e2e.mjs"
@@ -20,6 +25,7 @@ DEV=""
 cleanup() {
   [ -n "$DEV" ] && kill -- "-$DEV" 2>/dev/null
   rm -f "$BUNDLE" "$LOG"
+  rm -rf "$MEDIA_DIR"
 }
 trap cleanup EXIT
 

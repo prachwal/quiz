@@ -44,7 +44,11 @@ export function createApp() {
     res.set('Cache-Control', 'no-store')
     next()
   })
-  app.use(express.json({ limit: '1mb' }))
+  // MCP carries uploaded images as base64 (media_upload: up to 2.8 M characters, Media-Storage-Plan D9), so it
+  // gets a larger body limit; everything else keeps 1 MB. The path is checked with and without the /api prefix.
+  const jsonDefault = express.json({ limit: '1mb' })
+  const jsonForMcp = express.json({ limit: '3mb' })
+  app.use(((req, res, next) => (/^\/(?:api\/)?mcp(?:[/?]|$)/.test(req.url) ? jsonForMcp : jsonDefault)(req, res, next)) satisfies RequestHandler)
 
   // `vercel.json` rewrites /api/* to the function, so strip the prefix before routing.
   app.use(((req, _res, next) => {
@@ -100,6 +104,8 @@ export function createApp() {
       res.status(error.status).json({ error: error.message, requestId })
     } else if (error instanceof SyntaxError) {
       res.status(400).json({ error: 'Invalid JSON body' })
+    } else if (error instanceof Error && (error as { type?: unknown }).type === 'entity.too.large') {
+      res.status(413).json({ error: 'Ładunek żądania jest za duży.' })
     } else {
       // unexpected: structured log + Sentry; the client gets the request id to quote in a report
       console.error(

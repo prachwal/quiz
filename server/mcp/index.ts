@@ -5,6 +5,7 @@ import { contextOf } from './context'
 import { registerAdminTools } from './tools/admin'
 import { registerUserTools } from './tools/users'
 import { registerOperationTools } from './tools/operations'
+import { registerMediaTools } from './tools/media'
 import { registerClassTools } from './classTools'
 import { registerQuizTools } from './quizTools'
 
@@ -15,7 +16,8 @@ import { registerQuizTools } from './quizTools'
  *   - quizzes (`quiz_*`, `verbs_list`): reading for everybody, changes with `write:quizzes`;
  *   - classes (`class_*`, `student_*`, `assignment_*`, `course_list`): teachers (`manage:classes`) work on their
  *     own classes, admins (`manage:users`, OAuth login only) can read every class;
- *   - admin tools (`attempt_*`): `manage:users` only, so OAuth login only.
+ *   - admin tools (`attempt_*`): `manage:users` only, so OAuth login only;
+ *   - media (`media_*`): uploads and management of images, `write:quizzes` like quiz changes.
  * Tool names follow `<object>_<action>`; destructive tools require `confirm: true`; every change is audited.
  */
 function buildServer(req: Request) {
@@ -23,7 +25,7 @@ function buildServer(req: Request) {
   const server = new McpServer({
     name: 'quiz',
     title: 'Quiz',
-    version: '2.1.0',
+    version: '2.2.0',
     icons: [{ src: 'https://quiz-vercel-rho.vercel.app/mcp-icon.png', mimeType: 'image/png', sizes: ['1254x1254'] }],
   })
   registerQuizTools(server, ctx)
@@ -31,6 +33,7 @@ function buildServer(req: Request) {
   registerAdminTools(server, ctx)
   registerUserTools(server, ctx)
   registerOperationTools(server, ctx)
+  registerMediaTools(server, ctx)
   return server
 }
 

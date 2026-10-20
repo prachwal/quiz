@@ -210,7 +210,8 @@ export type RemoveResult =
   | { status: 'in-use'; references: MediaRef[] }
   | { status: 'missing' }
 
-async function referencesOf(id: string, db: Db): Promise<MediaRef[]> {
+/** Who references a file (empty when nothing does). Used by the refusal messages and by media_get. */
+export async function referencesOf(id: string, db: Db = pool()): Promise<MediaRef[]> {
   const { rows } = await db.query<{ ownerKind: MediaOwnerKind; ownerId: string }>(
     `SELECT owner_kind AS "ownerKind", owner_id AS "ownerId"
        FROM media_refs
@@ -251,6 +252,15 @@ export async function countsToday(ownerId: string, db: Db = pool()): Promise<{ f
     [ownerId],
   )
   return { files: rows[0]?.files ?? 0, bytes: Number(rows[0]?.bytes ?? 0) }
+}
+
+/** Files of one source created by this author since the given instant (the hourly URL-fetch limit counts these). */
+export async function countBySourceSince(ownerId: string, source: MediaSource, since: Date, db: Db = pool()): Promise<number> {
+  const { rows } = await db.query<{ total: number }>(
+    `SELECT COUNT(*)::int AS total FROM media WHERE owner_id = $1 AND source = $2 AND created_at >= $3`,
+    [ownerId, source, since.toISOString()],
+  )
+  return rows[0]?.total ?? 0
 }
 
 /**

@@ -381,3 +381,16 @@ export async function getQuestionVerbs(quizId: string): Promise<Map<string, numb
   )
   return new Map(rows.map((r) => [r.id, r.verb_id]))
 }
+
+/** Titles of the given quizzes (for the media refusals, which name the quizzes that use a file). Missing ids are absent. */
+export async function quizTitles(ids: readonly string[]): Promise<Map<string, string>> {
+  const titles = new Map<string, string>()
+  const unique = [...new Set(ids)]
+  if (unique.length === 0) return titles
+  const { rows } = await pool().query<{ id: string; title: string }>(
+    'SELECT id::text AS id, title FROM quizzes WHERE id::text = ANY($1::text[])',
+    [unique],
+  )
+  for (const row of rows) titles.set(row.id, row.title)
+  return titles
+}

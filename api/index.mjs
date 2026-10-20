@@ -1062,12 +1062,12 @@ var require_depd = __commonJS({
       if ("value" in descriptor) {
         descriptor = convertDataDescriptorToAccessor(obj, prop, message);
       }
-      var get = descriptor.get;
+      var get2 = descriptor.get;
       var set2 = descriptor.set;
-      if (typeof get === "function") {
+      if (typeof get2 === "function") {
         descriptor.get = function getter() {
           log.call(deprecate, message, site);
-          return get.apply(this, arguments);
+          return get2.apply(this, arguments);
         };
       }
       if (typeof set2 === "function") {
@@ -19089,10 +19089,10 @@ var require_view = __commonJS({
     var debug = require_src()("express:view");
     var path = __require("node:path");
     var fs = __require("node:fs");
-    var dirname = path.dirname;
+    var dirname2 = path.dirname;
     var basename = path.basename;
     var extname = path.extname;
-    var join2 = path.join;
+    var join3 = path.join;
     var resolve = path.resolve;
     module.exports = View;
     function View(name, options) {
@@ -19128,7 +19128,7 @@ var require_view = __commonJS({
       for (var i = 0; i < roots.length && !path2; i++) {
         var root = roots[i];
         var loc = resolve(root, name);
-        var dir = dirname(loc);
+        var dir = dirname2(loc);
         var file2 = basename(loc);
         path2 = this.resolve(dir, file2);
       }
@@ -19154,14 +19154,14 @@ var require_view = __commonJS({
     };
     View.prototype.resolve = function resolve2(dir, file2) {
       var ext = this.ext;
-      var path2 = join2(dir, file2);
-      var stat = tryStat(path2);
-      if (stat && stat.isFile()) {
+      var path2 = join3(dir, file2);
+      var stat2 = tryStat(path2);
+      if (stat2 && stat2.isFile()) {
         return path2;
       }
-      path2 = join2(dir, basename(file2, ext), "index" + ext);
-      stat = tryStat(path2);
-      if (stat && stat.isFile()) {
+      path2 = join3(dir, basename(file2, ext), "index" + ext);
+      stat2 = tryStat(path2);
+      if (stat2 && stat2.isFile()) {
         return path2;
       }
     };
@@ -19210,9 +19210,9 @@ var require_etag = __commonJS({
       }
       return obj && typeof obj === "object" && "ctime" in obj && toString.call(obj.ctime) === "[object Date]" && "mtime" in obj && toString.call(obj.mtime) === "[object Date]" && "ino" in obj && typeof obj.ino === "number" && "size" in obj && typeof obj.size === "number";
     }
-    function stattag(stat) {
-      var mtime = stat.mtime.getTime().toString(16);
-      var size = stat.size.toString(16);
+    function stattag(stat2) {
+      var mtime = stat2.mtime.getTime().toString(16);
+      var size = stat2.size.toString(16);
       return '"' + size + "-" + mtime + '"';
     }
   }
@@ -19963,20 +19963,20 @@ var require_proxy_addr = __commonJS({
         ip = ip.toIPv4Address();
       }
       var max = ip.kind() === "ipv6" ? 128 : 32;
-      var range = pos !== -1 ? note.substring(pos + 1, note.length) : null;
-      if (range === null) {
-        range = max;
-      } else if (DIGIT_REGEXP.test(range)) {
-        range = parseInt(range, 10);
-      } else if (ip.kind() === "ipv4" && isip(range)) {
-        range = parseNetmask(range);
+      var range2 = pos !== -1 ? note.substring(pos + 1, note.length) : null;
+      if (range2 === null) {
+        range2 = max;
+      } else if (DIGIT_REGEXP.test(range2)) {
+        range2 = parseInt(range2, 10);
+      } else if (ip.kind() === "ipv4" && isip(range2)) {
+        range2 = parseNetmask(range2);
       } else {
-        range = null;
+        range2 = null;
       }
-      if (range <= 0 || range > max) {
+      if (range2 <= 0 || range2 > max) {
         throw new TypeError("invalid range on address: " + note);
       }
-      return [ip, range];
+      return [ip, range2];
     }
     function parseNetmask(netmask) {
       var ip = parseip(netmask);
@@ -20315,7 +20315,7 @@ var require_dist2 = __commonJS({
     };
     exports.PathError = PathError;
     function parse3(str, options = {}) {
-      const { encodePath = NOOP_VALUE } = options;
+      const { encodePath: encodePath2 = NOOP_VALUE } = options;
       const chars = [...str];
       let index = 0;
       function consumeUntil(end) {
@@ -20326,7 +20326,7 @@ var require_dist2 = __commonJS({
             return;
           output2.push({
             type: "text",
-            value: encodePath(path)
+            value: encodePath2(path)
           });
           path = "";
         }
@@ -22219,13 +22219,13 @@ var require_range_parser = __commonJS({
     function combineRanges(ranges) {
       var ordered = ranges.map(mapWithIndex).sort(sortByRangeStart);
       for (var j = 0, i = 1; i < ordered.length; i++) {
-        var range = ordered[i];
+        var range2 = ordered[i];
         var current = ordered[j];
-        if (range.start > current.end + 1) {
-          ordered[++j] = range;
-        } else if (range.end > current.end) {
-          current.end = range.end;
-          current.index = Math.min(current.index, range.index);
+        if (range2.start > current.end + 1) {
+          ordered[++j] = range2;
+        } else if (range2.end > current.end) {
+          current.end = range2.end;
+          current.index = Math.min(current.index, range2.index);
         }
       }
       ordered.length = j + 1;
@@ -22233,17 +22233,17 @@ var require_range_parser = __commonJS({
       combined.type = ranges.type;
       return combined;
     }
-    function mapWithIndex(range, index) {
+    function mapWithIndex(range2, index) {
       return {
-        start: range.start,
-        end: range.end,
+        start: range2.start,
+        end: range2.end,
         index
       };
     }
-    function mapWithoutIndex(range) {
+    function mapWithoutIndex(range2) {
       return {
-        start: range.start,
-        end: range.end
+        start: range2.start,
+        end: range2.end
       };
     }
     function sortByRangeIndex(a, b) {
@@ -22300,10 +22300,10 @@ var require_request = __commonJS({
     req.acceptsLanguages = function(...languages) {
       return accepts(this).languages(...languages);
     };
-    req.range = function range(size, options) {
-      var range2 = this.get("Range");
-      if (!range2) return;
-      return parseRange(size, range2, options);
+    req.range = function range2(size, options) {
+      var range3 = this.get("Range");
+      if (!range3) return;
+      return parseRange(size, range3, options);
     };
     defineGetter(req, "query", function query2() {
       var queryparse = this.app.get("query parser fn");
@@ -22896,7 +22896,7 @@ var require_send = __commonJS({
     var Stream = __require("stream");
     var util2 = __require("util");
     var extname = path.extname;
-    var join2 = path.join;
+    var join3 = path.join;
     var normalize = path.normalize;
     var resolve = path.resolve;
     var sep = path.sep;
@@ -23068,7 +23068,7 @@ var require_send = __commonJS({
           return res;
         }
         parts = path2.split(sep);
-        path2 = normalize(join2(root, path2));
+        path2 = normalize(join3(root, path2));
       } else {
         if (UP_PATH_REGEXP.test(path2)) {
           debug('malicious path "%s"', path2);
@@ -23099,8 +23099,8 @@ var require_send = __commonJS({
       this.sendFile(path2);
       return res;
     };
-    SendStream.prototype.send = function send2(path2, stat) {
-      var len = stat.size;
+    SendStream.prototype.send = function send2(path2, stat2) {
+      var len = stat2.size;
       var options = this.options;
       var opts = {};
       var res = this.res;
@@ -23112,7 +23112,7 @@ var require_send = __commonJS({
         return;
       }
       debug('pipe "%s"', path2);
-      this.setHeader(path2, stat);
+      this.setHeader(path2, stat2);
       this.type(path2);
       if (this.isConditionalGET()) {
         if (this.isPreconditionFailure()) {
@@ -23168,16 +23168,16 @@ var require_send = __commonJS({
       var i = 0;
       var self = this;
       debug('stat "%s"', path2);
-      fs.stat(path2, function onstat(err, stat) {
+      fs.stat(path2, function onstat(err, stat2) {
         var pathEndsWithSep = path2[path2.length - 1] === sep;
         if (err && err.code === "ENOENT" && !extname(path2) && !pathEndsWithSep) {
           return next(err);
         }
         if (err) return self.onStatError(err);
-        if (stat.isDirectory()) return self.redirect(path2);
+        if (stat2.isDirectory()) return self.redirect(path2);
         if (pathEndsWithSep) return self.error(404);
-        self.emit("file", path2, stat);
-        self.send(path2, stat);
+        self.emit("file", path2, stat2);
+        self.send(path2, stat2);
       });
       function next(err) {
         if (self._extensions.length <= i) {
@@ -23185,11 +23185,11 @@ var require_send = __commonJS({
         }
         var p = path2 + "." + self._extensions[i++];
         debug('stat "%s"', p);
-        fs.stat(p, function(err2, stat) {
+        fs.stat(p, function(err2, stat2) {
           if (err2) return next(err2);
-          if (stat.isDirectory()) return next();
-          self.emit("file", p, stat);
-          self.send(p, stat);
+          if (stat2.isDirectory()) return next();
+          self.emit("file", p, stat2);
+          self.send(p, stat2);
         });
       }
     };
@@ -23201,13 +23201,13 @@ var require_send = __commonJS({
           if (err) return self.onStatError(err);
           return self.error(404);
         }
-        var p = join2(path2, self._index[i]);
+        var p = join3(path2, self._index[i]);
         debug('stat "%s"', p);
-        fs.stat(p, function(err2, stat) {
+        fs.stat(p, function(err2, stat2) {
           if (err2) return next(err2);
-          if (stat.isDirectory()) return next();
-          self.emit("file", p, stat);
-          self.send(p, stat);
+          if (stat2.isDirectory()) return next();
+          self.emit("file", p, stat2);
+          self.send(p, stat2);
         });
       }
       next();
@@ -23238,9 +23238,9 @@ var require_send = __commonJS({
       debug("content-type %s", type2);
       res.setHeader("Content-Type", type2);
     };
-    SendStream.prototype.setHeader = function setHeader(path2, stat) {
+    SendStream.prototype.setHeader = function setHeader(path2, stat2) {
       var res = this.res;
-      this.emit("headers", res, path2, stat);
+      this.emit("headers", res, path2, stat2);
       if (this._acceptRanges && !res.getHeader("Accept-Ranges")) {
         debug("accept ranges");
         res.setHeader("Accept-Ranges", "bytes");
@@ -23254,12 +23254,12 @@ var require_send = __commonJS({
         res.setHeader("Cache-Control", cacheControl);
       }
       if (this._lastModified && !res.getHeader("Last-Modified")) {
-        var modified = stat.mtime.toUTCString();
+        var modified = stat2.mtime.toUTCString();
         debug("modified %s", modified);
         res.setHeader("Last-Modified", modified);
       }
       if (this._etag && !res.getHeader("ETag")) {
-        var val = etag(stat);
+        var val = etag(stat2);
         debug("etag %s", val);
         res.setHeader("ETag", val);
       }
@@ -23286,8 +23286,8 @@ var require_send = __commonJS({
       }
       return false;
     }
-    function contentRange(type, size, range) {
-      return type + " " + (range ? range.start + "-" + range.end : "*") + "/" + size;
+    function contentRange(type, size, range2) {
+      return type + " " + (range2 ? range2.start + "-" + range2.end : "*") + "/" + size;
     }
     function createHtmlDocument(title, body) {
       return '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<title>' + title + "</title>\n</head>\n<body>\n<pre>" + body + "</pre>\n</body>\n</html>\n";
@@ -24476,9 +24476,9 @@ var require_cbc_tag = __commonJS({
     var buffer_utils_js_1 = require_buffer_utils();
     function cbcTag(aad, iv, ciphertext, macSize, macKey, keySize) {
       const macData = (0, buffer_utils_js_1.concat)(aad, iv, ciphertext, (0, buffer_utils_js_1.uint64be)(aad.length << 3));
-      const hmac = (0, crypto_1.createHmac)(`sha${macSize}`, macKey);
-      hmac.update(macData);
-      return hmac.digest().slice(0, keySize >> 3);
+      const hmac2 = (0, crypto_1.createHmac)(`sha${macSize}`, macKey);
+      hmac2.update(macData);
+      return hmac2.digest().slice(0, keySize >> 3);
     }
     exports.default = cbcTag;
   }
@@ -27158,9 +27158,9 @@ var require_sign2 = __commonJS({
     var sign = async (alg, key, data) => {
       const keyObject = (0, get_sign_verify_key_js_1.default)(alg, key, "sign");
       if (alg.startsWith("HS")) {
-        const hmac = crypto2.createHmac((0, hmac_digest_js_1.default)(alg), keyObject);
-        hmac.update(data);
-        return hmac.digest();
+        const hmac2 = crypto2.createHmac((0, hmac_digest_js_1.default)(alg), keyObject);
+        hmac2.update(data);
+        return hmac2.digest();
       }
       return oneShotSign((0, dsa_digest_js_1.default)(alg), data, (0, node_key_js_1.default)(alg, keyObject));
     };
@@ -27186,11 +27186,11 @@ var require_verify = __commonJS({
     } else {
       oneShotVerify = crypto2.verify;
     }
-    var verify = async (alg, key, signature, data) => {
+    var verify = async (alg, key, signature2, data) => {
       const keyObject = (0, get_sign_verify_key_js_1.default)(alg, key, "verify");
       if (alg.startsWith("HS")) {
         const expected = await (0, sign_js_1.default)(alg, keyObject, data);
-        const actual = signature;
+        const actual = signature2;
         try {
           return crypto2.timingSafeEqual(actual, expected);
         } catch {
@@ -27200,7 +27200,7 @@ var require_verify = __commonJS({
       const algorithm = (0, dsa_digest_js_1.default)(alg);
       const keyInput = (0, node_key_js_1.default)(alg, keyObject);
       try {
-        return await oneShotVerify(algorithm, data, keyInput, signature);
+        return await oneShotVerify(algorithm, data, keyInput, signature2);
       } catch {
         return false;
       }
@@ -27290,13 +27290,13 @@ var require_verify2 = __commonJS({
       }
       (0, check_key_type_js_1.default)(alg, key, "verify");
       const data = (0, buffer_utils_js_1.concat)(buffer_utils_js_1.encoder.encode((_a3 = jws.protected) !== null && _a3 !== void 0 ? _a3 : ""), buffer_utils_js_1.encoder.encode("."), typeof jws.payload === "string" ? buffer_utils_js_1.encoder.encode(jws.payload) : jws.payload);
-      let signature;
+      let signature2;
       try {
-        signature = (0, base64url_js_1.decode)(jws.signature);
+        signature2 = (0, base64url_js_1.decode)(jws.signature);
       } catch {
         throw new errors_js_1.JWSInvalid("Failed to base64url decode the signature");
       }
-      const verified = await (0, verify_js_1.default)(alg, key, signature, data);
+      const verified = await (0, verify_js_1.default)(alg, key, signature2, data);
       if (!verified) {
         throw new errors_js_1.JWSSignatureVerificationFailed();
       }
@@ -27344,11 +27344,11 @@ var require_verify3 = __commonJS({
       if (typeof jws !== "string") {
         throw new errors_js_1.JWSInvalid("Compact JWS must be a string or Uint8Array");
       }
-      const { 0: protectedHeader, 1: payload, 2: signature, length } = jws.split(".");
+      const { 0: protectedHeader, 1: payload, 2: signature2, length } = jws.split(".");
       if (length !== 3) {
         throw new errors_js_1.JWSInvalid("Invalid Compact JWS");
       }
-      const verified = await (0, verify_js_1.flattenedVerify)({ payload, protected: protectedHeader, signature }, key, options);
+      const verified = await (0, verify_js_1.flattenedVerify)({ payload, protected: protectedHeader, signature: signature2 }, key, options);
       const result = { payload: verified.payload, protectedHeader: verified.protectedHeader };
       if (typeof key === "function") {
         return { ...result, key: verified.key };
@@ -27375,13 +27375,13 @@ var require_verify4 = __commonJS({
       if (!Array.isArray(jws.signatures) || !jws.signatures.every(is_object_js_1.default)) {
         throw new errors_js_1.JWSInvalid("JWS Signatures missing or incorrect type");
       }
-      for (const signature of jws.signatures) {
+      for (const signature2 of jws.signatures) {
         try {
           return await (0, verify_js_1.flattenedVerify)({
-            header: signature.header,
+            header: signature2.header,
             payload: jws.payload,
-            protected: signature.protected,
-            signature: signature.signature
+            protected: signature2.protected,
+            signature: signature2.signature
           }, key, options);
         } catch {
         }
@@ -27722,9 +27722,9 @@ var require_sign3 = __commonJS({
           protectedHeader = buffer_utils_js_1.encoder.encode("");
         }
         const data = (0, buffer_utils_js_1.concat)(protectedHeader, buffer_utils_js_1.encoder.encode("."), payload);
-        const signature = await (0, sign_js_1.default)(alg, key, data);
+        const signature2 = await (0, sign_js_1.default)(alg, key, data);
         const jws = {
-          signature: (0, base64url_js_1.encode)(signature),
+          signature: (0, base64url_js_1.encode)(signature2),
           payload: ""
         };
         if (b64) {
@@ -27814,9 +27814,9 @@ var require_sign5 = __commonJS({
         this._payload = payload;
       }
       addSignature(key, options) {
-        const signature = new IndividualSignature(this, key, options);
-        this._signatures.push(signature);
-        return signature;
+        const signature2 = new IndividualSignature(this, key, options);
+        this._signatures.push(signature2);
+        return signature2;
       }
       async sign() {
         if (!this._signatures.length) {
@@ -27827,11 +27827,11 @@ var require_sign5 = __commonJS({
           payload: ""
         };
         for (let i = 0; i < this._signatures.length; i++) {
-          const signature = this._signatures[i];
+          const signature2 = this._signatures[i];
           const flattened = new sign_js_1.FlattenedSign(this._payload);
-          flattened.setProtectedHeader(signature.protectedHeader);
-          flattened.setUnprotectedHeader(signature.unprotectedHeader);
-          const { payload, ...rest } = await flattened.sign(signature.key, signature.options);
+          flattened.setProtectedHeader(signature2.protectedHeader);
+          flattened.setUnprotectedHeader(signature2.unprotectedHeader);
+          const { payload, ...rest } = await flattened.sign(signature2.key, signature2.options);
           if (i === 0) {
             jws.payload = payload;
           } else if (jws.payload !== payload) {
@@ -28206,15 +28206,15 @@ var require_local = __commonJS({
     };
     exports.LocalJWKSet = LocalJWKSet;
     async function importWithAlgCache(cache, jwk, alg) {
-      const cached2 = cache.get(jwk) || cache.set(jwk, {}).get(jwk);
-      if (cached2[alg] === void 0) {
+      const cached3 = cache.get(jwk) || cache.set(jwk, {}).get(jwk);
+      if (cached3[alg] === void 0) {
         const key = await (0, import_js_1.importJWK)({ ...jwk, ext: true }, alg);
         if (key instanceof Uint8Array || key.type !== "public") {
           throw new errors_js_1.JWKSInvalid("JSON Web Key Set members must be public keys");
         }
-        cached2[alg] = key;
+        cached3[alg] = key;
       }
-      return cached2[alg];
+      return cached3[alg];
     }
     function createLocalJWKSet(jwks) {
       const set2 = new LocalJWKSet(jwks);
@@ -28232,24 +28232,24 @@ var require_fetch_jwks = __commonJS({
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var http = __require("http");
-    var https = __require("https");
+    var https2 = __require("https");
     var events_1 = __require("events");
     var errors_js_1 = require_errors();
     var buffer_utils_js_1 = require_buffer_utils();
     var fetchJwks = async (url2, timeout, options) => {
-      let get;
+      let get2;
       switch (url2.protocol) {
         case "https:":
-          get = https.get;
+          get2 = https2.get;
           break;
         case "http:":
-          get = http.get;
+          get2 = http.get;
           break;
         default:
           throw new TypeError("Unsupported URL protocol.");
       }
       const { agent, headers } = options;
-      const req = get(url2.href, {
+      const req = get2(url2.href, {
         agent,
         timeout,
         headers
@@ -28372,8 +28372,8 @@ var require_unsecured = __commonJS({
         if (typeof jwt2 !== "string") {
           throw new errors_js_1.JWTInvalid("Unsecured JWT must be a string");
         }
-        const { 0: encodedHeader, 1: encodedPayload, 2: signature, length } = jwt2.split(".");
-        if (length !== 3 || signature !== "") {
+        const { 0: encodedHeader, 1: encodedPayload, 2: signature2, length } = jwt2.split(".");
+        if (length !== 3 || signature2 !== "") {
           throw new errors_js_1.JWTInvalid("Invalid Unsecured JWT");
         }
         let header;
@@ -28793,7 +28793,7 @@ var require_dist4 = __commonJS({
     var jose = require_cjs();
     var url2 = __require("url");
     var http = __require("http");
-    var https = __require("https");
+    var https2 = __require("https");
     var events = __require("events");
     var crypto2 = __require("crypto");
     var UnauthorizedError = class extends Error {
@@ -28860,7 +28860,7 @@ var require_dist4 = __commonJS({
       return buf;
     };
     var protocols = {
-      "https:": https.get,
+      "https:": https2.get,
       "http:": http.get
     };
     var fetch2 = async (url3, { agent, timeoutDuration: timeout }) => {
@@ -28974,9 +28974,9 @@ var require_dist4 = __commonJS({
       };
       const discoveryCache = new LRUCache(cacheOptions);
       return (issuerBaseURL) => {
-        const cached2 = discoveryCache.get(issuerBaseURL);
-        if (cached2) {
-          return cached2;
+        const cached3 = discoveryCache.get(issuerBaseURL);
+        if (cached3) {
+          return cached3;
         }
         const promise2 = discover(issuerBaseURL, opts).catch((e) => {
           discoveryCache.delete(issuerBaseURL);
@@ -29882,10 +29882,10 @@ var require_dist4 = __commonJS({
     function resolveHost(req) {
       var _a3, _b, _c;
       const trust = (_b = (_a3 = req.app) === null || _a3 === void 0 ? void 0 : _a3.get) === null || _b === void 0 ? void 0 : _b.call(_a3, "trust proxy fn");
-      const get = typeof req.get === "function" ? req.get.bind(req) : void 0;
-      let host = get ? get("X-Forwarded-Host") : void 0;
+      const get2 = typeof req.get === "function" ? req.get.bind(req) : void 0;
+      let host = get2 ? get2("X-Forwarded-Host") : void 0;
       if (!host || !(typeof trust === "function" && trust((_c = req.socket) === null || _c === void 0 ? void 0 : _c.remoteAddress, 0))) {
-        host = get ? get("Host") : void 0;
+        host = get2 ? get2("Host") : void 0;
       } else {
         const i = host.indexOf(",");
         if (i !== -1) {
@@ -31144,7 +31144,7 @@ var require_utils5 = __commonJS({
       postgresMd5PasswordHash,
       randomBytes: randomBytes2,
       deriveKey,
-      sha256,
+      sha256: sha2562,
       hashByName,
       hmacSha256,
       md5
@@ -31169,7 +31169,7 @@ var require_utils5 = __commonJS({
       const outer = await md5(Buffer.concat([Buffer.from(inner), salt]));
       return "md5" + outer;
     }
-    async function sha256(text2) {
+    async function sha2562(text2) {
       return await subtleCrypto.digest("SHA-256", text2);
     }
     async function hashByName(hashName, text2) {
@@ -31712,7 +31712,7 @@ See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode de
 var require_connection_parameters = __commonJS({
   "node_modules/pg/lib/connection-parameters.js"(exports, module) {
     "use strict";
-    var dns = __require("dns");
+    var dns2 = __require("dns");
     var defaults2 = require_defaults();
     var parse3 = require_pg_connection_string().parse;
     var val = function(key, config2, envVar) {
@@ -31848,7 +31848,7 @@ var require_connection_parameters = __commonJS({
         if (this.client_encoding) {
           params.push("client_encoding=" + quoteParamValue(this.client_encoding));
         }
-        dns.lookup(this.host, function(err, address) {
+        dns2.lookup(this.host, function(err, address) {
           if (err) return cb(err, null);
           params.push("hostaddr=" + quoteParamValue(address));
           return cb(null, params.join(" "));
@@ -33592,8 +33592,8 @@ var require_lib3 = __commonJS({
     var helper = require_helper();
     module.exports = function(connInfo, cb) {
       var file2 = helper.getFileName();
-      fs.stat(file2, function(err, stat) {
-        if (err || !helper.usePgPass(stat, file2)) {
+      fs.stat(file2, function(err, stat2) {
+        if (err || !helper.usePgPass(stat2, file2)) {
           return cb(void 0);
         }
         var st = fs.createReadStream(file2);
@@ -38990,7 +38990,7 @@ var require_schemes = __commonJS({
         serialize: httpSerialize
       }
     );
-    var https = (
+    var https2 = (
       /** @type {SchemeHandler} */
       {
         scheme: "https",
@@ -39039,7 +39039,7 @@ var require_schemes = __commonJS({
       /** @type {Record<SchemeName, SchemeHandler>} */
       {
         http,
-        https,
+        https: https2,
         ws,
         wss,
         urn,
@@ -42554,7 +42554,7 @@ var require_content_type = __commonJS({
 
 // server/app.ts
 var import_express = __toESM(require_express2(), 1);
-import { randomUUID } from "node:crypto";
+import { randomUUID as randomUUID2 } from "node:crypto";
 
 // node_modules/zod/v4/classic/external.js
 var external_exports = {};
@@ -46091,14 +46091,14 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
   const desc = Object.getOwnPropertyDescriptor(def, "shape");
   const sh = desc?.get ? desc.get.raw : def.shape ?? {};
   if (sh) {
-    const get = () => {
+    const get2 = () => {
       const newSh = { ...sh };
       Object.defineProperty(def, "shape", { value: newSh });
-      get.raw = newSh;
+      get2.raw = newSh;
       return newSh;
     };
-    get.raw = sh;
-    Object.defineProperty(def, "shape", { get });
+    get2.raw = sh;
+    Object.defineProperty(def, "shape", { get: get2 });
   }
   const _normalized = cached(() => normalizeDef(def));
   defineLazyInternal(inst, "propValues", (zod) => {
@@ -47624,9 +47624,9 @@ var NONE = 0;
 var ASSUMED = 1;
 var PROVEN = 2;
 function isRecursive(inst, stack, resolve) {
-  const cached2 = recursive.get(inst);
-  if (cached2 !== void 0)
-    return cached2 ? PROVEN : NONE;
+  const cached3 = recursive.get(inst);
+  if (cached3 !== void 0)
+    return cached3 ? PROVEN : NONE;
   if (stack.has(inst))
     return PROVEN;
   stack.add(inst);
@@ -62059,16 +62059,16 @@ function visit(schema, fnOrHandlers) {
     return h ? h(node2, rewritten) : node2;
   };
   const cache = /* @__PURE__ */ new Map();
-  function run(s) {
-    const cached2 = cache.get(s);
-    if (cached2 === RESOLVING) {
+  function run2(s) {
+    const cached3 = cache.get(s);
+    if (cached3 === RESOLVING) {
       return new $ZodLazy({
         type: "lazy",
         getter: () => cache.get(s)
       });
     }
-    if (cached2 !== void 0)
-      return cached2;
+    if (cached3 !== void 0)
+      return cached3;
     cache.set(s, RESOLVING);
     const inner = mapInner(s);
     const mapped = fn(inner, inner !== s);
@@ -62085,21 +62085,21 @@ function visit(schema, fnOrHandlers) {
         let changed = false;
         const newShape = {};
         for (const k of keys) {
-          const mapped = run(oldShape[k]);
+          const mapped = run2(oldShape[k]);
           if (mapped !== oldShape[k])
             changed = true;
           newShape[k] = mapped;
         }
         let newCatchall = def.catchall;
         if (def.catchall) {
-          newCatchall = run(def.catchall);
+          newCatchall = run2(def.catchall);
           if (newCatchall !== def.catchall)
             changed = true;
         }
         return changed ? clone(s, { ...def, shape: newShape, catchall: newCatchall }) : s;
       }
       case "array": {
-        const mapped = run(def.element);
+        const mapped = run2(def.element);
         return mapped === def.element ? s : clone(s, { ...def, element: mapped });
       }
       case "tuple": {
@@ -62107,14 +62107,14 @@ function visit(schema, fnOrHandlers) {
         let changed = false;
         const newItems = [];
         for (const item of oldItems) {
-          const mapped = run(item);
+          const mapped = run2(item);
           if (mapped !== item)
             changed = true;
           newItems.push(mapped);
         }
         let newRest = def.rest;
         if (def.rest) {
-          newRest = run(def.rest);
+          newRest = run2(def.rest);
           if (newRest !== def.rest)
             changed = true;
         }
@@ -62122,12 +62122,12 @@ function visit(schema, fnOrHandlers) {
       }
       case "record":
       case "map": {
-        const newKey = run(def.keyType);
-        const newVal = run(def.valueType);
+        const newKey = run2(def.keyType);
+        const newVal = run2(def.valueType);
         return newKey === def.keyType && newVal === def.valueType ? s : clone(s, { ...def, keyType: newKey, valueType: newVal });
       }
       case "set": {
-        const newVal = run(def.valueType);
+        const newVal = run2(def.valueType);
         return newVal === def.valueType ? s : clone(s, { ...def, valueType: newVal });
       }
       case "union": {
@@ -62135,7 +62135,7 @@ function visit(schema, fnOrHandlers) {
         let changed = false;
         const newOptions = [];
         for (const opt of oldOptions) {
-          const mapped = run(opt);
+          const mapped = run2(opt);
           if (mapped !== opt)
             changed = true;
           newOptions.push(mapped);
@@ -62143,8 +62143,8 @@ function visit(schema, fnOrHandlers) {
         return changed ? clone(s, { ...def, options: newOptions }) : s;
       }
       case "intersection": {
-        const newLeft = run(def.left);
-        const newRight = run(def.right);
+        const newLeft = run2(def.left);
+        const newRight = run2(def.right);
         return newLeft === def.left && newRight === def.right ? s : clone(s, { ...def, left: newLeft, right: newRight });
       }
       case "optional":
@@ -62156,23 +62156,23 @@ function visit(schema, fnOrHandlers) {
       case "nonoptional":
       case "promise":
       case "success": {
-        const newInner = run(def.innerType);
+        const newInner = run2(def.innerType);
         return newInner === def.innerType ? s : clone(s, { ...def, innerType: newInner });
       }
       case "pipe": {
-        const newIn = run(def.in);
-        const newOut = run(def.out);
+        const newIn = run2(def.in);
+        const newOut = run2(def.out);
         return newIn === def.in && newOut === def.out ? s : clone(s, { ...def, in: newIn, out: newOut });
       }
       case "function": {
-        const newInput = run(def.input);
-        const newOutput = run(def.output);
+        const newInput = run2(def.input);
+        const newOutput = run2(def.output);
         return newInput === def.input && newOutput === def.output ? s : clone(s, { ...def, input: newInput, output: newOutput });
       }
       case "lazy": {
         const original = def.getter;
         const { _cachedInner, ...rest } = def;
-        return clone(s, { ...rest, getter: () => run(original()) });
+        return clone(s, { ...rest, getter: () => run2(original()) });
       }
       // A leaf by choice: `parts` are regex fragments, not data positions.
       case "template_literal":
@@ -62203,7 +62203,7 @@ function visit(schema, fnOrHandlers) {
       }
     }
   }
-  return run(schema);
+  return run2(schema);
 }
 
 // node_modules/zod/v4/classic/deep-partial.js
@@ -62761,12 +62761,12 @@ function imageSyntaxErrors(text2) {
   const problems = /* @__PURE__ */ new Set();
   let validCount = 0;
   for (const match of text2.matchAll(IMAGE_SHAPE)) {
-    const alt = match[1];
+    const alt2 = match[1];
     const target = match[2];
     if (UUID_TARGET.test(target)) {
       validCount += 1;
-      if (alt === "") problems.add(EMPTY_ALT);
-      else if (alt.length > MEDIA_ALT_MAX_LENGTH) problems.add(LONG_ALT);
+      if (alt2 === "") problems.add(EMPTY_ALT);
+      else if (alt2.length > MEDIA_ALT_MAX_LENGTH) problems.add(LONG_ALT);
     } else if (EXTERNAL_TARGET.test(target)) {
       problems.add(EXTERNAL);
     } else {
@@ -63549,8 +63549,8 @@ function localDay(instant, timeZone) {
     month: "2-digit",
     day: "2-digit"
   }).formatToParts(instant);
-  const get = (type) => parts.find((part) => part.type === type)?.value ?? "";
-  return `${get("year")}-${get("month")}-${get("day")}`;
+  const get2 = (type) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${get2("year")}-${get2("month")}-${get2("day")}`;
 }
 function isValidTimeZone(timeZone) {
   try {
@@ -63572,11 +63572,11 @@ function computeStreaks(activeDays, today) {
   const days = [...new Set(activeDays)].map(dayNumber).sort((a, b) => a - b);
   const todayN = dayNumber(today);
   let longest = 0;
-  let run = 0;
+  let run2 = 0;
   let previous = Number.NaN;
   for (const n of days) {
-    run = n === previous + 1 ? run + 1 : 1;
-    longest = Math.max(longest, run);
+    run2 = n === previous + 1 ? run2 + 1 : 1;
+    longest = Math.max(longest, run2);
     previous = n;
   }
   const set2 = new Set(days);
@@ -63669,10 +63669,16 @@ async function syncIdentity(userId, identity) {
 }
 
 // server/media/constants.ts
+var MEDIA_CONTENT_TYPES = ["image/png", "image/jpeg", "image/webp"];
 var MEDIA_OWNER_KINDS = ["quiz", "lesson", "verb"];
+var MEDIA_DAILY_FILES = 100;
 var MEDIA_DAILY_BYTES = 50 * 1024 * 1024;
 var MEDIA_DEFAULT_MAX_BYTES = 2 * 1024 * 1024;
 var MEDIA_PRESIGN_MAX_SECONDS = 7 * 24 * 60 * 60;
+var MEDIA_CACHE_CONTROL = "public, max-age=31536000, immutable";
+var MEDIA_MEMORY_DEFAULT_BASE_URL = "https://media.test";
+var MEDIA_URL_FETCHES_PER_HOUR = 20;
+var MEDIA_PRESIGN_SECONDS = 15 * 60;
 
 // server/media/repo.ts
 var MediaRefError = class extends Error {
@@ -63702,6 +63708,26 @@ function toRow(raw) {
 function isMediaId(value2) {
   return UUID.test(value2);
 }
+async function createPending(input2, db = pool()) {
+  const { rows } = await db.query(
+    `INSERT INTO media (id, key, content_type, size_bytes, sha256, status, source, owner_id)
+     VALUES ($1::uuid, $2, $3, $4, $5, 'pending', $6, $7)
+     RETURNING ${MEDIA_COLUMNS}`,
+    [input2.id, input2.key, input2.contentType, input2.sizeBytes, input2.sha256, input2.source, input2.ownerId]
+  );
+  return toRow(rows[0]);
+}
+async function markReady(id, size, db = pool()) {
+  if (!isMediaId(id)) return null;
+  const { rows } = await db.query(
+    `UPDATE media
+        SET status = 'ready', width = $2, height = $3, ready_at = now()
+      WHERE id = $1::uuid AND status = 'pending'
+      RETURNING ${MEDIA_COLUMNS}`,
+    [id, size.width, size.height]
+  );
+  return rows[0] ? toRow(rows[0]) : null;
+}
 async function getReady(ids, db = pool()) {
   const valid = [...new Set(ids.filter(isMediaId))];
   if (valid.length === 0) return [];
@@ -63711,13 +63737,102 @@ async function getReady(ids, db = pool()) {
   );
   return rows.map(toRow);
 }
+async function findBySha(ownerId, sha2562, db = pool()) {
+  const { rows } = await db.query(
+    `SELECT ${MEDIA_COLUMNS}
+       FROM media
+      WHERE owner_id = $1 AND sha256 = $2
+      ORDER BY (status = 'ready') DESC, created_at DESC
+      LIMIT 1`,
+    [ownerId, sha2562]
+  );
+  return rows[0] ? toRow(rows[0]) : null;
+}
+async function getMany(ids, db = pool()) {
+  const valid = [...new Set(ids.filter(isMediaId))];
+  if (valid.length === 0) return [];
+  const { rows } = await db.query(
+    `SELECT ${MEDIA_COLUMNS} FROM media WHERE id = ANY($1::uuid[])`,
+    [valid]
+  );
+  return rows.map(toRow);
+}
+async function get(id, db = pool()) {
+  const rows = await getMany([id], db);
+  return rows[0] ?? null;
+}
+async function listByOwner(options, db = pool()) {
+  const limit = Math.min(Math.max(Math.trunc(options.limit), 1), 100);
+  const offset = Math.max(Math.trunc(options.offset ?? 0), 0);
+  const unreferenced = options.unreferenced === true;
+  const [items, count] = await Promise.all([
+    db.query(
+      `SELECT ${MEDIA_COLUMNS}
+         FROM media AS m
+        WHERE ($1::text IS NULL OR m.owner_id = $1)
+          AND (NOT $2::boolean OR NOT EXISTS (SELECT 1 FROM media_refs AS r WHERE r.media_id = m.id))
+        ORDER BY m.created_at DESC, m.id
+        LIMIT $3 OFFSET $4`,
+      [options.ownerId, unreferenced, limit, offset]
+    ),
+    db.query(
+      `SELECT COUNT(*)::int AS total
+         FROM media AS m
+        WHERE ($1::text IS NULL OR m.owner_id = $1)
+          AND (NOT $2::boolean OR NOT EXISTS (SELECT 1 FROM media_refs AS r WHERE r.media_id = m.id))`,
+      [options.ownerId, unreferenced]
+    )
+  ]);
+  return { items: items.rows.map(toRow), total: count.rows[0]?.total ?? 0 };
+}
+async function referencesOf(id, db = pool()) {
+  const { rows } = await db.query(
+    `SELECT owner_kind AS "ownerKind", owner_id AS "ownerId"
+       FROM media_refs
+      WHERE media_id = $1::uuid
+      ORDER BY owner_kind, owner_id`,
+    [id]
+  );
+  return rows;
+}
+async function remove(id, db = pool()) {
+  if (!isMediaId(id)) return { status: "missing" };
+  const references = await referencesOf(id, db);
+  if (references.length > 0) return { status: "in-use", references };
+  try {
+    const { rows } = await db.query(`DELETE FROM media WHERE id = $1::uuid RETURNING key`, [id]);
+    return rows[0] ? { status: "removed", key: rows[0].key } : { status: "missing" };
+  } catch (error62) {
+    if (error62.code === "23503") {
+      return { status: "in-use", references: await referencesOf(id, db) };
+    }
+    throw error62;
+  }
+}
+async function countsToday(ownerId, db = pool()) {
+  const { rows } = await db.query(
+    `SELECT COUNT(*)::int AS files, COALESCE(SUM(size_bytes), 0)::bigint AS bytes
+       FROM media
+      WHERE owner_id = $1
+        AND created_at >= date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'`,
+    [ownerId]
+  );
+  return { files: rows[0]?.files ?? 0, bytes: Number(rows[0]?.bytes ?? 0) };
+}
+async function countBySourceSince(ownerId, source, since, db = pool()) {
+  const { rows } = await db.query(
+    `SELECT COUNT(*)::int AS total FROM media WHERE owner_id = $1 AND source = $2 AND created_at >= $3`,
+    [ownerId, source, since.toISOString()]
+  );
+  return rows[0]?.total ?? 0;
+}
 async function syncRefs(ownerKind, ownerId, mediaIds, client) {
   if (!MEDIA_OWNER_KINDS.includes(ownerKind)) throw new Error(`syncRefs: unknown owner kind ${ownerKind}`);
   if (ownerId === "") throw new Error("syncRefs: ownerId is required");
   const ids = [...new Set(mediaIds)];
   const malformed = ids.filter((id) => !isMediaId(id));
   const checkable = ids.filter(isMediaId);
-  const run = async (db) => {
+  const run2 = async (db) => {
     const { rows } = checkable.length ? await db.query(
       `SELECT id::text AS id, status FROM media WHERE id = ANY($1::uuid[]) FOR SHARE`,
       [checkable]
@@ -63738,13 +63853,13 @@ async function syncRefs(ownerKind, ownerId, mediaIds, client) {
     }
   };
   if (client) {
-    await run(client);
+    await run2(client);
     return;
   }
   const own2 = await pool().connect();
   try {
     await own2.query("BEGIN");
-    await run(own2);
+    await run2(own2);
     await own2.query("COMMIT");
   } catch (error62) {
     await own2.query("ROLLBACK");
@@ -64028,6 +64143,17 @@ async function getQuestionVerbs(quizId) {
   );
   return new Map(rows.map((r) => [r.id, r.verb_id]));
 }
+async function quizTitles(ids) {
+  const titles = /* @__PURE__ */ new Map();
+  const unique = [...new Set(ids)];
+  if (unique.length === 0) return titles;
+  const { rows } = await pool().query(
+    "SELECT id::text AS id, title FROM quizzes WHERE id::text = ANY($1::text[])",
+    [unique]
+  );
+  for (const row of rows) titles.set(row.id, row.title);
+  return titles;
+}
 
 // src/shared/quiz/spaced.ts
 var BOX_INTERVAL_DAYS = [0, 1, 2, 4, 8, 16, 32];
@@ -64060,8 +64186,8 @@ function nextReview(state, correct, now) {
 var MIN_ATTEMPTS = 3;
 var WEAK_ACCURACY = 0.75;
 var RECOVERED_BOX = 4;
-var accuracyOf = (stat) => stat.attempts === 0 ? 1 : stat.correct / stat.attempts;
-var isWeak = (stat) => stat.attempts >= MIN_ATTEMPTS && accuracyOf(stat) < WEAK_ACCURACY && stat.box < RECOVERED_BOX;
+var accuracyOf = (stat2) => stat2.attempts === 0 ? 1 : stat2.correct / stat2.attempts;
+var isWeak = (stat2) => stat2.attempts >= MIN_ATTEMPTS && accuracyOf(stat2) < WEAK_ACCURACY && stat2.box < RECOVERED_BOX;
 function rankWeak(items, limit) {
   return items.filter(isWeak).sort(
     (a, b) => accuracyOf(a) - accuracyOf(b) || b.attempts - a.attempts || (b.lastWrongAt ?? "").localeCompare(a.lastWrongAt ?? "")
@@ -76340,6 +76466,1257 @@ function registerOperationTools(server, ctx) {
   );
 }
 
+// server/media/ssrf.ts
+var MAX_IMAGE_URL_LENGTH = 2048;
+var MAX_REDIRECTS = 3;
+function parseIpv4(text2) {
+  const parts = text2.split(".");
+  if (parts.length !== 4) return null;
+  const octets = [];
+  for (const part of parts) {
+    if (!/^(0|[1-9][0-9]{0,2})$/.test(part)) return null;
+    const value2 = Number(part);
+    if (value2 > 255) return null;
+    octets.push(value2);
+  }
+  return [octets[0], octets[1], octets[2], octets[3]];
+}
+var toUint32 = (o) => ((o[0] * 256 + o[1]) * 256 + o[2]) * 256 + o[3];
+var range = (address, prefix, cls) => {
+  const octets = parseIpv4(address);
+  if (!octets) throw new Error(`ssrf: bad built-in address ${address}`);
+  return { base: toUint32(octets), prefix, cls };
+};
+var V4_RANGES = [
+  range("0.0.0.0", 8, "reserved"),
+  // "this network"
+  range("10.0.0.0", 8, "private"),
+  range("100.64.0.0", 10, "private"),
+  // carrier-grade NAT, reached from inside the provider network
+  range("127.0.0.0", 8, "loopback"),
+  range("169.254.0.0", 16, "link-local"),
+  range("172.16.0.0", 12, "private"),
+  range("192.0.0.0", 24, "reserved"),
+  // IETF protocol assignments
+  range("192.0.2.0", 24, "reserved"),
+  // documentation
+  range("192.168.0.0", 16, "private"),
+  range("198.18.0.0", 15, "reserved"),
+  // benchmarking
+  range("198.51.100.0", 24, "reserved"),
+  // documentation
+  range("203.0.113.0", 24, "reserved"),
+  // documentation
+  range("224.0.0.0", 4, "reserved"),
+  // multicast
+  range("240.0.0.0", 4, "reserved")
+  // future use and 255.255.255.255
+];
+var METADATA_V4 = toUint32(parseIpv4("169.254.169.254"));
+function classifyV4(octets) {
+  const value2 = toUint32(octets);
+  if (value2 === METADATA_V4) return "metadata";
+  for (const entry of V4_RANGES) {
+    const shift = 32 - entry.prefix;
+    if (value2 >>> shift === entry.base >>> shift) return entry.cls;
+  }
+  return "public";
+}
+function parseIpv6(text2) {
+  if (text2.includes("%")) return null;
+  const halves = text2.split("::");
+  if (halves.length > 2) return null;
+  const compressed = halves.length === 2;
+  const splitGroups = (part) => part === "" ? [] : part.split(":");
+  const left = splitGroups(halves[0]);
+  const right = compressed ? splitGroups(halves[1]) : [];
+  const last = compressed ? right : left;
+  const tailIndex = last.length - 1;
+  if (tailIndex >= 0 && last[tailIndex].includes(".")) {
+    const octets = parseIpv4(last[tailIndex]);
+    if (!octets) return null;
+    last.splice(tailIndex, 1, (octets[0] << 8 | octets[1]).toString(16), (octets[2] << 8 | octets[3]).toString(16));
+  }
+  const groups = [...left, ...right];
+  if (groups.some((g) => !/^[0-9a-fA-F]{1,4}$/.test(g))) return null;
+  if (compressed ? groups.length > 7 : groups.length !== 8) return null;
+  const zeros = 8 - groups.length;
+  const values = [...left.map((g) => parseInt(g, 16)), ...Array(zeros).fill(0), ...right.map((g) => parseInt(g, 16))];
+  return values.length === 8 ? values : null;
+}
+var v4FromGroups = (hi, lo) => [hi >> 8, hi & 255, lo >> 8, lo & 255];
+var isZeroFrom = (g, from, to) => {
+  for (let i = from; i < to; i++) if (g[i] !== 0) return false;
+  return true;
+};
+function classifyV6(g) {
+  if (isZeroFrom(g, 0, 8)) return "reserved";
+  if (isZeroFrom(g, 0, 7) && g[7] === 1) return "loopback";
+  if (g[0] === 64768 && g[1] === 3778 && isZeroFrom(g, 2, 7) && g[7] === 596) return "metadata";
+  if (isZeroFrom(g, 0, 5) && g[5] === 65535) return classifyV4(v4FromGroups(g[6], g[7]));
+  if (g[0] === 100 && g[1] === 65435) {
+    return isZeroFrom(g, 2, 6) ? classifyV4(v4FromGroups(g[6], g[7])) : "reserved";
+  }
+  if (isZeroFrom(g, 0, 6)) return classifyV4(v4FromGroups(g[6], g[7]));
+  if (g[0] === 8194) return classifyV4(v4FromGroups(g[1], g[2]));
+  if (g[0] === 8193 && g[1] === 3512) return "reserved";
+  if (g[0] === 8193 && g[1] === 0) return "reserved";
+  if ((g[0] & 65024) === 64512) return "private";
+  if ((g[0] & 65472) === 65152) return "link-local";
+  if ((g[0] & 65472) === 65216) return "reserved";
+  if ((g[0] & 65280) === 65280) return "reserved";
+  return "public";
+}
+function classifyIp(ip) {
+  if (typeof ip !== "string" || ip === "") return "invalid";
+  if (ip.includes(":")) {
+    const groups = parseIpv6(ip);
+    return groups ? classifyV6(groups) : "invalid";
+  }
+  const octets = parseIpv4(ip);
+  return octets ? classifyV4(octets) : "invalid";
+}
+var REASON_BY_CLASS = {
+  private: "jest adresem prywatnym",
+  loopback: "jest adresem p\u0119tli zwrotnej (localhost)",
+  "link-local": "jest adresem link-local",
+  metadata: "jest adresem metadanych chmury",
+  reserved: "jest adresem zarezerwowanym",
+  invalid: "nie jest poprawnym adresem IP"
+};
+function reasonForIp(ip) {
+  const cls = classifyIp(ip);
+  return cls === "public" ? null : `Adres ${ip} ${REASON_BY_CLASS[cls]}.`;
+}
+var IPV4_LITERAL = /^[0-9.]+$/;
+var PRIVATE_SUFFIXES = [".localhost", ".local", ".internal", ".localdomain"];
+function checkHostname(hostname3) {
+  if (hostname3 === "") return "Adres nie ma nazwy hosta.";
+  if (hostname3.startsWith("[")) {
+    const ip = hostname3.slice(1, -1);
+    return reasonForIp(ip);
+  }
+  if (IPV4_LITERAL.test(hostname3)) return reasonForIp(hostname3);
+  const name = hostname3.toLowerCase().replace(/\.$/, "");
+  if (name === "localhost" || PRIVATE_SUFFIXES.some((suffix) => name.endsWith(suffix)) || name === "localdomain") {
+    return "Adres wskazuje na sie\u0107 lokaln\u0105 albo localhost. Podaj publiczny adres https.";
+  }
+  if (!name.includes(".")) return "Nazwa hosta musi zawiera\u0107 domen\u0119 (np. przyklad.pl), a nie sam\u0105 nazw\u0119.";
+  return null;
+}
+function checkImageUrl(raw) {
+  if (typeof raw !== "string") return { ok: false, reason: "Adres musi by\u0107 tekstem." };
+  const text2 = raw.trim();
+  if (text2.length > MAX_IMAGE_URL_LENGTH) return { ok: false, reason: `Adres jest za d\u0142ugi (maks. ${MAX_IMAGE_URL_LENGTH} znak\xF3w).` };
+  let url2;
+  try {
+    url2 = new URL(text2);
+  } catch {
+    return { ok: false, reason: "Adres nie jest poprawnym URL-em." };
+  }
+  if (url2.protocol !== "https:") return { ok: false, reason: "Dozwolony jest tylko protok\xF3\u0142 https." };
+  if (url2.username !== "" || url2.password !== "") {
+    return { ok: false, reason: "Adres nie mo\u017Ce zawiera\u0107 loginu ani has\u0142a." };
+  }
+  if (url2.port !== "" && url2.port !== "443") return { ok: false, reason: "Dozwolony jest tylko port 443." };
+  const hostReason = checkHostname(url2.hostname);
+  if (hostReason) return { ok: false, reason: hostReason };
+  return { ok: true, url: url2 };
+}
+function nextRedirect(base, location, hops) {
+  if (hops >= MAX_REDIRECTS) return { ok: false, reason: `Za du\u017Co przekierowa\u0144 (maks. ${MAX_REDIRECTS}).` };
+  if (!location) return { ok: false, reason: "Przekierowanie bez adresu docelowego." };
+  let target;
+  try {
+    target = new URL(location, base);
+  } catch {
+    return { ok: false, reason: "Przekierowanie wskazuje na niepoprawny adres." };
+  }
+  return checkImageUrl(target.href);
+}
+
+// server/media/fetchImage.ts
+var FetchImageError = class extends Error {
+  code;
+  constructor(code, message) {
+    super(message);
+    this.name = "FetchImageError";
+    this.code = code;
+  }
+};
+var FETCH_TIMEOUT_MS = 8e3;
+var FETCH_HEADERS = Object.freeze({
+  "User-Agent": "quiz-media-fetcher/1",
+  Accept: "image/png,image/jpeg,image/webp"
+});
+var REDIRECT_STATUSES = /* @__PURE__ */ new Set([301, 302, 303, 307, 308]);
+var Aborted = class extends Error {
+};
+function raceAbort(work, signal) {
+  if (signal.aborted) {
+    work.catch(() => void 0);
+    return Promise.reject(new Aborted("aborted"));
+  }
+  return new Promise((resolve, reject) => {
+    const onAbort = () => reject(new Aborted("aborted"));
+    signal.addEventListener("abort", onAbort, { once: true });
+    work.then(
+      (value2) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(value2);
+      },
+      (error62) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(error62);
+      }
+    );
+  });
+}
+var isIpLiteral = (hostname3) => hostname3.startsWith("[") || /^[0-9.]+$/.test(hostname3);
+async function pinAddress(url2, deps, signal) {
+  const host = url2.hostname;
+  if (isIpLiteral(host)) {
+    const ip = host.startsWith("[") ? host.slice(1, -1) : host;
+    const reason = reasonForIp(ip);
+    if (reason) throw new FetchImageError("refused", `Adres odrzucony: ${reason}`);
+    return ip;
+  }
+  let addresses;
+  try {
+    addresses = await raceAbort(deps.resolve(host), signal);
+  } catch (error62) {
+    if (error62 instanceof Aborted) throw error62;
+    throw new FetchImageError("network", `Nie uda\u0142o si\u0119 rozwi\u0105za\u0107 nazwy ${host}.`);
+  }
+  if (addresses.length === 0) throw new FetchImageError("network", `Nie uda\u0142o si\u0119 rozwi\u0105za\u0107 nazwy ${host}.`);
+  for (const address of addresses) {
+    const reason = reasonForIp(address);
+    if (reason) throw new FetchImageError("refused", `Nazwa ${host} wskazuje te\u017C na niedozwolony adres. ${reason}`);
+  }
+  return addresses[0];
+}
+async function readCapped(body, maxBytes, controller) {
+  const iterator = body[Symbol.asyncIterator]();
+  const chunks = [];
+  let total = 0;
+  for (; ; ) {
+    const step = await raceAbort(iterator.next(), controller.signal);
+    if (step.done) break;
+    total += step.value.byteLength;
+    if (total > maxBytes) {
+      controller.abort();
+      iterator.return?.()?.catch(() => void 0);
+      throw new FetchImageError("size", `Obraz jest wi\u0119kszy ni\u017C dozwolone ${maxBytes} bajt\xF3w.`);
+    }
+    chunks.push(step.value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
+}
+async function fetchImage(rawUrl, deps, limits = { maxBytes: MEDIA_DEFAULT_MAX_BYTES, timeoutMs: FETCH_TIMEOUT_MS }) {
+  const now = deps.now ?? Date.now;
+  const started = now();
+  const controller = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, limits.timeoutMs);
+  const timeout = () => new FetchImageError("timeout", `Pobieranie obrazu przekroczy\u0142o limit czasu (${Math.round(limits.timeoutMs / 1e3)} s).`);
+  try {
+    const first2 = checkImageUrl(rawUrl);
+    if (!first2.ok) throw new FetchImageError("refused", `Adres odrzucony: ${first2.reason}`);
+    let url2 = first2.url;
+    for (let hops = 0; ; hops++) {
+      if (now() - started >= limits.timeoutMs) throw timeout();
+      const address = await pinAddress(url2, deps, controller.signal);
+      const response = await raceAbort(
+        deps.request({
+          url: url2,
+          address,
+          family: address.includes(":") ? 6 : 4,
+          headers: FETCH_HEADERS,
+          signal: controller.signal
+        }),
+        controller.signal
+      );
+      if (REDIRECT_STATUSES.has(response.status)) {
+        response.discard?.();
+        const location = response.headers.location;
+        const next = nextRedirect(url2, typeof location === "string" ? location : null, hops);
+        if (!next.ok) throw new FetchImageError("refused", `Przekierowanie odrzucone: ${next.reason}`);
+        url2 = next.url;
+        continue;
+      }
+      if (response.status !== 200) {
+        response.discard?.();
+        throw new FetchImageError("status", `Serwer odpowiedzia\u0142 kodem ${response.status} zamiast 200.`);
+      }
+      const declared = response.headers["content-length"];
+      const declaredBytes = Number(typeof declared === "string" ? declared : NaN);
+      if (Number.isFinite(declaredBytes) && declaredBytes > limits.maxBytes) {
+        response.discard?.();
+        throw new FetchImageError("size", `Obraz jest wi\u0119kszy ni\u017C dozwolone ${limits.maxBytes} bajt\xF3w.`);
+      }
+      const bytes = await readCapped(response.body, limits.maxBytes, controller);
+      return { bytes, finalUrl: url2.href };
+    }
+  } catch (error62) {
+    if (error62 instanceof FetchImageError) throw error62;
+    if (timedOut || error62 instanceof Aborted) throw timeout();
+    const detail = error62 instanceof Error ? error62.message : "nieznany b\u0142\u0105d";
+    throw new FetchImageError("network", `Nie uda\u0142o si\u0119 pobra\u0107 obrazu (${detail}).`);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// server/media/nodeTransport.ts
+import dns from "node:dns/promises";
+import https from "node:https";
+async function systemResolve(hostname3) {
+  const records = await dns.lookup(hostname3, { all: true, verbatim: true });
+  return records.map((record2) => record2.address);
+}
+function httpsRequest(request) {
+  const { url: url2, address, family, headers, signal } = request;
+  const hostname3 = url2.hostname.startsWith("[") ? url2.hostname.slice(1, -1) : url2.hostname;
+  return new Promise((resolve, reject) => {
+    const req = https.request(
+      {
+        protocol: "https:",
+        host: hostname3,
+        servername: hostname3,
+        port: 443,
+        path: `${url2.pathname}${url2.search}`,
+        method: "GET",
+        headers: { ...headers },
+        agent: false,
+        signal,
+        lookup: (_host, _options, callback) => {
+          if (_options.all) callback(null, [{ address, family }]);
+          else callback(null, address, family);
+        }
+      },
+      (res) => {
+        resolve({
+          status: res.statusCode ?? 0,
+          headers: res.headers,
+          body: res,
+          discard: () => res.destroy()
+        });
+      }
+    );
+    req.on("error", reject);
+    req.end();
+  });
+}
+var nodeFetchDeps = {
+  resolve: systemResolve,
+  request: httpsRequest,
+  now: Date.now
+};
+
+// server/media/keys.ts
+var UUID2 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+var PREFIX = /^([A-Za-z0-9_-][A-Za-z0-9_.-]*\/)+$/;
+var EXTENSIONS = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp"
+};
+function extensionFor(contentType2) {
+  if (!MEDIA_CONTENT_TYPES.includes(contentType2)) {
+    throw new Error(`Unsupported media content type: ${contentType2}`);
+  }
+  return EXTENSIONS[contentType2];
+}
+function normalizeKeyPrefix(raw) {
+  const trimmed = raw.trim();
+  if (trimmed === "") return "";
+  const withSlash = trimmed.endsWith("/") ? trimmed : `${trimmed}/`;
+  if (!PREFIX.test(withSlash)) {
+    throw new Error('S3_KEY_PREFIX may contain only letters, digits, "_", "-", "." and "/" (no leading "/", no "..")');
+  }
+  return withSlash;
+}
+function mediaKey(prefix, year, uuid5, contentType2) {
+  if (!Number.isInteger(year) || year < 2e3 || year > 9999) throw new Error("mediaKey: year out of range");
+  if (!UUID2.test(uuid5)) throw new Error("mediaKey: uuid must be a lowercase uuid");
+  return `${normalizeKeyPrefix(prefix)}media/${year}/${uuid5}.${extensionFor(contentType2)}`;
+}
+
+// server/media/config.ts
+var S3_REQUIRED = ["S3_BUCKET", "S3_REGION", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY", "MEDIA_PUBLIC_BASE_URL"];
+function value(env, name) {
+  return (env[name] ?? "").trim();
+}
+function parseMaxBytes(raw) {
+  if (raw === "") return MEDIA_DEFAULT_MAX_BYTES;
+  if (!/^[1-9][0-9]*$/.test(raw)) throw new Error("MEDIA_MAX_BYTES must be a positive whole number of bytes");
+  return Number(raw);
+}
+function parsePublicBaseUrl(raw) {
+  let url2;
+  try {
+    url2 = new URL(raw);
+  } catch {
+    throw new Error("MEDIA_PUBLIC_BASE_URL must be an absolute https URL");
+  }
+  if (url2.protocol !== "https:") throw new Error("MEDIA_PUBLIC_BASE_URL must use https");
+  return raw.replace(/\/+$/, "");
+}
+function publicBaseUrlOf(env) {
+  const raw = value(env, "MEDIA_PUBLIC_BASE_URL");
+  if (raw === "") return null;
+  try {
+    return parsePublicBaseUrl(raw);
+  } catch {
+    return null;
+  }
+}
+var mediaUrlFor = (baseUrl, key) => `${baseUrl.replace(/\/+$/, "")}/${key}`;
+function resolveMediaConfig(env) {
+  const driverRaw = value(env, "MEDIA_DRIVER") || "s3";
+  if (driverRaw !== "s3" && driverRaw !== "memory") {
+    throw new Error(`MEDIA_DRIVER ma nieznan\u0105 warto\u015B\u0107 "${driverRaw}" (dozwolone: s3, memory).`);
+  }
+  const maxBytes = parseMaxBytes(value(env, "MEDIA_MAX_BYTES"));
+  const keyPrefix = normalizeKeyPrefix(value(env, "S3_KEY_PREFIX"));
+  if (driverRaw === "memory") {
+    const publicBaseUrl = value(env, "MEDIA_PUBLIC_BASE_URL");
+    return {
+      driver: "memory",
+      maxBytes,
+      keyPrefix,
+      publicBaseUrl: publicBaseUrl ? parsePublicBaseUrl(publicBaseUrl) : MEDIA_MEMORY_DEFAULT_BASE_URL,
+      s3: null,
+      memoryDir: value(env, "MEDIA_MEMORY_DIR") || null
+    };
+  }
+  const missing = S3_REQUIRED.filter((name) => value(env, name) === "");
+  if (missing.length > 0) {
+    throw new Error(
+      `Magazyn medi\xF3w (MEDIA_DRIVER=s3) nie jest skonfigurowany, brakuje zmiennych: ${missing.join(", ")}. Ustaw je (zob. .env.example) albo ustaw MEDIA_DRIVER=memory (tylko testy).`
+    );
+  }
+  const region = value(env, "S3_REGION");
+  const forcePathStyle = value(env, "S3_FORCE_PATH_STYLE");
+  if (forcePathStyle !== "" && forcePathStyle !== "true") {
+    throw new Error('S3_FORCE_PATH_STYLE: obs\u0142ugiwane jest tylko adresowanie path-style (warto\u015B\u0107 "true" albo brak).');
+  }
+  const endpoint = value(env, "S3_ENDPOINT") || `https://s3.${region}.amazonaws.com`;
+  try {
+    new URL(endpoint);
+  } catch {
+    throw new Error("S3_ENDPOINT must be an absolute URL");
+  }
+  return {
+    driver: "s3",
+    maxBytes,
+    keyPrefix,
+    publicBaseUrl: parsePublicBaseUrl(value(env, "MEDIA_PUBLIC_BASE_URL")),
+    memoryDir: null,
+    s3: {
+      endpoint: endpoint.replace(/\/+$/, ""),
+      region,
+      bucket: value(env, "S3_BUCKET"),
+      accessKeyId: value(env, "S3_ACCESS_KEY_ID"),
+      secretAccessKey: value(env, "S3_SECRET_ACCESS_KEY")
+    }
+  };
+}
+function urlFetchEnabled(env) {
+  return value(env, "MEDIA_URL_FETCH") === "true";
+}
+
+// server/media/service.ts
+import { randomUUID } from "node:crypto";
+
+// server/media/memoryDriver.ts
+import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { dirname, join as join2 } from "node:path";
+var MemoryStorageDriver = class {
+  objects = /* @__PURE__ */ new Map();
+  publicBaseUrl;
+  directory;
+  constructor(publicBaseUrl = MEDIA_MEMORY_DEFAULT_BASE_URL, directory = null) {
+    this.publicBaseUrl = publicBaseUrl.replace(/\/+$/, "");
+    this.directory = directory;
+  }
+  pathOf(key) {
+    if (this.directory === null) throw new Error("memory driver: no directory");
+    if (key.startsWith("/") || key.split("/").some((part) => part === "" || part === ".." || part === ".")) {
+      throw new Error("memory driver: unsafe key");
+    }
+    return join2(this.directory, key);
+  }
+  async presignPut(key, options) {
+    if (!Number.isInteger(options.expiresInSeconds) || options.expiresInSeconds < 1 || options.expiresInSeconds > MEDIA_PRESIGN_MAX_SECONDS) {
+      throw new RangeError("expiresInSeconds must be between 1 and 604800");
+    }
+    return {
+      url: `memory://put/${key}`,
+      headers: { "Content-Type": options.contentType, "Cache-Control": MEDIA_CACHE_CONTROL }
+    };
+  }
+  async put(key, bytes, options) {
+    if (this.directory !== null) {
+      const path = this.pathOf(key);
+      await mkdir(dirname(path), { recursive: true });
+      await writeFile(path, bytes);
+      await writeFile(`${path}.type`, options.contentType);
+      return;
+    }
+    this.objects.set(key, { bytes: new Uint8Array(bytes), contentType: options.contentType });
+  }
+  async head(key) {
+    if (this.directory !== null) {
+      const path = this.pathOf(key);
+      try {
+        const [info, type] = await Promise.all([stat(path), readFile(`${path}.type`, "utf8")]);
+        return { size: info.size, contentType: type };
+      } catch (error62) {
+        if (error62.code === "ENOENT") return null;
+        throw error62;
+      }
+    }
+    const object3 = this.objects.get(key);
+    if (!object3) return null;
+    return { size: object3.bytes.byteLength, contentType: object3.contentType };
+  }
+  async getRange(key, start, end) {
+    if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end < start) {
+      throw new RangeError("getRange: expected 0 <= start <= end");
+    }
+    let object3;
+    if (this.directory !== null) {
+      const head = await this.head(key);
+      if (!head) return null;
+      object3 = { bytes: new Uint8Array(await readFile(this.pathOf(key))), contentType: head.contentType };
+    } else {
+      object3 = this.objects.get(key);
+    }
+    if (!object3) return null;
+    if (start >= object3.bytes.byteLength) return new Uint8Array(0);
+    return object3.bytes.slice(start, Math.min(end, object3.bytes.byteLength - 1) + 1);
+  }
+  async remove(key) {
+    if (this.directory !== null) {
+      const path = this.pathOf(key);
+      await rm(path, { force: true });
+      await rm(`${path}.type`, { force: true });
+      return;
+    }
+    this.objects.delete(key);
+  }
+  publicUrl(key) {
+    return `${this.publicBaseUrl}/${key}`;
+  }
+};
+
+// server/media/sigv4.ts
+import { createHash as createHash2, createHmac } from "node:crypto";
+var ALGORITHM = "AWS4-HMAC-SHA256";
+var UNSIGNED_PAYLOAD = "UNSIGNED-PAYLOAD";
+function sha256Hex(data) {
+  return createHash2("sha256").update(data).digest("hex");
+}
+var EMPTY_PAYLOAD_SHA256 = sha256Hex("");
+function uriEncode(value2, encodeSlash = true) {
+  let out = "";
+  for (const byte of new TextEncoder().encode(value2)) {
+    const ch = String.fromCharCode(byte);
+    if (/[A-Za-z0-9_.~-]/.test(ch)) out += ch;
+    else if (ch === "/" && !encodeSlash) out += ch;
+    else out += `%${byte.toString(16).toUpperCase().padStart(2, "0")}`;
+  }
+  return out;
+}
+function encodePath(path) {
+  return path.split("/").map((segment) => uriEncode(segment, true)).join("/");
+}
+function amzDates(now) {
+  const amzDate = now.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+  return { amzDate, dateStamp: amzDate.slice(0, 8) };
+}
+function canonicalQuery(pairs) {
+  return pairs.map(([name, value2]) => [uriEncode(name), uriEncode(value2)]).sort((a, b) => a[0] === b[0] ? a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0 : a[0] < b[0] ? -1 : 1).map(([name, value2]) => `${name}=${value2}`).join("&");
+}
+function canonicalHeaders(headers) {
+  const entries = Object.entries(headers).map(([name, value2]) => [name.toLowerCase(), value2.trim().replace(/\s+/g, " ")]).sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
+  return {
+    block: entries.map(([name, value2]) => `${name}:${value2}
+`).join(""),
+    signedHeaders: entries.map(([name]) => name).join(";")
+  };
+}
+function canonicalRequest(input2) {
+  const headers = canonicalHeaders(input2.headers);
+  const text2 = [
+    input2.method,
+    input2.path,
+    canonicalQuery(input2.query),
+    headers.block,
+    headers.signedHeaders,
+    input2.payloadHash
+  ].join("\n");
+  return { text: text2, signedHeaders: headers.signedHeaders };
+}
+function credentialScope(dateStamp, scope) {
+  return `${dateStamp}/${scope.region}/${scope.service}/aws4_request`;
+}
+function stringToSign(amzDate, dateStamp, scope, canonical) {
+  return [ALGORITHM, amzDate, credentialScope(dateStamp, scope), sha256Hex(canonical)].join("\n");
+}
+function hmac(key, data) {
+  return createHmac("sha256", key).update(data).digest();
+}
+function signingKey(secretAccessKey, dateStamp, scope) {
+  const kDate = hmac(`AWS4${secretAccessKey}`, dateStamp);
+  const kRegion = hmac(kDate, scope.region);
+  const kService = hmac(kRegion, scope.service);
+  return hmac(kService, "aws4_request");
+}
+function signature(key, toSign) {
+  return createHmac("sha256", key).update(toSign).digest("hex");
+}
+function signRequest(input2) {
+  const { amzDate, dateStamp } = amzDates(input2.now);
+  const headers = {
+    ...input2.headers,
+    "x-amz-content-sha256": input2.payloadHash,
+    "x-amz-date": amzDate
+  };
+  const canonical = canonicalRequest({
+    method: input2.method,
+    path: input2.path,
+    query: input2.query ?? [],
+    headers,
+    payloadHash: input2.payloadHash
+  });
+  const sig = signature(
+    signingKey(input2.credentials.secretAccessKey, dateStamp, input2.scope),
+    stringToSign(amzDate, dateStamp, input2.scope, canonical.text)
+  );
+  const authorization = `${ALGORITHM} Credential=${input2.credentials.accessKeyId}/${credentialScope(dateStamp, input2.scope)}, SignedHeaders=${canonical.signedHeaders}, Signature=${sig}`;
+  const { host: _host, ...sent } = headers;
+  return { ...sent, Authorization: authorization };
+}
+function presignUrl(input2) {
+  const { amzDate, dateStamp } = amzDates(input2.now);
+  const host = input2.endpoint.host;
+  const headers = { ...input2.headers ?? {}, host };
+  const query2 = [
+    ["X-Amz-Algorithm", ALGORITHM],
+    ["X-Amz-Credential", `${input2.credentials.accessKeyId}/${credentialScope(dateStamp, input2.scope)}`],
+    ["X-Amz-Date", amzDate],
+    ["X-Amz-Expires", String(input2.expiresInSeconds)],
+    ["X-Amz-SignedHeaders", canonicalHeaders(headers).signedHeaders]
+  ];
+  const canonical = canonicalRequest({
+    method: input2.method,
+    path: input2.path,
+    query: query2,
+    headers,
+    payloadHash: UNSIGNED_PAYLOAD
+  });
+  const sig = signature(
+    signingKey(input2.credentials.secretAccessKey, dateStamp, input2.scope),
+    stringToSign(amzDate, dateStamp, input2.scope, canonical.text)
+  );
+  return `${input2.endpoint.origin}${input2.path}?${canonicalQuery(query2)}&X-Amz-Signature=${sig}`;
+}
+
+// server/media/s3Driver.ts
+var S3StorageDriver = class {
+  endpoint;
+  settings;
+  now;
+  constructor(settings, now = () => /* @__PURE__ */ new Date()) {
+    this.settings = settings;
+    this.endpoint = new URL(settings.endpoint);
+    this.now = now;
+  }
+  /** `/<bucket>/<key>`, encoded. The endpoint's origin is the only host ever used. */
+  objectPath(key) {
+    return `/${encodePath(this.settings.bucket)}/${encodePath(key)}`;
+  }
+  url(key) {
+    return `${this.endpoint.origin}${this.objectPath(key)}`;
+  }
+  credentials() {
+    return { accessKeyId: this.settings.accessKeyId, secretAccessKey: this.settings.secretAccessKey };
+  }
+  scope() {
+    return { region: this.settings.region, service: "s3" };
+  }
+  /** Signed request headers (without `host`) for a call that carries `payloadHash` as its body digest. */
+  signed(method, key, extra, payloadHash) {
+    return signRequest({
+      method,
+      path: this.objectPath(key),
+      headers: { host: this.endpoint.host, ...extra },
+      payloadHash,
+      credentials: this.credentials(),
+      scope: this.scope(),
+      now: this.now()
+    });
+  }
+  async presignPut(key, options) {
+    if (!Number.isInteger(options.expiresInSeconds) || options.expiresInSeconds < 1 || options.expiresInSeconds > MEDIA_PRESIGN_MAX_SECONDS) {
+      throw new RangeError("expiresInSeconds must be between 1 and 604800");
+    }
+    const signedHeaders = {
+      "content-type": options.contentType,
+      "cache-control": MEDIA_CACHE_CONTROL
+    };
+    if (options.contentLength !== void 0) signedHeaders["content-length"] = String(options.contentLength);
+    const url2 = presignUrl({
+      method: "PUT",
+      endpoint: this.endpoint,
+      path: this.objectPath(key),
+      headers: signedHeaders,
+      credentials: this.credentials(),
+      scope: this.scope(),
+      now: this.now(),
+      expiresInSeconds: options.expiresInSeconds
+    });
+    return { url: url2, headers: { "Content-Type": options.contentType, "Cache-Control": MEDIA_CACHE_CONTROL } };
+  }
+  async put(key, bytes, options) {
+    const headers = this.signed(
+      "PUT",
+      key,
+      { "content-type": options.contentType, "cache-control": MEDIA_CACHE_CONTROL },
+      sha256Hex(bytes)
+    );
+    const response = await fetch(this.url(key), { method: "PUT", headers, body: bytes });
+    if (!response.ok) throw new Error(`S3 PUT failed with status ${response.status}`);
+  }
+  async head(key) {
+    const headers = this.signed("HEAD", key, {}, EMPTY_PAYLOAD_SHA256);
+    const response = await fetch(this.url(key), { method: "HEAD", headers });
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error(`S3 HEAD failed with status ${response.status}`);
+    return {
+      size: Number(response.headers.get("content-length") ?? "0"),
+      contentType: response.headers.get("content-type") ?? ""
+    };
+  }
+  async getRange(key, start, end) {
+    if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end < start) {
+      throw new RangeError("getRange: expected 0 <= start <= end");
+    }
+    const headers = this.signed("GET", key, { range: `bytes=${start}-${end}` }, EMPTY_PAYLOAD_SHA256);
+    const response = await fetch(this.url(key), { method: "GET", headers });
+    if (response.status === 404) return null;
+    if (response.status === 416) return new Uint8Array(0);
+    if (!response.ok) throw new Error(`S3 GET failed with status ${response.status}`);
+    return new Uint8Array(await response.arrayBuffer());
+  }
+  async remove(key) {
+    const headers = this.signed("DELETE", key, {}, EMPTY_PAYLOAD_SHA256);
+    const response = await fetch(this.url(key), { method: "DELETE", headers });
+    if (!response.ok && response.status !== 404) throw new Error(`S3 DELETE failed with status ${response.status}`);
+  }
+  publicUrl(key) {
+    return `${this.settings.publicBaseUrl.replace(/\/+$/, "")}/${encodePath(key)}`;
+  }
+};
+
+// server/media/driver.ts
+function createStorage(config2) {
+  if (config2.driver === "memory") return new MemoryStorageDriver(config2.publicBaseUrl, config2.memoryDir);
+  if (!config2.s3) throw new Error("createStorage: s3 settings are missing");
+  return new S3StorageDriver({ ...config2.s3, publicBaseUrl: config2.publicBaseUrl });
+}
+var cached2 = null;
+function getStorage(env = process.env) {
+  if (env !== process.env) return createStorage(resolveMediaConfig(env));
+  cached2 ??= createStorage(resolveMediaConfig(process.env));
+  return cached2;
+}
+
+// server/media/limits.ts
+function withinDailyLimits(today, sizeBytes) {
+  return today.files < MEDIA_DAILY_FILES && today.bytes + sizeBytes <= MEDIA_DAILY_BYTES;
+}
+
+// server/media/uploads.ts
+import { createHash as createHash3 } from "node:crypto";
+
+// server/media/sniff.ts
+function u16be(bytes, at) {
+  return bytes[at] << 8 | bytes[at + 1];
+}
+function u32be(bytes, at) {
+  return (bytes[at] << 24 | bytes[at + 1] << 16 | bytes[at + 2] << 8 | bytes[at + 3]) >>> 0;
+}
+function u24le(bytes, at) {
+  return bytes[at] | bytes[at + 1] << 8 | bytes[at + 2] << 16;
+}
+function ascii(bytes, at, text2) {
+  for (let i = 0; i < text2.length; i++) {
+    if (bytes[at + i] !== text2.charCodeAt(i)) return false;
+  }
+  return true;
+}
+var PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
+function sniffPng(bytes) {
+  if (bytes.length < 24) return null;
+  if (!PNG_SIGNATURE.every((b, i) => bytes[i] === b)) return null;
+  if (u32be(bytes, 8) !== 13 || !ascii(bytes, 12, "IHDR")) return null;
+  const width = u32be(bytes, 16);
+  const height = u32be(bytes, 20);
+  return width > 0 && height > 0 ? { contentType: "image/png", width, height } : null;
+}
+var SOF_MARKERS = /* @__PURE__ */ new Set([192, 193, 194, 195, 197, 198, 199, 201, 202, 203, 205, 206, 207]);
+function sniffJpeg(bytes) {
+  if (bytes.length < 4 || bytes[0] !== 255 || bytes[1] !== 216 || bytes[2] !== 255) return null;
+  let pos = 2;
+  while (pos < bytes.length) {
+    if (bytes[pos] !== 255) return null;
+    while (pos < bytes.length && bytes[pos] === 255) pos++;
+    if (pos >= bytes.length) return null;
+    const marker = bytes[pos];
+    pos++;
+    if (marker === 1 || marker >= 208 && marker <= 215) continue;
+    if (marker === 217 || marker === 218) return null;
+    if (pos + 2 > bytes.length) return null;
+    const length = u16be(bytes, pos);
+    if (length < 2) return null;
+    if (SOF_MARKERS.has(marker)) {
+      if (pos + 7 > bytes.length) return null;
+      const height = u16be(bytes, pos + 3);
+      const width = u16be(bytes, pos + 5);
+      return width > 0 && height > 0 ? { contentType: "image/jpeg", width, height } : null;
+    }
+    pos += length;
+  }
+  return null;
+}
+function sniffWebp(bytes) {
+  if (bytes.length < 25 || !ascii(bytes, 0, "RIFF") || !ascii(bytes, 8, "WEBP")) return null;
+  const chunk = ascii(bytes, 12, "VP8 ") ? "VP8" : ascii(bytes, 12, "VP8L") ? "VP8L" : ascii(bytes, 12, "VP8X") ? "VP8X" : null;
+  if (chunk === null) return null;
+  if (chunk !== "VP8L" && bytes.length < 30) return null;
+  if (chunk === "VP8") {
+    if (bytes[23] !== 157 || bytes[24] !== 1 || bytes[25] !== 42) return null;
+    const width = (bytes[26] | bytes[27] << 8) & 16383;
+    const height = (bytes[28] | bytes[29] << 8) & 16383;
+    return width > 0 && height > 0 ? { contentType: "image/webp", width, height } : null;
+  }
+  if (chunk === "VP8L") {
+    if (bytes[20] !== 47) return null;
+    const bits = (bytes[21] | bytes[22] << 8 | bytes[23] << 16 | bytes[24] << 24) >>> 0;
+    const width = (bits & 16383) + 1;
+    const height = (bits >>> 14 & 16383) + 1;
+    return { contentType: "image/webp", width, height };
+  }
+  if ((bytes[20] & 2) !== 0) return null;
+  return { contentType: "image/webp", width: u24le(bytes, 24) + 1, height: u24le(bytes, 27) + 1 };
+}
+function sniffImage(bytes) {
+  return sniffPng(bytes) ?? sniffJpeg(bytes) ?? sniffWebp(bytes);
+}
+
+// server/media/uploads.ts
+var ALT_MAX_LENGTH = 200;
+var NOT_SUPPORTED_TYPE = "Nieobs\u0142ugiwany format pliku. Przyjmujemy tylko PNG, JPEG i WebP (GIF i SVG nie s\u0105 dozwolone).";
+var DAILY_LIMIT_REASON = "Dzienny limit wysy\u0142ania obraz\xF3w zosta\u0142 wykorzystany (100 plik\xF3w albo 50 MB na dob\u0119). Spr\xF3buj jutro.";
+function validateAlt(raw) {
+  const alt2 = raw.trim();
+  if (alt2 === "") return { ok: false, reason: "Opis obrazka (alt) jest wymagany - kr\xF3tko opisz, co wida\u0107." };
+  if (alt2.length > ALT_MAX_LENGTH) return { ok: false, reason: `Opis obrazka (alt) mo\u017Ce mie\u0107 najwy\u017Cej ${ALT_MAX_LENGTH} znak\xF3w.` };
+  if (/[\]\r\n]/.test(alt2)) return { ok: false, reason: 'Opis obrazka (alt) nie mo\u017Ce zawiera\u0107 znaku "]" ani znaku nowej linii.' };
+  return { ok: true, value: alt2 };
+}
+var mediaMarkdown = (alt2, mediaId2) => `![${alt2}](media:${mediaId2})`;
+var BASE64_BODY = /^[A-Za-z0-9+/]*={0,2}$/;
+function decodeBase64Image(data, maxBytes) {
+  const stripped = data.replace(/^data:[^;,]*;base64,/i, "").replace(/\s+/g, "");
+  if (stripped === "" || stripped.length % 4 !== 0 || !BASE64_BODY.test(stripped)) {
+    return { ok: false, reason: "Dane nie s\u0105 poprawnym base64 (sam ci\u0105g znak\xF3w, bez nag\u0142\xF3wka danych ani podzia\u0142u na cz\u0119\u015Bci)." };
+  }
+  const padding = stripped.endsWith("==") ? 2 : stripped.endsWith("=") ? 1 : 0;
+  const decodedLength = stripped.length / 4 * 3 - padding;
+  if (decodedLength > maxBytes) {
+    return { ok: false, reason: `Obraz jest za du\u017Cy (maks. ${maxBytes} bajt\xF3w po zdekodowaniu). Wi\u0119ksze pliki wy\u015Blij przez media_upload_from_url albo media_create_upload.` };
+  }
+  return { ok: true, value: new Uint8Array(Buffer.from(stripped, "base64")) };
+}
+function checkSize(size, maxBytes) {
+  if (!Number.isInteger(size) || size < 1) return { ok: false, reason: "Rozmiar pliku musi by\u0107 dodatni\u0105 liczb\u0105 bajt\xF3w." };
+  if (size > maxBytes) return { ok: false, reason: `Plik jest za du\u017Cy (${size} bajt\xF3w, maks. ${maxBytes}).` };
+  return { ok: true, value: size };
+}
+function sniffUpload(bytes, maxBytes) {
+  const size = checkSize(bytes.byteLength, maxBytes);
+  if (!size.ok) return size;
+  const image = sniffImage(bytes);
+  if (!image) return { ok: false, reason: NOT_SUPPORTED_TYPE };
+  return { ok: true, value: image };
+}
+var sha256Of = (bytes) => createHash3("sha256").update(bytes).digest("hex");
+function verifyCompletion(input2) {
+  if (input2.bytes.byteLength !== input2.declaredSize) {
+    return { ok: false, reason: `Rozmiar pliku w magazynie (${input2.bytes.byteLength} B) nie zgadza si\u0119 z zadeklarowanym (${input2.declaredSize} B).` };
+  }
+  if (sha256Of(input2.bytes) !== input2.declaredSha) {
+    return { ok: false, reason: "Skr\xF3t SHA-256 pliku w magazynie nie zgadza si\u0119 z zadeklarowanym." };
+  }
+  const image = sniffImage(input2.bytes);
+  if (!image) return { ok: false, reason: NOT_SUPPORTED_TYPE };
+  if (image.contentType !== input2.declaredType) {
+    return { ok: false, reason: `Plik jest typu ${image.contentType}, a zadeklarowano ${input2.declaredType}.` };
+  }
+  return { ok: true, value: { width: image.width, height: image.height } };
+}
+var urlFetchAllowed = (fetchesLastHour) => fetchesLastHour < MEDIA_URL_FETCHES_PER_HOUR;
+var URL_FETCH_LIMIT_REASON = `Limit pobra\u0144 z adresu URL wykorzystany (${MEDIA_URL_FETCHES_PER_HOUR} na godzin\u0119). Spr\xF3buj p\xF3\u017Aniej albo wy\u015Blij obraz inaczej.`;
+var URL_FETCH_DISABLED_REASON = "Pobieranie obraz\xF3w z adresu URL jest wy\u0142\u0105czone na tym serwerze (MEDIA_URL_FETCH). Wy\u015Blij obraz przez media_upload (ma\u0142e pliki, base64) albo media_create_upload (PUT na podany adres).";
+
+// server/media/service.ts
+var MediaRequestError = class extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "MediaRequestError";
+  }
+};
+function mediaRuntime() {
+  try {
+    const config2 = resolveMediaConfig(process.env);
+    return { config: config2, storage: getStorage(), now: () => /* @__PURE__ */ new Date() };
+  } catch (error62) {
+    throw new MediaRequestError(`Magazyn medi\xF3w nie jest skonfigurowany: ${error62.message}`);
+  }
+}
+async function enforceDailyLimits(ownerId, size) {
+  const today = await countsToday(ownerId);
+  if (!withinDailyLimits(today, size)) throw new MediaRequestError(DAILY_LIMIT_REASON);
+}
+var urlOf = (runtime, row) => runtime.storage.publicUrl(row.key);
+async function storeBytes(runtime, input2) {
+  const sniffed = sniffUpload(input2.bytes, runtime.config.maxBytes);
+  if (!sniffed.ok) throw new MediaRequestError(sniffed.reason);
+  const sha2562 = sha256Of(input2.bytes);
+  const existing = await findBySha(input2.ownerId, sha2562);
+  if (existing?.status === "ready") return { row: existing, reused: true };
+  await enforceDailyLimits(input2.ownerId, input2.bytes.byteLength);
+  const { contentType: contentType2, width, height } = sniffed.value;
+  const id = randomUUID();
+  const key = mediaKey(runtime.config.keyPrefix, runtime.now().getUTCFullYear(), id, contentType2);
+  await runtime.storage.put(key, input2.bytes, { contentType: contentType2 });
+  const pending = await createPending({
+    id,
+    key,
+    contentType: contentType2,
+    sizeBytes: input2.bytes.byteLength,
+    sha256: sha2562,
+    source: input2.source,
+    ownerId: input2.ownerId
+  });
+  const ready2 = await markReady(id, { width, height });
+  return { row: ready2 ?? pending, reused: false };
+}
+async function beginUpload(runtime, input2) {
+  const size = checkSize(input2.size, runtime.config.maxBytes);
+  if (!size.ok) throw new MediaRequestError(size.reason);
+  const existing = await findBySha(input2.ownerId, input2.sha256);
+  if (existing?.status === "ready") return { kind: "reused", row: existing };
+  if (existing && existing.contentType === input2.contentType && existing.sizeBytes === input2.size) {
+    return { kind: "upload", row: existing, created: false, ...await presign(runtime, existing) };
+  }
+  await enforceDailyLimits(input2.ownerId, input2.size);
+  const id = randomUUID();
+  const key = mediaKey(runtime.config.keyPrefix, runtime.now().getUTCFullYear(), id, input2.contentType);
+  const row = await createPending({
+    id,
+    key,
+    contentType: input2.contentType,
+    sizeBytes: input2.size,
+    sha256: input2.sha256,
+    source: input2.source,
+    ownerId: input2.ownerId
+  });
+  return { kind: "upload", row, created: true, ...await presign(runtime, row) };
+}
+async function presign(runtime, row) {
+  const signed = await runtime.storage.presignPut(row.key, {
+    contentType: row.contentType,
+    contentLength: row.sizeBytes,
+    expiresInSeconds: MEDIA_PRESIGN_SECONDS
+  });
+  return { uploadUrl: signed.url, headers: signed.headers, expiresInSeconds: MEDIA_PRESIGN_SECONDS };
+}
+async function ownedRow(id, userId, isAdmin) {
+  const row = await get(id);
+  if (!row || !isAdmin && row.ownerId !== userId) throw new MediaRequestError("Nie znaleziono pliku.");
+  return row;
+}
+async function completeUpload(runtime, input2) {
+  const row = await ownedRow(input2.id, input2.userId, input2.isAdmin);
+  if (row.status === "ready") throw new MediaRequestError("Plik jest ju\u017C gotowy - nie trzeba go wysy\u0142a\u0107 ponownie.");
+  const head = await runtime.storage.head(row.key);
+  if (!head) throw new MediaRequestError("Plik nie zosta\u0142 jeszcze wys\u0142any do magazynu. Wy\u015Blij bajty na uploadUrl (PUT) i wywo\u0142aj media_complete ponownie.");
+  const reject = async (reason) => {
+    await runtime.storage.remove(row.key);
+    await remove(row.id);
+    return { kind: "rejected", reason };
+  };
+  if (head.size !== row.sizeBytes) {
+    return reject(`Rozmiar pliku w magazynie (${head.size} B) nie zgadza si\u0119 z zadeklarowanym (${row.sizeBytes} B). Plik usuni\u0119to - zacznij od media_create_upload.`);
+  }
+  const bytes = await runtime.storage.getRange(row.key, 0, row.sizeBytes - 1);
+  if (!bytes) throw new MediaRequestError("Plik nie zosta\u0142 jeszcze wys\u0142any do magazynu. Wy\u015Blij bajty na uploadUrl (PUT) i wywo\u0142aj media_complete ponownie.");
+  const verified = verifyCompletion({ declaredSize: row.sizeBytes, declaredSha: row.sha256, declaredType: row.contentType, bytes });
+  if (!verified.ok) return reject(`${verified.reason} Plik usuni\u0119to - zacznij od media_create_upload.`);
+  const ready2 = await markReady(row.id, verified.value);
+  if (!ready2) throw new MediaRequestError("Plik zosta\u0142 ju\u017C zmieniony przez inne wywo\u0142anie. Sprawd\u017A media_get.");
+  return { kind: "ready", row: ready2 };
+}
+async function deleteMedia(runtime, input2) {
+  const row = await ownedRow(input2.id, input2.userId, input2.isAdmin);
+  const result = await remove(row.id);
+  if (result.status === "missing") throw new MediaRequestError("Nie znaleziono pliku.");
+  if (result.status === "in-use") return { kind: "in-use", row, references: result.references };
+  await runtime.storage.remove(result.key);
+  return { kind: "removed", row };
+}
+async function mediaDetails(input2) {
+  const row = await ownedRow(input2.id, input2.userId, input2.isAdmin);
+  return { row, references: await referencesOf(row.id) };
+}
+var urlFetchesLastHour = (ownerId, now) => countBySourceSince(ownerId, "mcp-url", new Date(now.getTime() - 60 * 60 * 1e3));
+
+// server/mcp/tools/media.ts
+var MAX_BASE64_CHARS = 28e5;
+var mediaId = external_exports.string().uuid().describe("Id pliku (UUID) z media_upload, media_list albo media_get");
+var alt = external_exports.string().min(1).max(200).describe('Opis obrazka po polsku (1-200 znak\xF3w, bez "]" i znak\xF3w nowej linii). Wymagany: jest cz\u0119\u015Bci\u0105 zapisu ![opis](media:\u2026) i wymaga go quiz_schema');
+var sha256 = external_exports.string().regex(/^[0-9a-f]{64}$/).describe("SHA-256 bajt\xF3w pliku, 64 znaki szesnastkowe ma\u0142ymi literami");
+async function run(work) {
+  try {
+    return await work();
+  } catch (error62) {
+    if (error62 instanceof MediaRequestError) return failure2(error62.message);
+    throw error62;
+  }
+}
+var detailsOf = (row) => ({ sizeBytes: row.sizeBytes, source: row.source, sha256: row.sha256.slice(0, 12) });
+var uploadAnswer = (runtime, row, altText, reused) => ({
+  mediaId: row.id,
+  url: urlOf(runtime, row),
+  width: row.width,
+  height: row.height,
+  size: row.sizeBytes,
+  markdown: mediaMarkdown(altText, row.id),
+  reused
+});
+var fileInfo = (runtime, row) => ({
+  mediaId: row.id,
+  url: urlOf(runtime, row),
+  width: row.width,
+  height: row.height,
+  size: row.sizeBytes,
+  contentType: row.contentType,
+  status: row.status,
+  source: row.source,
+  ownerId: row.ownerId,
+  createdAt: row.createdAt,
+  readyAt: row.readyAt
+});
+function registerMediaTools(server, ctx) {
+  server.registerTool(
+    "media_upload",
+    {
+      title: "Wy\u015Blij obraz (base64)",
+      description: 'Zapisuje obraz PNG, JPEG albo WebP przekazany w wywo\u0142aniu jako base64 i zwraca mediaId, url, wymiary i gotowy zapis markdown "![opis](media:\u2026)" do wklejenia w tre\u015B\u0107 pytania, wyja\u015Bnienia albo opcji. Sk\u0142adni\u0119 obraz\xF3w i miejsca, gdzie wolno je umie\u015Bci\u0107, sprawd\u017A w quiz_schema (\u017Ar\xF3d\u0142o prawdy, nie ten opis). UWAGA na koszt: ka\u017Cdy znak base64 to tokeny, wi\u0119c obraz rz\u0119du 100 KB to dziesi\u0105tki tysi\u0119cy token\xF3w - u\u017Cywaj tego tylko do ma\u0142ych ilustracji. Wi\u0119ksze obrazy: media_upload_from_url (zalecane, gdy obraz ma adres https) albo media_create_upload. Typ pliku wyznacza zawarto\u015B\u0107, nie nazwa ani deklaracja; GIF i SVG s\u0105 odrzucane. Ten sam plik tego autora zwraca istniej\u0105cy wpis (reused: true). Limit: 2 MB po zdekodowaniu.',
+      inputSchema: {
+        dataBase64: external_exports.string().min(1).max(MAX_BASE64_CHARS).describe("Zawarto\u015B\u0107 pliku w base64 (bez nag\u0142\xF3wka data:, ale nag\u0142\xF3wek zostanie pomini\u0119ty, je\u015Bli go podasz)"),
+        alt
+      }
+    },
+    async ({ dataBase64, alt: altInput }) => {
+      if (!ctx.canWriteQuizzes) return needQuizWrite();
+      return run(async () => {
+        const altChecked = validateAlt(altInput);
+        if (!altChecked.ok) return failure2(altChecked.reason);
+        const runtime = mediaRuntime();
+        const decoded = decodeBase64Image(dataBase64, runtime.config.maxBytes);
+        if (!decoded.ok) return failure2(decoded.reason);
+        const stored = await storeBytes(runtime, { ownerId: ctx.userId, bytes: decoded.value, source: "mcp-base64" });
+        if (!stored.reused) await audit(ctx, "media_upload", { id: stored.row.id, label: "obraz" }, detailsOf(stored.row));
+        return text(uploadAnswer(runtime, stored.row, altChecked.value, stored.reused));
+      });
+    }
+  );
+  server.registerTool(
+    "media_upload_from_url",
+    {
+      title: "Pobierz obraz z adresu",
+      description: 'Serwer pobiera obraz z podanego adresu https (port 443, bez loginu, bez adres\xF3w lokalnych i prywatnych, przekierowania najwy\u017Cej 3 i ka\u017Cde sprawdzane osobno, limit 8 s i 2 MB) i zapisuje go; zwraca mediaId i markdown "![opis](media:\u2026)" tak jak media_upload. Najlepsza \u015Bcie\u017Cka dla obraz\xF3w z w\u0142asnego hostingu albo z sieci - model nie wypisuje danych. Limit: 20 udanych pobra\u0144 na godzin\u0119. Wy\u0142\u0105czone, dop\xF3ki administrator nie w\u0142\u0105czy MEDIA_URL_FETCH na serwerze. Sk\u0142adni\u0119 sprawd\u017A w quiz_schema.',
+      inputSchema: {
+        url: external_exports.string().min(1).max(2048).describe("Pe\u0142ny adres https obrazu (PNG, JPEG albo WebP)"),
+        alt
+      }
+    },
+    async ({ url: url2, alt: altInput }) => {
+      if (!ctx.canWriteQuizzes) return needQuizWrite();
+      return run(async () => {
+        if (!urlFetchEnabled(process.env)) return failure2(URL_FETCH_DISABLED_REASON);
+        const altChecked = validateAlt(altInput);
+        if (!altChecked.ok) return failure2(altChecked.reason);
+        const runtime = mediaRuntime();
+        if (!urlFetchAllowed(await urlFetchesLastHour(ctx.userId, runtime.now()))) return failure2(URL_FETCH_LIMIT_REASON);
+        const checked = checkImageUrl(url2);
+        if (!checked.ok) return failure2(`Adres odrzucony: ${checked.reason}`);
+        let fetched;
+        try {
+          fetched = await fetchImage(url2, nodeFetchDeps, { maxBytes: runtime.config.maxBytes, timeoutMs: FETCH_TIMEOUT_MS });
+        } catch (error62) {
+          if (error62 instanceof FetchImageError) return failure2(error62.message);
+          throw error62;
+        }
+        const stored = await storeBytes(runtime, { ownerId: ctx.userId, bytes: fetched.bytes, source: "mcp-url" });
+        if (!stored.reused) await audit(ctx, "media_upload_from_url", { id: stored.row.id, label: "obraz" }, detailsOf(stored.row));
+        return text({ ...uploadAnswer(runtime, stored.row, altChecked.value, stored.reused), from: fetched.finalUrl });
+      });
+    }
+  );
+  server.registerTool(
+    "media_create_upload",
+    {
+      title: "Przygotuj wysy\u0142k\u0119 obrazu (PUT)",
+      description: "Dla klient\xF3w, kt\xF3re umiej\u0105 wys\u0142a\u0107 plik \u017C\u0105daniem HTTP PUT: zwraca mediaId, uploadUrl i nag\u0142\xF3wki (headers) podpisane na konkretny rozmiar. Wy\u015Blij bajty pliku PUT-em na uploadUrl z dok\u0142adnie tymi nag\u0142\xF3wkami, a potem wywo\u0142aj media_complete z mediaId - dopiero wtedy obraz jest gotowy. Podaj contentType, size i sha256 zgodne z plikiem; z\u0142y rozmiar, typ albo skr\xF3t odrzuci media_complete. Gdy plik ju\u017C istnieje (ten sam skr\xF3t), zwraca go od razu z reused: true. Sk\u0142adni\u0119 sprawd\u017A w quiz_schema.",
+      inputSchema: {
+        contentType: external_exports.enum(MEDIA_CONTENT_TYPES).describe("Typ pliku: image/png, image/jpeg albo image/webp"),
+        size: external_exports.number().int().min(1).describe("Rozmiar pliku w bajtach (maks. MEDIA_MAX_BYTES, domy\u015Blnie 2 MB)"),
+        sha256,
+        alt
+      }
+    },
+    async ({ contentType: contentType2, size, sha256: hash2, alt: altInput }) => {
+      if (!ctx.canWriteQuizzes) return needQuizWrite();
+      return run(async () => {
+        const altChecked = validateAlt(altInput);
+        if (!altChecked.ok) return failure2(altChecked.reason);
+        const runtime = mediaRuntime();
+        const started = await beginUpload(runtime, { ownerId: ctx.userId, contentType: contentType2, size, sha256: hash2, source: "mcp-presigned" });
+        if (started.kind === "reused") return text(uploadAnswer(runtime, started.row, altChecked.value, true));
+        if (started.created) await audit(ctx, "media_create_upload", { id: started.row.id, label: "obraz" }, detailsOf(started.row));
+        return text({
+          mediaId: started.row.id,
+          uploadUrl: started.uploadUrl,
+          headers: started.headers,
+          expiresInSeconds: started.expiresInSeconds,
+          markdown: mediaMarkdown(altChecked.value, started.row.id),
+          reused: false,
+          next: "PUT bajty pliku na uploadUrl z podanymi headers (bez zmian), potem wywo\u0142aj media_complete z mediaId."
+        });
+      });
+    }
+  );
+  server.registerTool(
+    "media_complete",
+    {
+      title: "Zako\u0144cz wysy\u0142k\u0119 obrazu",
+      description: "Po PUT na uploadUrl (z media_create_upload): sprawdza w magazynie rozmiar, skr\xF3t i typ zgodne z zadeklarowanymi i ustawia plik jako gotowy. Gdy co\u015B si\u0119 nie zgadza, plik i wpis s\u0105 usuwane, a narz\u0119dzie zwraca pow\xF3d - zacznij od media_create_upload. Tylko w\u0142a\u015Bciciel pliku (albo admin).",
+      inputSchema: { mediaId }
+    },
+    async ({ mediaId: id }) => {
+      if (!ctx.canWriteQuizzes) return needQuizWrite();
+      return run(async () => {
+        const runtime = mediaRuntime();
+        const completion = await completeUpload(runtime, { id, userId: ctx.userId, isAdmin: ctx.viewer.admin });
+        if (completion.kind === "rejected") {
+          await audit(ctx, "media_complete", { id, label: "obraz" }, { outcome: "rejected", reason: completion.reason });
+          return failure2(completion.reason);
+        }
+        await audit(ctx, "media_complete", { id, label: "obraz" }, { outcome: "ready", ...detailsOf(completion.row) });
+        return text(fileInfo(runtime, completion.row));
+      });
+    }
+  );
+  server.registerTool(
+    "media_list",
+    {
+      title: "Lista plik\xF3w",
+      description: "Pliki autora (admin widzi wszystkie i mo\u017Ce wybra\u0107 ownerId), od najnowszego. unreferenced=true zwraca tylko pliki, kt\xF3rych nie u\u017Cywa \u017Caden quiz. limit (domy\u015Blnie 25, maks. 200) i offset do stronicowania; total i hasMore m\xF3wi\u0105, czy s\u0105 kolejne.",
+      inputSchema: {
+        unreferenced: external_exports.boolean().default(false),
+        limit: external_exports.number().int().min(1).max(200).default(25),
+        offset: external_exports.number().int().min(0).default(0),
+        ownerId: external_exports.string().min(1).max(200).optional().describe("Tylko admin: id w\u0142a\u015Bciciela (Auth0 sub)")
+      },
+      annotations: { readOnlyHint: true }
+    },
+    async ({ unreferenced, limit, offset, ownerId }) => {
+      if (!ctx.canWriteQuizzes) return needQuizWrite();
+      return run(async () => {
+        if (ownerId !== void 0 && !ctx.viewer.admin) return failure2("Filtr ownerId mo\u017Ce u\u017Cy\u0107 tylko admin. Zwyk\u0142y autor widzi swoje pliki.");
+        const runtime = mediaRuntime();
+        const scope = ctx.viewer.admin ? ownerId ?? null : ctx.userId;
+        const page = await listByOwner({ ownerId: scope, unreferenced, limit, offset });
+        return text({
+          total: page.total,
+          hasMore: offset + page.items.length < page.total,
+          items: page.items.map((row) => fileInfo(runtime, row))
+        });
+      });
+    }
+  );
+  server.registerTool(
+    "media_get",
+    {
+      title: "Szczeg\xF3\u0142y pliku",
+      description: "Metadane pliku, adres url i lista referencedBy (quizy, kt\xF3re go u\u017Cywaj\u0105, z tytu\u0142ami). Tylko w\u0142a\u015Bciciel albo admin.",
+      inputSchema: { mediaId },
+      annotations: { readOnlyHint: true }
+    },
+    async ({ mediaId: id }) => {
+      if (!ctx.canWriteQuizzes) return needQuizWrite();
+      return run(async () => {
+        const runtime = mediaRuntime();
+        const { row, references } = await mediaDetails({ id, userId: ctx.userId, isAdmin: ctx.viewer.admin });
+        const titles = await quizTitles(references.filter((r) => r.ownerKind === "quiz").map((r) => r.ownerId));
+        return text({
+          ...fileInfo(runtime, row),
+          sha256: row.sha256,
+          referencedBy: references.map((r) => ({ kind: r.ownerKind, id: r.ownerId, title: titles.get(r.ownerId) ?? null }))
+        });
+      });
+    }
+  );
+  server.registerTool(
+    "media_delete",
+    {
+      title: "Usu\u0144 plik",
+      description: "Trwale usuwa plik z magazynu i z bazy. Odmawia, dop\xF3ki plik jest u\u017Cywany w quizie (zwraca nazwy tych quiz\xF3w) - najpierw usu\u0144 go z tre\u015Bci (quiz_update) albo usu\u0144 quiz. Wymaga confirm=true. Tylko w\u0142a\u015Bciciel albo admin.",
+      inputSchema: { mediaId, confirm: external_exports.literal(true).describe("Musi by\u0107 true") },
+      annotations: { destructiveHint: true }
+    },
+    async ({ mediaId: id }) => {
+      if (!ctx.canWriteQuizzes) return needQuizWrite();
+      return run(async () => {
+        const result = await deleteMedia(mediaRuntime(), { id, userId: ctx.userId, isAdmin: ctx.viewer.admin });
+        if (result.kind === "in-use") {
+          const titles = await quizTitles(result.references.filter((r) => r.ownerKind === "quiz").map((r) => r.ownerId));
+          const names = result.references.map((r) => r.ownerKind === "quiz" ? `quiz \u201E${titles.get(r.ownerId) ?? r.ownerId}\u201D` : `${r.ownerKind} ${r.ownerId}`);
+          return failure2(`Obraz jest u\u017Cywany w: ${names.join(", ")}. Najpierw usu\u0144 go z tych tre\u015Bci (quiz_update) albo usu\u0144 te quizy, a potem wywo\u0142aj media_delete ponownie.`);
+        }
+        await audit(ctx, "media_delete", { id, label: "obraz" }, detailsOf(result.row));
+        return text({ ok: true, mediaId: id });
+      });
+    }
+  );
+}
+
 // src/shared/quiz/classAnalysis.ts
 var DAY2 = 24 * 60 * 60 * 1e3;
 var INACTIVE_DAYS = 7;
@@ -77065,7 +78442,7 @@ function buildServer(req) {
   const server = new McpServer({
     name: "quiz",
     title: "Quiz",
-    version: "2.1.0",
+    version: "2.2.0",
     icons: [{ src: "https://quiz-vercel-rho.vercel.app/mcp-icon.png", mimeType: "image/png", sizes: ["1254x1254"] }]
   });
   registerQuizTools(server, ctx);
@@ -77073,6 +78450,7 @@ function buildServer(req) {
   registerAdminTools(server, ctx);
   registerUserTools(server, ctx);
   registerOperationTools(server, ctx);
+  registerMediaTools(server, ctx);
   return server;
 }
 var mcpHandler = async (req, res) => {
@@ -77449,31 +78827,6 @@ function resolveGradedIds(allIds, requested, sampleSize) {
   return requested.every((id) => known.has(id)) ? [...requested] : null;
 }
 
-// server/media/config.ts
-function value(env, name) {
-  return (env[name] ?? "").trim();
-}
-function parsePublicBaseUrl(raw) {
-  let url2;
-  try {
-    url2 = new URL(raw);
-  } catch {
-    throw new Error("MEDIA_PUBLIC_BASE_URL must be an absolute https URL");
-  }
-  if (url2.protocol !== "https:") throw new Error("MEDIA_PUBLIC_BASE_URL must use https");
-  return raw.replace(/\/+$/, "");
-}
-function publicBaseUrlOf(env) {
-  const raw = value(env, "MEDIA_PUBLIC_BASE_URL");
-  if (raw === "") return null;
-  try {
-    return parsePublicBaseUrl(raw);
-  } catch {
-    return null;
-  }
-}
-var mediaUrlFor = (baseUrl, key) => `${baseUrl.replace(/\/+$/, "")}/${key}`;
-
 // server/media/mediaMap.ts
 function buildMediaMap(rows, baseUrl) {
   const map2 = {};
@@ -77732,7 +79085,7 @@ function createApp() {
   const app2 = (0, import_express.default)();
   app2.disable("x-powered-by");
   app2.use((req, res, next) => {
-    const requestId = String(req.headers["x-request-id"] ?? req.headers["x-vercel-id"] ?? randomUUID());
+    const requestId = String(req.headers["x-request-id"] ?? req.headers["x-vercel-id"] ?? randomUUID2());
     res.locals.requestId = requestId;
     res.set("X-Request-Id", requestId);
     next();
@@ -77742,7 +79095,9 @@ function createApp() {
     res.set("Cache-Control", "no-store");
     next();
   });
-  app2.use(import_express.default.json({ limit: "1mb" }));
+  const jsonDefault = import_express.default.json({ limit: "1mb" });
+  const jsonForMcp = import_express.default.json({ limit: "3mb" });
+  app2.use(((req, res, next) => (/^\/(?:api\/)?mcp(?:[/?]|$)/.test(req.url) ? jsonForMcp : jsonDefault)(req, res, next)));
   app2.use(((req, _res, next) => {
     req.url = req.url.replace(/^\/api(?=\/|\?|$)/, "") || "/";
     next();
@@ -77786,6 +79141,8 @@ function createApp() {
       res.status(error62.status).json({ error: error62.message, requestId });
     } else if (error62 instanceof SyntaxError) {
       res.status(400).json({ error: "Invalid JSON body" });
+    } else if (error62 instanceof Error && error62.type === "entity.too.large") {
+      res.status(413).json({ error: "\u0141adunek \u017C\u0105dania jest za du\u017Cy." });
     } else {
       console.error(
         JSON.stringify({

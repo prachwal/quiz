@@ -27,3 +27,9 @@ export const MEDIA_CACHE_CONTROL = 'public, max-age=31536000, immutable'
 
 /** Public base used by the memory driver when MEDIA_PUBLIC_BASE_URL is not set. */
 export const MEDIA_MEMORY_DEFAULT_BASE_URL = 'https://media.test'
+
+/** `media_upload_from_url`: successful fetches per author in the last hour (Media-Storage-Plan, "Limity nadużyć"). */
+export const MEDIA_URL_FETCHES_PER_HOUR = 20
+
+/** Presigned PUT lifetime for `media_create_upload` (the client should upload right away). */
+export const MEDIA_PRESIGN_SECONDS = 15 * 60
