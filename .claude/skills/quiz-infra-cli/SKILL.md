@@ -40,7 +40,7 @@ Hosts are shown by the scripts as a prefix only; the full URLs live in `.env.loc
 - Single-environment record from the CLI, value on stdin (the value is never echoed):
   `printf '%s' "$VALUE" | vercel env add NAME preview --force --yes` (and `development` / `production`). Secrets: add `--sensitive` after the environment (`sensitive` records cannot be pulled back and cannot be used for the `development` environment). Take values from `.env.local` with `grep -E "^NAME=" .env.local | cut -d= -f2-`, never print them.
 - Env changes only apply to NEW deployments: redeploy afterwards. Cron jobs (`vercel.json` `crons`) run only on Production, and `CRON_SECRET` is needed there.
-- Variables set for the media module: `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_FORCE_PATH_STYLE`, `S3_KEY_PREFIX`, `MEDIA_PUBLIC_BASE_URL`, `VITE_MEDIA_PUBLIC_BASE_URL`; `MEDIA_URL_FETCH` stays unset/false; `CRON_SECRET` (Production only); never set `MEDIA_CLEANUP_OWNER_FILTER` or `MEDIA_DRIVER=memory` anywhere on Vercel.
+- Variables set for the media module: `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_FORCE_PATH_STYLE`, `S3_KEY_PREFIX`, `MEDIA_PUBLIC_BASE_URL`, `VITE_MEDIA_PUBLIC_BASE_URL`; `MEDIA_URL_FETCH=true` only on Preview (verified on the Vercel runtime), unset on Production/Development; `CRON_SECRET` (Production only); never set `MEDIA_CLEANUP_OWNER_FILTER` or `MEDIA_DRIVER=memory` anywhere on Vercel.
 - Database variables: `DATABASE_URL` and `DATABASE_URL_UNPOOLED` per environment (Production = `main`, Preview = `preview`, Development = `dev`); `POSTGRES_*` and `PG*` exist for Production only.
 
 ## Database migrations (one database per environment)

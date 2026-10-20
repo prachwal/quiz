@@ -45,7 +45,7 @@ Zmienne środowiskowe (Production/Preview/Development): `DATABASE_URL` (+ `*_UNP
 [Media-Storage-Plan](Media-Storage-Plan.md), „Konfiguracja”): `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`,
 `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` (secret), `S3_FORCE_PATH_STYLE` (`true`), `S3_KEY_PREFIX`
 (`dev/` lokalnie, `preview/` na Preview, puste na Production), `MEDIA_PUBLIC_BASE_URL`, `MEDIA_DRIVER` (`s3`), `MEDIA_MAX_BYTES`,
-`MEDIA_URL_FETCH` (zostaje `false`, dopóki nie zweryfikowano przypinania połączeń na Vercelu) oraz
+`MEDIA_URL_FETCH` (`true` tylko na Preview — przypinanie połączeń zweryfikowane na Vercelu 2026-10-20; na Production nieustawione = wyłączone) oraz
 `VITE_MEDIA_PUBLIC_BASE_URL` (to samo co `MEDIA_PUBLIC_BASE_URL`, wartość budowania: po zmianie wdróż ponownie);
 `CRON_SECRET` (sprzątanie, poniżej). `MEDIA_CLEANUP_OWNER_FILTER` ustawia tylko `npm run test:mcp`; w produkcji
 nie wolno jej ustawiać. Bucket `media` (Neon Object Storage, `public_read`) jest wspólny dla wszystkich środowisk,
@@ -76,8 +76,10 @@ i `e2e` są kopiami `main` utworzonymi z `--parent main`, z których usunięto d
 - `S3_*` oraz `MEDIA_PUBLIC_BASE_URL` / `VITE_MEDIA_PUBLIC_BASE_URL` są osobno dla każdego środowiska
   (każda gałąź ma własny bucket i klucze). `S3_SECRET_ACCESS_KEY` i pozostałe klucze są wrażliwe
   (`--sensitive`), więc nie da się ich odczytać przez `vercel env pull`.
-- `CRON_SECRET` jest tylko w Production (cron działa tylko tam). `MEDIA_URL_FETCH` pozostaje `false`
-  we wszystkich środowiskach, dopóki nie przejdzie testu wiązania IP na Vercelu (zob. `docs/Media-Storage-Plan.md`).
+- `CRON_SECRET` jest tylko w Production (cron działa tylko tam). `MEDIA_URL_FETCH=true` jest ustawione tylko na Preview
+  (test `media_upload_from_url` na środowisku wykonawczym Vercela przeszedł 2026-10-20: prawdziwy adres pobrany, wrogie adresy
+  odrzucone); na Production i w Development jest nieustawione, czyli pobieranie wyłączone — włączenie na Production to osobna decyzja właściciela
+  (zob. `docs/Media-Storage-Plan.md`).
   `MEDIA_CLEANUP_OWNER_FILTER` i `MEDIA_DRIVER=memory` nigdy nie są ustawione w Vercel.
 
 ### Token nie działa w innym środowisku
