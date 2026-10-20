@@ -24,7 +24,7 @@ updated: 2026-10-20
 | Cloze | F1–F4 (znacznik, znaki typograficzne, limity, przecinek), D1 (końcowa kropka w lukach) | |
 | Uwagi z przeglądu | `key` w graczu, TLS i pula, zabezpieczenie `test:mcp`, odsyłacz do `quiz_schema`, kolejność w `ordering`/`matching` ujawniała odpowiedź, `withShownOrders` liczył nietknięte pytania, brak limitu długości `id` w `config` (faza 0) | nic |
 | Podział nauki | nic | kroki 1–8 |
-| Obrazy (S3) | M1 kod gotowy (migracja do zastosowania); M2–M5 i L1 (wstęp lekcji) zrobione 2026-10-20 | M0 (człowiek), M6, L2, S1–S2 |
+| Obrazy (S3) | M1–M6, L1 (wstęp lekcji), L2 (ilustracje czasowników), S1 (sprzątanie) i S2 (dokumentacja) zrobione w kodzie; migracje `media`, `verb_images` i `attempt_questions_snapshot` zastosowane na bazie (2026-10-20) | M0 (człowiek: bucket, CORS, klucze na Vercelu, Preview), weryfikacja w przeglądarce, `MEDIA_URL_FETCH` pozostaje wyłączone |
 
 ## Zasady kolejności
 
@@ -90,7 +90,7 @@ Po fazie 2 produkt jest nietknięty dla użytkownika, a jądro quizów nie zna k
 | # | Zadanie | Zależność |
 | --- | --- | --- |
 | 3.1 | ✅ **Decyzje D1–D4** z [[MCP-Admin-Tools]] (zrobione: tylko OAuth, migawka pytań A, `class_transfer`, bez e-maila w liście podejść) | przed 3.2 |
-| 3.2 | 🟡 **kod gotowy, migracja do zastosowania**: migracja `quiz_attempts.questions_snapshot` + częściowe uzupełnienie istniejących wierszy, zapis w `saveAttempt` z handlera `grade` (nie z `beforeSave`: migawka to sprawa jądra quizów). Owner musi jeszcze uruchomić `npm run db:migrate` i sprawdzić `test:mcp` | po 2.1 |
+| 3.2 | ✅ **zrobione, migracja zastosowana 2026-10-20**: migracja `20261020100000_attempt_questions_snapshot` (`quiz_attempts.questions_snapshot`) + częściowe uzupełnienie istniejących wierszy, zapis w `saveAttempt` z handlera `grade` (nie z `beforeSave`: migawka to sprawa jądra quizów) | po 2.1 |
 | 3.3 | ✅ `74a8c9b` **`quiz_stats`** (`itemStats` + `attemptsOfQuiz` + snapshot) | po 3.2; wydanie 1 narzędzi (razem z 3.4) |
 | 3.4 | ✅ `e2bfc9a` `user_results`, `user_analysis` (cała historia użytkownika bez klasy — to one odpowiadają na pytanie, od którego zaczął się [[MCP-Admin-Tools]]; read path z `classes.allAttempts` i `analyzeStudent`) | niezależne od 3.2 |
 | 3.5 | ✅ `2145fbb` `user_list`, `user_get`, `user_search`, `user_roles_set`, `user_block` z zabezpieczeniami przeniesionymi z REST | niezależne |
@@ -107,15 +107,15 @@ Rozpoczyna się po rozstrzygnięciu M0.
 
 | # | Zadanie | Uwagi |
 | --- | --- | --- |
-| 4.1 | 🟡 **M1** fundament: migracja `media`/`media_refs`, sterownik S3 i atrapa, `sniff` — **kod gotowy, migracja do zastosowania** (commit `296e61a`; `npm run db:migrate` po stronie właściciela) | `db.ts` z 1.1 |
+| 4.1 | ✅ **M1** fundament: migracja `media`/`media_refs` (`20261020110000_media`, zastosowana 2026-10-20), sterownik S3 i atrapa, `sniff` (commit `296e61a`) | `db.ts` z 1.1 |
 | 4.2 | ✅ **M2** zapis `![opis](media:…)`, walidacja „gdzie wolno”, `syncRefs` (zrobione 2026-10-20) | `promptText` z cloze (już po D1) |
 | 4.3 | ✅ **M3** mapa `media` w odpowiedziach (zrobione 2026-10-20) | po 2.3: endpointy przez `injectEndpoints` |
 | 4.4 | ✅ **M4** renderowanie w quizie: `RichText`, `MediaImage`, `MediaProvider`, `ChoiceTile` z obrazem, `Cloze`, wynik (zrobione 2026-10-20; **nie zrobione:** wstęp lekcji (L1) i podgląd w edytorze (M6)) | po 2.2 |
 | 4.5 | ✅ **M5** narzędzia MCP do wysyłania (`media_upload`, `media_upload_from_url`, …) — zrobione 2026-10-20 (`f8cfd4a` … `a8b891e`; pobieranie z adresu za bramką `MEDIA_URL_FETCH`, domyślnie wyłączone) | najpierw testy `ssrf`; wydanie 2 narzędzi |
 | 4.6 | ✅ **M6** wysyłanie w edytorze (`ImageUpload`) — kod gotowy 2026-10-20: trasy `/api/media/uploads` i `/complete` (w trybie memory także `PUT …/content`), przycisk „Wstaw obrazek” przy treści, wyjaśnieniu i opcjach wyboru w `QuizEditor`; **weryfikacja na prawdziwym buckecie: M0** | po M4 |
 | 4.7 | ✅ **Podział, krok 5:** klasy czytają postęp lekcji przez API nauki (zrobione 2026-10-20) | przed L1, żeby narzędzia lekcji lądowały na ustalonym API |
-| 4.8 | ✅ **L1** wstęp lekcji (zrobione 2026-10-20: slajd „Wstęp” od obrazu albo >140 znaków, `lesson_get`/`lesson_update`); **L2** ilustracje czasowników — otwarte | `verb_set_image` w L2; narzędzia lekcji są już w wydaniu 2.3.0 (51) |
-| 4.9 | **S1** sprzątanie (Cron), **S2** dokumentacja i `.env.example` | na końcu |
+| 4.8 | ✅ **L1** wstęp lekcji (zrobione 2026-10-20: slajd „Wstęp” od obrazu albo >140 znaków, `lesson_get`/`lesson_update`); ✅ **L2** ilustracje czasowników, zrobione w kodzie (`0270913`, `2660351`, `7cd7227`, `429244d`; kolumna `irregular_verbs.image_media_id` z migracji `20261020120000_verb_images`, zastosowanej na bazie; `verb_set_image`, `VerbSlide`/`VerbTable`, skrypt `npm run media:verb-images`) | narzędzia lekcji w wydaniu 2.3.0 (51), `verb_set_image` w 2.4.0 (52) |
+| 4.9 | ✅ **S1** sprzątanie (`30ce36a`, `1143d1d`, `a75dd51`: usuwanie starych `pending` w ścieżce żądania, `GET /api/media/cleanup` pod `CRON_SECRET`, cron `0 3 * * *`, zawężenie tylko w e2e); ✅ **S2** dokumentacja i `.env.example` (ten commit) | na końcu |
 
 ### Faza 5 — przeniesienie plików (około 2–3 dni)
 
@@ -127,7 +127,7 @@ Rozpoczyna się po rozstrzygnięciu M0.
 
 ## Licznik narzędzi MCP
 
-Plany podają przyrosty, nie liczby bezwzględne, bo zależą od kolejności faz. Przy kolejności z tego dokumentu: przed fazą 3 było 27 → **po fazie 3 jest 42** (stan 2026-10-20, sprawdzany przez `npm run test:mcp`) → po M5 **49** (stan 2026-10-20: 49 zweryfikowanych przez `npm run test:mcp`) → po L1 **51** (stan 2026-10-20: `lesson_get` i `lesson_update` w wersji serwera 2.3.0) → po L2 **52**. Każdy commit, który dodaje narzędzia, aktualizuje asercję w `scripts/mcp-local-e2e.ts` i liczbę w `docs/mcp-clients.md`.
+Plany podają przyrosty, nie liczby bezwzględne, bo zależą od kolejności faz. Przy kolejności z tego dokumentu: przed fazą 3 było 27 → **po fazie 3 jest 42** (stan 2026-10-20, sprawdzany przez `npm run test:mcp`) → po M5 **49** (stan 2026-10-20: 49 zweryfikowanych przez `npm run test:mcp`) → po L1 **51** (stan 2026-10-20: `lesson_get` i `lesson_update` w wersji serwera 2.3.0) → po L2 **52** (stan 2026-10-20: `verb_set_image`, wersja serwera 2.4.0, `test:mcp` 366 sprawdzeń zaliczonych). Każdy commit, który dodaje narzędzia, aktualizuje asercję w `scripts/mcp-local-e2e.ts` i liczbę w `docs/mcp-clients.md`.
 
 ## Zacommitowany bundle `api/index.mjs`
 
@@ -139,10 +139,10 @@ Plik musi zostać w repo: Vercel wykrywa funkcje w `api/` przed buildem, więc b
 | --- | --- | --- | --- |
 | R1 | faza 0 | brak | nie |
 | R2 | fazy 1–2 | brak | nie |
-| R3 | 3.2–3.8 | `questions_snapshot` (`20261020100000`) | **tak** (narzędzia admina); migracja musi być zastosowana **przed** wdrożeniem R3, bo zapis podejścia bez kolumny się nie powiedzie |
-| R4 | 4.1–4.4, 4.6 (obrazy w UI, bez MCP) | `media`, `media_refs` | nie |
+| R3 | 3.2–3.8 | `questions_snapshot` (`20261020100000`), zastosowana 2026-10-20 | **tak** (narzędzia admina); migracja musi być zastosowana **przed** wdrożeniem R3, bo zapis podejścia bez kolumny się nie powiedzie |
+| R4 | 4.1–4.4, 4.6 (obrazy w UI, bez MCP) | `media`, `media_refs` (`20261020110000`), zastosowana 2026-10-20 | nie |
 | R5 | 4.5 (MCP do wysyłania obrazów) | — | **tak** |
-| R6 | 4.7–4.9 (lekcje, sprzątanie) | `irregular_verbs.image_media_id` | **tak** (narzędzia lekcji) |
+| R6 | 4.7–4.9 (lekcje, sprzątanie) | `irregular_verbs.image_media_id` (`20261020120000_verb_images`), zastosowana 2026-10-20 | **tak** (narzędzia lekcji, `verb_set_image`) |
 | R7 | faza 5 | brak | nie |
 
 Zmienne środowiskowe `S3_*` i `MEDIA_*` dodać na Vercelu (Production/Preview/Development) **przed** R4 i wdrożyć ponownie, zgodnie z regułą repo.
@@ -182,7 +182,7 @@ Po każdej fazie produkt jest spójny, więc plan można przerwać w dowolnym z 
 - po fazie 0 — błędy naprawione;
 - po fazie 2 — jądro quizów niezależne od nauki;
 - po fazie 3 — komplet narzędzi admina;
-- po fazie 4 — obrazy działają;
+- po fazie 4 — obrazy działają w kodzie (weryfikacja w przeglądarce i na prawdziwym buckecie czeka na M0);
 - po fazie 5 — struktura docelowa.
 
 ## Gdyby priorytetem była struktura

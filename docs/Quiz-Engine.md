@@ -5,7 +5,7 @@ tags:
   - frontend
   - backend
 created: 2026-10-19
-updated: 2026-10-19
+updated: 2026-10-20
 ---
 
 # Silnik quizów
@@ -50,6 +50,38 @@ wszystkich typów porównywanych po tekście (`text`, `cloze`, `ordering`,
 - Frontend dostaje widok gracza (`playerView`) bez odpowiedzi/poprawnej kolejności.
 - `GET /api/quizzes/:id` pomija `isCorrect`, wyjaśnienia i opcje pytań tekstowych;
   `?include=answers` zwraca widok edytora.
+
+## Obrazy w treści (`media:`)
+
+Jedyny zapis obrazu: `![opis](media:<uuid>)` w jednym wierszu, uuid małymi literami. To nie jest
+Markdown: bez pogrubień, linków i HTML. Parser jest czysty (`src/shared/media/richText.ts`:
+`parseRichText`, `extractMediaIds`, `imageSyntaxErrors`); zewnętrzny adres `https://…` jest odrzucany,
+plik najpierw trzeba wysłać do magazynu (`media_upload`, `media_upload_from_url` albo edytor).
+
+| Pole | Obraz | Uwagi |
+| --- | --- | --- |
+| `prompt` pytania | tak | także `cloze`, jeśli numery luk `{{n}}` są poza obrazem |
+| `explanation` | tak | widoczne w wyniku |
+| tekst opcji `single`, `multiple`, `truefalse` | tak | opcja złożona tylko z obrazu to kafelek z obrazem; ocena po id opcji |
+| tekst opcji `text` | **nie** | to akceptowane odpowiedzi porównywane tekstem |
+| pary `matching`, elementy `ordering` | **nie** | porównanie po tekście |
+| luki `cloze`, odpowiedź `numeric` | **nie** | odpowiedzi są porównywane tekstem albo liczbą |
+| `lessons.intro` | tak | do 2000 znaków; reguły jak w pytaniach (`src/shared/quiz/lessonIntro.ts`) |
+
+- **Opis (alt)** jest wymagany: 1–200 znaków. Pusty opis jest odrzucany przy zapisie
+  (`imageSyntaxErrors`) i w JSON Schema (`data/quiz.schema.json`, wzorzec z negatywnym lookahead).
+- **Limity:** najwyżej 3 obrazy w jednym polu i 100 odwołań w quizie. `{{n}}` wewnątrz opisu obrazu
+  nie jest luką.
+- Walidacja „gdzie wolno” działa w `validate` typu pytania; JSON Schema jej nie sprawdza (znana luka
+  parytetu, test `KNOWN PARITY GAP` w `tests/quizSchema.test.ts`), ani istnienia pliku.
+- **Odwołania:** `syncRefs` (`server/media/repo.ts`) zapisuje `media_refs` w tej samej transakcji co quiz
+  (`owner_kind` `quiz`, dla lekcji `lesson`, dla ilustracji czasownika `verb`); usunięcie quizu je czyści.
+  Nieistniejący albo nie-gotowy plik daje 400 (REST) albo błąd narzędzia (MCP).
+- **Odczyt:** odpowiedzi z treścią dostają mapę `media` (`{id: {url, width, height}}`, tylko pliki `ready`);
+  zapis w treści się nie zmienia, więc zmiana adresu publicznego nie wymaga edycji quizów. Widoki tekstowe
+  (listy podejść, analizy, MCP) pokazują `[obraz: opis]` bez adresu (`promptText`).
+- **Renderowanie:** wyłącznie przez `RichText` (`<span>` i `MediaImage`), bez `dangerouslySetInnerHTML`;
+  adres spoza allowlisty (`src/features/media/trustedUrl.ts`) pokazuje znacznik „Obraz niedostępny”.
 
 ## Dodawanie typu
 

@@ -17,7 +17,8 @@ Express 5 w jednej funkcji serverless (Vercel) z bazą Postgres w Neon (patrz [[
 
 - Wejście: `index.html` → `src/main.tsx` (Redux `Provider`) → `src/App.tsx`
   (antd v6 `ConfigProvider` + React Router).
-- Stan: Redux Toolkit + RTK Query (`src/app/api.ts`, base URL `/api`),
+- Stan: Redux Toolkit + RTK Query (`src/app/api.ts` to tylko bazowe API z base URL `/api`; endpointy
+  są w `api.ts` każdej funkcji, dołączane przez `injectEndpoints`),
   slice `settings` (motyw, gęstość, ustawienia quizu) persistowany w
   `localStorage`.
 - Routing: `/`, `/learn`, `/verbs`, `/results`, `/quizzes/*`, `/about`,
