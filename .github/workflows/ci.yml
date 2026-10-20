@@ -103,6 +103,31 @@ jobs:
           path: reports/vitest.xml
           reporter: java-junit
 
+  # DISABLED (if: false): the browser suite (docs/E2E-Browser-Tests.md) writes to the shared database and the real bucket,
+  # so it is not run in CI yet. To enable it: add the secrets NEON_E2E_DATABASE_URL (a DATABASE_URL of a test branch) and
+  # the S3_* and MEDIA_PUBLIC_BASE_URL values of the bucket dev/ prefix, then drop `if: false`.
+  e2e-browser:
+    if: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.NEON_E2E_DATABASE_URL }}
+      E2E_ALLOW_REMOTE_DB: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 15

@@ -49,6 +49,7 @@ Mapa treści vaultu. Zacznij tutaj.
 ## Proces
 
 - [[Testing]] — testy
+- [[E2E-Browser-Tests]] — testy przeglądarkowe (Playwright): obrazy w edytorze, graczu i lekcjach
 - [[Contributing]] — wkład w projekt
 
 ## Materiały
