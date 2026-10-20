@@ -1,6 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { auth0UserId } from '../../../src/shared/quiz/schema'
+import { auth0UserId } from '../../../src/shared/platform/schema'
 import * as attempts from '../../attemptsRepo'
 import { quizStats } from '../../../src/shared/quiz/quizStats'
 import { analyzeStudent } from '../../../src/shared/quiz/studentAnalysis'

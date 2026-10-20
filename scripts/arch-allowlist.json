@@ -20,27 +20,9 @@
       "reason": "do naprawy w 5.C"
     },
     {
-      "from": "server/mcp/context.ts",
-      "to": "server/classAccess.ts",
-      "pair": "mcp-platform -> classes",
-      "reason": "do naprawy w 5.C"
-    },
-    {
       "from": "server/mcp/quizTools.ts",
       "to": "server/irregularVerbs.ts",
       "pair": "quizzes -> learning",
-      "reason": "do naprawy w 5.C"
-    },
-    {
-      "from": "server/mcp/tools/shared.ts",
-      "to": "server/classAccess.ts",
-      "pair": "mcp-platform -> classes",
-      "reason": "do naprawy w 5.C"
-    },
-    {
-      "from": "server/mcp/tools/shared.ts",
-      "to": "src/shared/quiz/schema.ts",
-      "pair": "mcp-platform -> shared-quizzes",
       "reason": "do naprawy w 5.C"
     },
     {
@@ -65,30 +47,6 @@
       "from": "server/routes/quizzes.ts",
       "to": "server/reviewsRepo.ts",
       "pair": "quizzes -> progress",
-      "reason": "do naprawy w 5.C"
-    },
-    {
-      "from": "server/routes/tokens.ts",
-      "to": "src/shared/quiz/schema.ts",
-      "pair": "platform -> shared-quizzes",
-      "reason": "do naprawy w 5.C"
-    },
-    {
-      "from": "src/features/auth/ApiTokens.tsx",
-      "to": "src/shared/quiz/schema.ts",
-      "pair": "f-platform -> shared-quizzes",
-      "reason": "do naprawy w 5.C"
-    },
-    {
-      "from": "src/features/auth/api.ts",
-      "to": "src/shared/quiz/schema.ts",
-      "pair": "f-platform -> shared-quizzes",
-      "reason": "do naprawy w 5.C"
-    },
-    {
-      "from": "src/features/feedback/api.ts",
-      "to": "src/shared/quiz/schema.ts",
-      "pair": "f-platform -> shared-quizzes",
       "reason": "do naprawy w 5.C"
     },
     {

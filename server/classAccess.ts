@@ -1,27 +1,13 @@
-import type { Request } from 'express'
 import type { ClassSummary } from '../src/shared/quiz/types'
 import * as auth0 from './auth0Management'
-import { currentUserId, hasPermission, MANAGE_CLASSES, MANAGE_USERS } from './auth'
 import * as classes from './classesRepo'
+import type { Viewer } from './viewer'
 
 /**
  * Who may do what with classes (shared by the REST routes and the MCP tools):
  * - a teacher (`manage:classes`) reads and changes only classes they own;
  * - an admin (`manage:users`) may additionally read every class, but never changes someone else's.
  */
-export interface Viewer {
-  userId: string
-  teacher: boolean
-  admin: boolean
-}
-
-export const viewerOf = (req: Request): Viewer => ({
-  userId: currentUserId(req) as string,
-  teacher: hasPermission(req, MANAGE_CLASSES),
-  admin: hasPermission(req, MANAGE_USERS),
-})
-
-export const canReadClasses = (v: Viewer) => v.teacher || v.admin
 
 /** A class the viewer may read (null = not found for them). */
 export async function readableClass(v: Viewer, classId: string): Promise<ClassSummary | null> {

@@ -3,12 +3,14 @@ import { z } from 'zod'
 import { analyzeStudent } from '../../../src/shared/quiz/studentAnalysis'
 import { maskEmail } from '../../../src/shared/quiz/maskEmail'
 import { addMemberInput } from '../../../src/shared/quiz/schema'
-import { canReadClasses, readableClass, resolveStudent, visibleClasses } from '../../classAccess'
+import { readableClass, resolveStudent, visibleClasses } from '../../classAccess'
+import { canReadClasses } from '../../viewer'
 import * as classes from '../../classesRepo'
 import { weakVerbDetails } from '../../userResults'
 import { classNotFound, needTeacherOrAdmin, text } from '../context'
 import type { Ctx } from '../context'
-import { audit, classId, confirm, studentId, type ClassGuards } from './shared'
+import type { ClassGuards } from './classGuards'
+import { audit, classId, confirm, studentId } from './shared'
 
 /** student_list, student_search, student_add, student_remove, student_results, student_analyze. */
 export function registerStudentTools(server: McpServer, ctx: Ctx, guards: ClassGuards) {

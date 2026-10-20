@@ -1,5 +1,5 @@
 import { api } from '../../app/api'
-import type { TokenInput } from '../../shared/quiz/schema'
+import type { TokenInput } from '../../shared/platform/schema'
 import type { ApiTokenSummary, CreatedApiToken } from '../../shared/quiz/types'
 
 export const authApi = api.injectEndpoints({

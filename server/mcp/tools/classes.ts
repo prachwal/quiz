@@ -1,11 +1,13 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { classInput } from '../../../src/shared/quiz/schema'
-import { canReadClasses, visibleClasses } from '../../classAccess'
+import { visibleClasses } from '../../classAccess'
+import { canReadClasses } from '../../viewer'
 import * as classes from '../../classesRepo'
 import { needTeacher, needTeacherOrAdmin, text } from '../context'
 import type { Ctx } from '../context'
-import { audit, classId, confirm, type ClassGuards } from './shared'
+import type { ClassGuards } from './classGuards'
+import { audit, classId, confirm } from './shared'
 
 /** class_list, class_get, class_create, class_update, class_regenerate_code, class_archive. */
 export function registerClassCrudTools(server: McpServer, ctx: Ctx, guards: ClassGuards) {

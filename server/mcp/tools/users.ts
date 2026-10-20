@@ -1,6 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { blockedInput, auth0UserId, rolesInput } from '../../../src/shared/quiz/schema'
+import { auth0UserId } from '../../../src/shared/platform/schema'
+import { blockedInput, rolesInput } from '../../../src/shared/quiz/schema'
 import { attemptRows } from '../../../src/shared/quiz/userHistory'
 import * as auth0 from '../../auth0Management'
 import * as classes from '../../classesRepo'

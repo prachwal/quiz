@@ -1,8 +1,8 @@
 import { z } from 'zod'
-import { AUTH0_ID_PATTERN } from './auth0Id'
 import { QUESTION_TYPES, imageFieldErrors, questionTypes, quizImageCount } from './engine'
 import { MEDIA_MAX_REFERENCES_PER_QUIZ } from '../media/richText'
 import { SUBJECTS } from './types'
+import { auth0UserId } from '../platform/schema'
 
 export const optionInput = z.object({
   text: z.string().trim().min(1, 'Treść opcji jest wymagana').max(500),
@@ -108,40 +108,6 @@ export const generateInput = z.object({
 
 export type GenerateInput = z.input<typeof generateInput>
 
-export const tokenInput = z.object({
-  name: z.string().trim().min(1, 'Nazwa tokenu jest wymagana').max(80),
-  /** null = never expires */
-  expiresInDays: z.union([z.literal(30), z.literal(90), z.literal(365), z.null()]).default(90),
-  /** Token may write quizzes (only if its creator is allowed to). */
-  write: z.boolean().default(false),
-  /** Token may use the teacher's classes and student results (only if its creator is a teacher). */
-  classes: z.boolean().default(false),
-})
-
-export type TokenInput = z.input<typeof tokenInput>
-
-const shortText = (max: number) => z.string().trim().max(max).optional()
-
-export const feedbackInput = z.object({
-  kind: z.enum(['bug', 'idea', 'other']),
-  message: z.string().trim().min(3, 'Opisz uwagę (min. 3 znaki)').max(2000),
-  userLabel: shortText(120),
-  /** Diagnostics attached by the app; every field is optional and length-limited. */
-  context: z
-    .object({
-      route: shortText(300),
-      appVersion: shortText(80),
-      userAgent: shortText(300),
-      viewport: shortText(40),
-      theme: shortText(20),
-      sentryEventId: shortText(64),
-      requestId: shortText(80),
-    })
-    .default({}),
-})
-
-export type FeedbackInput = z.input<typeof feedbackInput>
-
 export const feedbackStatusInput = z.object({ status: z.enum(['new', 'in_progress', 'done']) })
 
 export const rolesInput = z.object({ roles: z.array(z.enum(['admin', 'teacher', 'student'])).max(3) })
@@ -163,9 +129,6 @@ export const classInput = z.object({ name: z.string().trim().min(2, 'Nazwa klasy
 export const classPatchInput = z
   .object({ name: classInput.shape.name.optional(), joiningOpen: z.boolean().optional() })
   .refine((v) => v.name !== undefined || v.joiningOpen !== undefined, 'Podaj nazwę lub stan zapisów')
-
-/** Auth0 user ids, see ./auth0Id.ts (`google-oauth2|1234`, `oauth2|discord|99`...). */
-export const auth0UserId = z.string().trim().min(3).max(200).regex(AUTH0_ID_PATTERN, 'Niepoprawny identyfikator Auth0')
 
 const percent = z.number().int().min(1).max(100)
 

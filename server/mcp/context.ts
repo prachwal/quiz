@@ -4,8 +4,7 @@ import { ZodError } from 'zod'
 import { currentUserId, hasPermission, WRITE_QUIZZES } from '../auth'
 import { writeAudit } from '../adminRepo'
 import { ManagementError } from '../auth0Management'
-import { viewerOf } from '../classAccess'
-import type { Viewer } from '../classAccess'
+import { viewerOf, type Viewer } from '../viewer'
 import { HttpError } from '../http'
 
 /** Everything a tool needs to know about the caller and to answer in one consistent way. */

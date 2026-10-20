@@ -1,5 +1,5 @@
 import { api } from '../../app/api'
-import type { FeedbackInput } from '../../shared/quiz/schema'
+import type { FeedbackInput } from '../../shared/platform/schema'
 
 export const feedbackApi = api.injectEndpoints({
   endpoints: (build) => ({

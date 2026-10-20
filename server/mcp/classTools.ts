@@ -2,7 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Ctx } from './context'
 import { registerAssignmentTools } from './tools/assignments'
 import { registerClassCrudTools } from './tools/classes'
-import { classGuards } from './tools/shared'
+import { classGuards } from './tools/classGuards'
 import { registerStudentTools } from './tools/students'
 
 /**

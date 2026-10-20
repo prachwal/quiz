@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { errorMessage } from '../../app/api'
 import { useCreateTokenMutation, useListTokensQuery, useRevokeTokenMutation } from './api'
 import { PHONE_QUERY, useMediaQuery } from '../../app/useMediaQuery'
-import type { TokenInput } from '../../shared/quiz/schema'
+import type { TokenInput } from '../../shared/platform/schema'
 import type { ApiTokenSummary, CreatedApiToken } from '../../shared/quiz/types'
 import { useAuth } from './useAuth'
 
