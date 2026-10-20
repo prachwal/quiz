@@ -32,6 +32,8 @@ jobs:
       # Oxlint exits 0 with warnings, so the job also fails on any line that mentions a warning (zero warnings).
       - name: Lint (zero warnings)
         run: |
+          # Without pipefail the step's status would be tee's, so a failing lint would pass the job.
+          set -o pipefail
           npm run lint 2>&1 | tee lint.log
           if grep -qi 'warning' lint.log; then
             echo "::error::npm run lint reported warnings"
