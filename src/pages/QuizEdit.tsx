@@ -40,6 +40,7 @@ export default function QuizEdit() {
       <PageHeader back={{ to: '/', label: 'Wszystkie quizy' }} title="Edycja quizu" subtitle={data.title} />
       <QuizEditor
         initialValues={initialValues}
+        media={data.media}
         submitting={saving}
         submitLabel="Zapisz zmiany"
         onSubmit={async (values) => {
