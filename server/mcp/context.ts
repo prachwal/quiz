@@ -1,5 +1,6 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import type { Request } from 'express'
+import { ZodError } from 'zod'
 import { currentUserId, hasPermission, WRITE_QUIZZES } from '../auth'
 import { writeAudit } from '../adminRepo'
 import { ManagementError } from '../auth0Management'
@@ -55,6 +56,7 @@ export async function refusing(work: () => Promise<CallToolResult>): Promise<Cal
     return await work()
   } catch (error) {
     if (error instanceof HttpError || error instanceof ManagementError) return failure(error.message)
+    if (error instanceof ZodError) return failure(error.issues.map((i) => i.message).join('; '))
     throw error
   }
 }

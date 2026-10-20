@@ -23,11 +23,39 @@ export async function writeAudit(entry: {
   )
 }
 
-export async function listAudit(limit = 100): Promise<AuditEntry[]> {
+export interface AuditFilter {
+  action?: AuditEntry['action']
+  actorId?: string
+  targetId?: string
+  /** Inclusive lower bound on `created_at` (ISO timestamp). */
+  from?: string
+  /** Exclusive upper bound on `created_at` (ISO timestamp). */
+  to?: string
+  limit?: number
+  offset?: number
+}
+
+/** Newest first. Without a filter this is the admin panel's list (the last 100 entries). */
+export async function listAudit(filter: AuditFilter = {}): Promise<AuditEntry[]> {
   const { rows } = await pool().query(
     `SELECT id, actor_id, actor_label, action, target_id, target_label, details, created_at
-     FROM admin_audit_log ORDER BY created_at DESC LIMIT $1`,
-    [limit],
+     FROM admin_audit_log
+     WHERE ($1::text IS NULL OR action = $1)
+       AND ($2::text IS NULL OR actor_id = $2)
+       AND ($3::text IS NULL OR target_id = $3)
+       AND ($4::timestamptz IS NULL OR created_at >= $4::timestamptz)
+       AND ($5::timestamptz IS NULL OR created_at < $5::timestamptz)
+     ORDER BY created_at DESC
+     LIMIT $6 OFFSET $7`,
+    [
+      filter.action ?? null,
+      filter.actorId ?? null,
+      filter.targetId ?? null,
+      filter.from ?? null,
+      filter.to ?? null,
+      filter.limit ?? 100,
+      filter.offset ?? 0,
+    ],
   )
   return rows.map((r) => ({
     id: r.id,

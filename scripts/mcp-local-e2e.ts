@@ -9,6 +9,8 @@ import { createApiToken } from '../server/apiTokens'
 import { createApp } from '../server/app'
 import { pool } from '../server/db'
 import * as repo from '../server/quizRepo'
+import * as adminRepo from '../server/adminRepo'
+import * as appSettings from '../server/appSettingsRepo'
 
 type Result = { err: boolean; data: any }
 let passed = 0
@@ -67,6 +69,7 @@ async function cleanup() {
   await db.query('DELETE FROM user_profiles WHERE user_id LIKE $1', [`%${P}%`])
   await db.query('DELETE FROM api_tokens WHERE user_id LIKE $1', [`%${P}%`])
   await db.query('DELETE FROM admin_audit_log WHERE actor_id LIKE $1', [`%${P}%`])
+  await db.query('DELETE FROM feedback WHERE user_id LIKE $1', [`%${P}%`])
 }
 
 const textQuestion = (n: number) => ({ type: 'text', prompt: `P${n}`, explanation: `e${n}`, points: 1, options: [{ text: `a${n}`, isCorrect: true }] })
@@ -92,8 +95,8 @@ try {
   const getOk = await fetch(`${base}/mcp`, { headers: { Authorization: `Bearer ${await token(PLAIN, [])}` } })
   check('GET /mcp -> 405', getOk.status === 405, getOk.status)
   const names = (await tPlain.listTools()).tools.map((t) => t.name).sort()
-  check('36 tools listed', names.length === 36, names.length)
-  for (const required of ['quiz_create', 'class_create', 'student_search', 'student_add', 'class_analyze', 'assignment_create', 'attempt_list', 'attempt_get', 'quiz_stats', 'user_results', 'user_analysis', 'user_list', 'user_get', 'user_search', 'user_roles_set', 'user_block', 'class_transfer'])
+  check('42 tools listed', names.length === 42, names.length)
+  for (const required of ['quiz_create', 'class_create', 'student_search', 'student_add', 'class_analyze', 'assignment_create', 'attempt_list', 'attempt_get', 'quiz_stats', 'user_results', 'user_analysis', 'user_list', 'user_get', 'user_search', 'user_roles_set', 'user_block', 'class_transfer', 'audit_list', 'feedback_list', 'feedback_update', 'settings_get', 'settings_set', 'system_stats'])
     check(`tool ${required} exists`, names.includes(required))
 
   // ---- quizzes ---------------------------------------------------------------------------
@@ -313,6 +316,47 @@ try {
     'student_remove', 'assignment_delete', 'class_archive',
   ]
   check('audit log has exactly the successful changes', JSON.stringify(logged) === JSON.stringify(expected), { logged })
+
+  // ---- operations: audit trail, feedback, settings and system counts (changes restored afterwards) -----
+  denied('audit_list as teacher', await call(tTeacher, 'audit_list', {}), 'admina')
+  denied('audit_list bad date', await call(tAdmin, 'audit_list', { from: 'yesterday' }))
+  ok('audit_list (actor and action filter)', await call(tAdmin, 'audit_list', { actorId: `${ADMIN}-w`, action: 'mcp.call' }), (d) => d.entries.length > 0 && d.entries.every((e: any) => e.actorId === `${ADMIN}-w` && e.action === 'mcp.call'))
+  ok('audit_list (paging: hasMore)', await call(tAdmin, 'audit_list', { actorId: `${ADMIN}-w`, action: 'mcp.call', limit: 1 }), (d) => d.entries.length === 1 && d.hasMore === true)
+  ok('audit_list (target filter)', await call(tAdmin, 'audit_list', { targetId: STUDENT, limit: 5 }), (d) => d.entries.length >= 1 && d.entries.every((e: any) => e.targetId === STUDENT))
+
+  const feedbackId = await adminRepo.createFeedback({ userId: `${PLAIN}-feedback`, kind: 'bug', message: `${P} feedback marker`, context: {} })
+  denied('feedback_list as plain', await call(tPlain, 'feedback_list', {}), 'admina')
+  ok('feedback_list (status filter, limit)', await call(tAdmin, 'feedback_list', { status: 'new', limit: 5 }), (d) => Array.isArray(d.items) && d.items.length <= 5 && d.items.every((i: any) => i.status === 'new'))
+  denied('feedback_update without confirm', await call(tAdmin, 'feedback_update', { id: feedbackId, status: 'done', confirm: false }))
+  denied('feedback_update as teacher', await call(tTeacher, 'feedback_update', { id: feedbackId, status: 'done', confirm: true }), 'admina')
+  denied('feedback_update unknown id', await call(tAdmin, 'feedback_update', { id: '00000000-0000-4000-8000-000000000000', status: 'done', confirm: true }), 'Feedback not found')
+  ok('feedback_update', await call(tAdmin, 'feedback_update', { id: feedbackId, status: 'in_progress', confirm: true }), (d) => d.id === feedbackId && d.status === 'in_progress')
+
+  denied('settings_get as teacher', await call(tTeacher, 'settings_get', {}), 'admina')
+  const originalSettings = (await call(tAdmin, 'settings_get', {})).data as { scoreThresholds: { low: number; high: number } }
+  check('settings_get returns thresholds', typeof originalSettings?.scoreThresholds?.low === 'number')
+  denied('settings_set low >= high', await call(tAdmin, 'settings_set', { scoreThresholds: { low: 90, high: 40 }, confirm: true }), 'niższy')
+  denied('settings_set without confirm', await call(tAdmin, 'settings_set', { scoreThresholds: { low: 40, high: 90 }, confirm: false }))
+  try {
+    ok('settings_set', await call(tAdmin, 'settings_set', { scoreThresholds: { low: 40, high: 90 }, confirm: true }), (d) => d.scoreThresholds.low === 40 && d.scoreThresholds.high === 90)
+    ok('settings_get reflects the change', await call(tAdmin, 'settings_get', {}), (d) => d.scoreThresholds.low === 40 && d.scoreThresholds.high === 90)
+  } finally {
+    await appSettings.saveAppSettings(originalSettings as any, ADMIN)
+    const restored = await appSettings.getAppSettings()
+    check('settings restored', restored.scoreThresholds.low === originalSettings.scoreThresholds.low && restored.scoreThresholds.high === originalSettings.scoreThresholds.high, restored)
+  }
+
+  denied('system_stats as teacher', await call(tTeacher, 'system_stats', {}), 'admina')
+  ok('system_stats', await call(tAdmin, 'system_stats', {}), (d) =>
+    typeof d.users === 'number' && typeof d.classes === 'number' && typeof d.attempts === 'number' && typeof d.activeTokens === 'number' &&
+    typeof d.weakVerbRows === 'number' && d.db.migrationsApplied > 0 && typeof d.db.latestMigration === 'string' && typeof d.db.schemaCurrent === 'boolean' &&
+    (d.appVersion === null || typeof d.appVersion === 'string'))
+
+  const ops = await pool().query<{ tool: string }>(
+    "SELECT details->>'tool' AS tool FROM admin_audit_log WHERE action = 'mcp.call' AND actor_id = $1 AND details->>'tool' IN ('feedback_update', 'settings_set') ORDER BY created_at",
+    [ADMIN],
+  )
+  check('audit: feedback_update and settings_set are logged as mcp.call', JSON.stringify(ops.rows.map((r) => r.tool)) === JSON.stringify(['feedback_update', 'settings_set']), ops.rows)
 
   for (const c of [tTeacher, tAdminWrite, tAdmin, tOther, tPlain]) await c.close()
 } catch (error) {

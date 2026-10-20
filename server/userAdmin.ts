@@ -1,6 +1,8 @@
-import type { AdminUser, ManagedRole } from '../src/shared/quiz/types'
+import { appSettingsInput } from '../src/shared/quiz/schema'
+import type { AdminUser, AppSettings, FeedbackItem, FeedbackStatus, ManagedRole } from '../src/shared/quiz/types'
 import * as admin from './adminRepo'
 import * as auth0 from './auth0Management'
+import * as appSettings from './appSettingsRepo'
 import * as classes from './classesRepo'
 import { HttpError } from './http'
 import {
@@ -89,4 +91,42 @@ export async function transferClass(classId: string, newOwnerId: string) {
   if (refusal) throw new HttpError(409, refusal)
   await classes.transferClass(classId, newOwnerId)
   return { classId, name: cls.name, from: cls.ownerId, to: newOwnerId }
+}
+
+/** Feedback triage: the status change and its audit entry (`feedback.status`). */
+export async function changeFeedbackStatus(actorId: string, id: string, status: FeedbackStatus): Promise<FeedbackItem> {
+  const item = await admin.setFeedbackStatus(id, status)
+  if (!item) throw new HttpError(404, 'Feedback not found')
+  await admin.writeAudit({
+    actorId,
+    actorLabel: await auth0.userLabel(actorId),
+    action: 'feedback.status',
+    targetId: item.id,
+    targetLabel: item.message.slice(0, 80),
+    details: { status },
+  })
+  return item
+}
+
+/**
+ * Global score colours: validated with the same schema as `PUT /api/admin/settings/app` (integers 1-100, low < high;
+ * a ZodError otherwise), audited as `settings.update` with the previous and the new thresholds.
+ */
+export interface SettingsChange {
+  settings: AppSettings
+  from: AppSettings['scoreThresholds']
+}
+
+export async function changeAppSettings(actorId: string, raw: unknown): Promise<SettingsChange> {
+  const input = appSettingsInput.parse(raw)
+  const before = await appSettings.getAppSettings()
+  await appSettings.saveAppSettings(input, actorId)
+  await admin.writeAudit({
+    actorId,
+    actorLabel: await auth0.userLabel(actorId),
+    action: 'settings.update',
+    targetLabel: 'scoreThresholds',
+    details: { from: before.scoreThresholds, to: input.scoreThresholds },
+  })
+  return { settings: input, from: before.scoreThresholds }
 }

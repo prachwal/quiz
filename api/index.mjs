@@ -19092,7 +19092,7 @@ var require_view = __commonJS({
     var dirname = path.dirname;
     var basename = path.basename;
     var extname = path.extname;
-    var join = path.join;
+    var join2 = path.join;
     var resolve = path.resolve;
     module.exports = View;
     function View(name, options) {
@@ -19154,12 +19154,12 @@ var require_view = __commonJS({
     };
     View.prototype.resolve = function resolve2(dir, file2) {
       var ext = this.ext;
-      var path2 = join(dir, file2);
+      var path2 = join2(dir, file2);
       var stat = tryStat(path2);
       if (stat && stat.isFile()) {
         return path2;
       }
-      path2 = join(dir, basename(file2, ext), "index" + ext);
+      path2 = join2(dir, basename(file2, ext), "index" + ext);
       stat = tryStat(path2);
       if (stat && stat.isFile()) {
         return path2;
@@ -22896,7 +22896,7 @@ var require_send = __commonJS({
     var Stream = __require("stream");
     var util2 = __require("util");
     var extname = path.extname;
-    var join = path.join;
+    var join2 = path.join;
     var normalize = path.normalize;
     var resolve = path.resolve;
     var sep = path.sep;
@@ -23068,7 +23068,7 @@ var require_send = __commonJS({
           return res;
         }
         parts = path2.split(sep);
-        path2 = normalize(join(root, path2));
+        path2 = normalize(join2(root, path2));
       } else {
         if (UP_PATH_REGEXP.test(path2)) {
           debug('malicious path "%s"', path2);
@@ -23201,7 +23201,7 @@ var require_send = __commonJS({
           if (err) return self.onStatError(err);
           return self.error(404);
         }
-        var p = join(path2, self._index[i]);
+        var p = join2(path2, self._index[i]);
         debug('stat "%s"', p);
         fs.stat(p, function(err2, stat) {
           if (err2) return next(err2);
@@ -74386,11 +74386,26 @@ async function writeAudit(entry) {
     ]
   );
 }
-async function listAudit(limit = 100) {
+async function listAudit(filter = {}) {
   const { rows } = await pool().query(
     `SELECT id, actor_id, actor_label, action, target_id, target_label, details, created_at
-     FROM admin_audit_log ORDER BY created_at DESC LIMIT $1`,
-    [limit]
+     FROM admin_audit_log
+     WHERE ($1::text IS NULL OR action = $1)
+       AND ($2::text IS NULL OR actor_id = $2)
+       AND ($3::text IS NULL OR target_id = $3)
+       AND ($4::timestamptz IS NULL OR created_at >= $4::timestamptz)
+       AND ($5::timestamptz IS NULL OR created_at < $5::timestamptz)
+     ORDER BY created_at DESC
+     LIMIT $6 OFFSET $7`,
+    [
+      filter.action ?? null,
+      filter.actorId ?? null,
+      filter.targetId ?? null,
+      filter.from ?? null,
+      filter.to ?? null,
+      filter.limit ?? 100,
+      filter.offset ?? 0
+    ]
   );
   return rows.map((r) => ({
     id: r.id,
@@ -74999,6 +75014,7 @@ async function refusing(work) {
     return await work();
   } catch (error62) {
     if (error62 instanceof HttpError || error62 instanceof ManagementError) return failure2(error62.message);
+    if (error62 instanceof ZodError) return failure2(error62.issues.map((i) => i.message).join("; "));
     throw error62;
   }
 }
@@ -75539,6 +75555,28 @@ async function weakVerbDetails(userId, limit) {
   });
 }
 
+// src/shared/quiz/scoreBands.ts
+var DEFAULT_SCORE_THRESHOLDS = { low: 50, high: 80 };
+function normalizeThresholds(value) {
+  const v = value;
+  const ok = (n) => typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 100;
+  return v && ok(v.low) && ok(v.high) && v.low < v.high ? { low: v.low, high: v.high } : { ...DEFAULT_SCORE_THRESHOLDS };
+}
+
+// server/appSettingsRepo.ts
+async function getAppSettings() {
+  const { rows } = await pool().query("SELECT key, value FROM app_settings");
+  const byKey = new Map(rows.map((r) => [r.key, r.value]));
+  return { scoreThresholds: normalizeThresholds(byKey.get("score_thresholds")) };
+}
+async function saveAppSettings(settings, userId) {
+  await pool().query(
+    `INSERT INTO app_settings (key, value, updated_by, updated_at) VALUES ('score_thresholds', $1, $2, now())
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_by = EXCLUDED.updated_by, updated_at = now()`,
+    [JSON.stringify(settings.scoreThresholds), userId]
+  );
+}
+
 // server/userAdminPure.ts
 var SELF_ROLE_REFUSAL = "Nie mo\u017Cesz odebra\u0107 sobie roli admin";
 var LAST_ADMIN_ROLE_REFUSAL = "Nie mo\u017Cna odebra\u0107 roli ostatniemu adminowi";
@@ -75612,6 +75650,32 @@ async function transferClass2(classId2, newOwnerId) {
   if (refusal) throw new HttpError(409, refusal);
   await transferClass(classId2, newOwnerId);
   return { classId: classId2, name: cls.name, from: cls.ownerId, to: newOwnerId };
+}
+async function changeFeedbackStatus(actorId, id, status) {
+  const item = await setFeedbackStatus(id, status);
+  if (!item) throw new HttpError(404, "Feedback not found");
+  await writeAudit({
+    actorId,
+    actorLabel: await userLabel(actorId),
+    action: "feedback.status",
+    targetId: item.id,
+    targetLabel: item.message.slice(0, 80),
+    details: { status }
+  });
+  return item;
+}
+async function changeAppSettings(actorId, raw) {
+  const input2 = appSettingsInput.parse(raw);
+  const before = await getAppSettings();
+  await saveAppSettings(input2, actorId);
+  await writeAudit({
+    actorId,
+    actorLabel: await userLabel(actorId),
+    action: "settings.update",
+    targetLabel: "scoreThresholds",
+    details: { from: before.scoreThresholds, to: input2.scoreThresholds }
+  });
+  return { settings: input2, from: before.scoreThresholds };
 }
 
 // server/mcp/tools/shared.ts
@@ -75896,6 +75960,166 @@ function registerUserTools(server, ctx) {
         await audit(ctx, "user_block", { id: userId, label: change.target.email ?? change.target.name ?? userId }, { userId, from: change.wasBlocked, to: blocked });
         return text({ userId, blocked });
       });
+    }
+  );
+}
+
+// server/systemStats.ts
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
+function migrationFiles(dir = join(process.cwd(), "db", "migrations")) {
+  try {
+    return readdirSync(dir).filter((file2) => file2.endsWith(".sql")).sort();
+  } catch {
+    return null;
+  }
+}
+async function systemStats() {
+  const { rows } = await pool().query(
+    `SELECT
+       (SELECT COUNT(*)::int FROM user_profiles) AS users,
+       (SELECT COUNT(*)::int FROM classes WHERE archived_at IS NULL) AS classes,
+       (SELECT COUNT(*)::int FROM quizzes WHERE kind = 'manual') AS quizzes,
+       (SELECT COUNT(*)::int FROM quizzes WHERE kind = 'generated') AS generated_quizzes,
+       (SELECT COUNT(*)::int FROM quiz_attempts) AS attempts,
+       (SELECT COUNT(*)::int FROM quiz_attempts WHERE created_at > now() - interval '7 days') AS attempts_last_7_days,
+       (SELECT COUNT(*)::int FROM feedback WHERE status = 'new') AS feedback_new,
+       (SELECT COUNT(*)::int FROM api_tokens WHERE revoked_at IS NULL AND (expires_at IS NULL OR expires_at > now())) AS active_tokens,
+       (SELECT COUNT(*)::int FROM verb_reviews
+          WHERE attempts >= $1 AND correct::float / NULLIF(attempts, 0) < $2 AND box < $3) AS weak_verb_rows,
+       (SELECT COUNT(*)::int FROM schema_migrations) AS migrations_applied,
+       (SELECT name FROM schema_migrations ORDER BY name DESC LIMIT 1) AS latest_migration`,
+    [MIN_ATTEMPTS, WEAK_ACCURACY, RECOVERED_BOX]
+  );
+  const r = rows[0];
+  const files = migrationFiles();
+  const latest = r.latest_migration ?? null;
+  const schemaCurrent = files === null || latest === null ? null : files.at(-1) === latest;
+  return {
+    users: r.users,
+    classes: r.classes,
+    quizzes: r.quizzes,
+    generatedQuizzes: r.generated_quizzes,
+    attempts: r.attempts,
+    attemptsLast7Days: r.attempts_last_7_days,
+    feedbackNew: r.feedback_new,
+    activeTokens: r.active_tokens,
+    weakVerbRows: r.weak_verb_rows,
+    db: {
+      migrationsApplied: r.migrations_applied,
+      latestMigration: latest,
+      schemaCurrent,
+      schemaNote: files === null ? "Folder db/migrations nie jest dost\u0119pny w tym \u015Brodowisku (serverless bundle), wi\u0119c zgodno\u015Bci schematu nie sprawdzono." : latest === null ? "Brak zastosowanych migracji w schema_migrations." : null
+    },
+    appVersion: process.env.VERCEL_GIT_COMMIT_SHA ?? null
+  };
+}
+
+// server/mcp/tools/operations.ts
+var AUDIT_ACTIONS = ["roles.update", "user.block", "user.unblock", "feedback.status", "mcp.call", "settings.update"];
+var pageSize = external_exports.number().int().min(1).max(200);
+function registerOperationTools(server, ctx) {
+  const isAdmin = ctx.viewer.admin;
+  server.registerTool(
+    "audit_list",
+    {
+      title: "Dziennik audytu (admin)",
+      description: "Wpisy audytu, od najnowszego. Filtry: action (roles.update, user.block, user.unblock, feedback.status, mcp.call, settings.update), actorId (kto), targetId (czego dotyczy\u0142o), from (w\u0142\u0105cznie) i to (wy\u0142\u0105cznie) jako daty ISO. mcp.call ma details.tool. Domy\u015Blnie 50, maks. 200; hasMore m\xF3wi, czy jest nast\u0119pna strona (offset).",
+      inputSchema: {
+        action: external_exports.enum(AUDIT_ACTIONS).optional(),
+        actorId: external_exports.string().trim().min(1).max(200).optional(),
+        targetId: external_exports.string().trim().min(1).max(200).optional(),
+        from: isoDate.optional(),
+        to: isoDate.optional(),
+        limit: pageSize.default(50),
+        offset: external_exports.number().int().min(0).default(0)
+      },
+      annotations: { readOnlyHint: true }
+    },
+    async ({ action, actorId, targetId, from, to, limit, offset }) => {
+      if (!isAdmin) return needAdmin();
+      const rows = await listAudit({ action, actorId, targetId, from, to, limit: limit + 1, offset });
+      return text({ offset, limit, hasMore: rows.length > limit, entries: rows.slice(0, limit) });
+    }
+  );
+  server.registerTool(
+    "feedback_list",
+    {
+      title: "Zg\u0142oszenia u\u017Cytkownik\xF3w (admin)",
+      description: "Zg\u0142oszenia (b\u0142\u0119dy, pomys\u0142y, inne) od najnowszego: id, kind, status, message, userLabel, context (trasa, wersja, przegl\u0105darka, id zdarzenia Sentry). status filtruje: new, in_progress, done. Domy\u015Blnie 50, maks. 200.",
+      inputSchema: {
+        status: feedbackStatusInput.shape.status.optional(),
+        limit: pageSize.default(50)
+      },
+      annotations: { readOnlyHint: true }
+    },
+    async ({ status, limit }) => {
+      if (!isAdmin) return needAdmin();
+      const rows = await listFeedback(status, limit + 1);
+      return text({ limit, hasMore: rows.length > limit, items: rows.slice(0, limit) });
+    }
+  );
+  server.registerTool(
+    "feedback_update",
+    {
+      title: "Zmie\u0144 status zg\u0142oszenia (admin)",
+      description: "Ustawia status zg\u0142oszenia (new, in_progress, done). Wymaga confirm=true. Ten sam zapis co w panelu admina, z wpisem audytu.",
+      inputSchema: { id: external_exports.string().uuid().describe("Id zg\u0142oszenia (UUID) z feedback_list"), status: feedbackStatusInput.shape.status, confirm },
+      annotations: { idempotentHint: true }
+    },
+    async ({ id, status }) => {
+      if (!isAdmin) return needAdmin();
+      return refusing(async () => {
+        const item = await changeFeedbackStatus(ctx.userId, id, status);
+        await audit(ctx, "feedback_update", { id: item.id, label: item.message.slice(0, 80) }, { status });
+        return text(item);
+      });
+    }
+  );
+  server.registerTool(
+    "settings_get",
+    {
+      title: "Ustawienia aplikacji (admin)",
+      description: "Globalne ustawienia: scoreThresholds { low, high } - progi kolor\xF3w wynik\xF3w (poni\u017Cej low czerwony, poni\u017Cej high pomara\u0144czowy, reszta zielony).",
+      inputSchema: {},
+      annotations: { readOnlyHint: true }
+    },
+    async () => {
+      if (!isAdmin) return needAdmin();
+      return text(await getAppSettings());
+    }
+  );
+  server.registerTool(
+    "settings_set",
+    {
+      title: "Zmie\u0144 progi wynik\xF3w (admin)",
+      description: "Zmienia progi kolor\xF3w wynik\xF3w: low i high s\u0105 liczbami ca\u0142kowitymi 1-100, low musi by\u0107 mniejsze ni\u017C high (ta sama walidacja co w panelu). Wymaga confirm=true. Zapisuje wpis audytu settings.update z poprzednimi i nowymi progami.",
+      inputSchema: {
+        scoreThresholds: external_exports.object({ low: external_exports.number().int().min(1).max(100), high: external_exports.number().int().min(1).max(100) }),
+        confirm
+      },
+      annotations: { idempotentHint: true }
+    },
+    async ({ scoreThresholds }) => {
+      if (!isAdmin) return needAdmin();
+      return refusing(async () => {
+        const change = await changeAppSettings(ctx.userId, { scoreThresholds });
+        await audit(ctx, "settings_set", { label: "scoreThresholds" }, { from: change.from, to: change.settings.scoreThresholds });
+        return text(change.settings);
+      });
+    }
+  );
+  server.registerTool(
+    "system_stats",
+    {
+      title: "Stan systemu (admin)",
+      description: "Liczby jednym zapytaniem: users (profile), classes (aktywne), quizzes (r\u0119czne), generatedQuizzes, attempts, attemptsLast7Days, feedbackNew, activeTokens (niecofni\u0119te, nieprzeterminowane), weakVerbRows, db (liczba zastosowanych migracji, ostatnia migracja, schemaCurrent: czy ostatnia zastosowana to najnowszy plik w db/migrations; null, gdy folder nie jest dost\u0119pny w tym \u015Brodowisku, wtedy schemaNote m\xF3wi dlaczego) i appVersion (commit z VERCEL_GIT_COMMIT_SHA albo null).",
+      inputSchema: {},
+      annotations: { readOnlyHint: true }
+    },
+    async () => {
+      if (!isAdmin) return needAdmin();
+      return text(await systemStats());
     }
   );
 }
@@ -76619,6 +76843,7 @@ function buildServer(req) {
   registerClassTools(server, ctx);
   registerAdminTools(server, ctx);
   registerUserTools(server, ctx);
+  registerOperationTools(server, ctx);
   return server;
 }
 var mcpHandler = async (req, res) => {
@@ -76643,28 +76868,6 @@ var mcpNotAllowed = (_req, res) => {
   res.status(405).set("Allow", "POST").json({ jsonrpc: "2.0", error: { code: -32e3, message: "Method not allowed. Use POST (stateless server)." }, id: null });
 };
 
-// src/shared/quiz/scoreBands.ts
-var DEFAULT_SCORE_THRESHOLDS = { low: 50, high: 80 };
-function normalizeThresholds(value) {
-  const v = value;
-  const ok = (n) => typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 100;
-  return v && ok(v.low) && ok(v.high) && v.low < v.high ? { low: v.low, high: v.high } : { ...DEFAULT_SCORE_THRESHOLDS };
-}
-
-// server/appSettingsRepo.ts
-async function getAppSettings() {
-  const { rows } = await pool().query("SELECT key, value FROM app_settings");
-  const byKey = new Map(rows.map((r) => [r.key, r.value]));
-  return { scoreThresholds: normalizeThresholds(byKey.get("score_thresholds")) };
-}
-async function saveAppSettings(settings, userId) {
-  await pool().query(
-    `INSERT INTO app_settings (key, value, updated_by, updated_at) VALUES ('score_thresholds', $1, $2, now())
-     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_by = EXCLUDED.updated_by, updated_at = now()`,
-    [JSON.stringify(settings.scoreThresholds), userId]
-  );
-}
-
 // server/routes/admin.ts
 function registerAdminRoutes(router) {
   router.post("/feedback", async (req, res) => {
@@ -76685,17 +76888,7 @@ function registerAdminRoutes(router) {
   });
   router.patch("/admin/feedback/:id", adminOnly, async (req, res) => {
     const { status } = feedbackStatusInput.parse(req.body);
-    const item = await setFeedbackStatus(idParam(req.params.id), status);
-    if (!item) throw new HttpError(404, "Feedback not found");
-    await writeAudit({
-      actorId: userOf(req),
-      actorLabel: await userLabel(userOf(req)),
-      action: "feedback.status",
-      targetId: item.id,
-      targetLabel: item.message.slice(0, 80),
-      details: { status }
-    });
-    res.json(item);
+    res.json(await changeFeedbackStatus(userOf(req), idParam(req.params.id), status));
   });
   router.get("/admin/users", adminOnly, async (req, res) => {
     const { q, page } = external_exports.object({ q: external_exports.string().max(100).default(""), page: external_exports.coerce.number().int().min(0).max(1e3).default(0) }).parse(req.query);
@@ -76725,17 +76918,7 @@ function registerAdminRoutes(router) {
     res.json(await getAppSettings());
   });
   router.put("/admin/settings/app", adminOnly, async (req, res) => {
-    const input2 = appSettingsInput.parse(req.body);
-    const before = await getAppSettings();
-    await saveAppSettings(input2, userOf(req));
-    await writeAudit({
-      actorId: userOf(req),
-      actorLabel: await userLabel(userOf(req)),
-      action: "settings.update",
-      targetLabel: "scoreThresholds",
-      details: { from: before.scoreThresholds, to: input2.scoreThresholds }
-    });
-    res.json(input2);
+    res.json((await changeAppSettings(userOf(req), req.body)).settings);
   });
   router.get("/admin/audit", adminOnly, async (_req, res) => {
     res.json(await listAudit());

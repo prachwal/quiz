@@ -1,7 +1,6 @@
 import type { Router } from 'express'
 import { z } from 'zod'
 import {
-  appSettingsInput,
   auth0UserId,
   blockedInput,
   feedbackInput,
@@ -14,7 +13,7 @@ import * as auth0 from '../auth0Management'
 import { MANAGE_USERS, requirePermission } from '../auth'
 import * as classes from '../classesRepo'
 import { HttpError, idParam, userOf } from '../http'
-import { setUserBlocked, setUserRoles } from '../userAdmin'
+import { changeAppSettings, changeFeedbackStatus, setUserBlocked, setUserRoles } from '../userAdmin'
 import { adminStudentResults } from '../userResults'
 
 /**
@@ -44,17 +43,7 @@ export function registerAdminRoutes(router: Router) {
 
   router.patch('/admin/feedback/:id', adminOnly, async (req, res) => {
     const { status } = feedbackStatusInput.parse(req.body)
-    const item = await admin.setFeedbackStatus(idParam(req.params.id), status)
-    if (!item) throw new HttpError(404, 'Feedback not found')
-    await admin.writeAudit({
-      actorId: userOf(req),
-      actorLabel: await auth0.userLabel(userOf(req)),
-      action: 'feedback.status',
-      targetId: item.id,
-      targetLabel: item.message.slice(0, 80),
-      details: { status },
-    })
-    res.json(item)
+    res.json(await changeFeedbackStatus(userOf(req), idParam(req.params.id), status))
   })
 
   router.get('/admin/users', adminOnly, async (req, res) => {
@@ -95,17 +84,7 @@ export function registerAdminRoutes(router: Router) {
   })
 
   router.put('/admin/settings/app', adminOnly, async (req, res) => {
-    const input = appSettingsInput.parse(req.body)
-    const before = await appSettings.getAppSettings()
-    await appSettings.saveAppSettings(input, userOf(req))
-    await admin.writeAudit({
-      actorId: userOf(req),
-      actorLabel: await auth0.userLabel(userOf(req)),
-      action: 'settings.update',
-      targetLabel: 'scoreThresholds',
-      details: { from: before.scoreThresholds, to: input.scoreThresholds },
-    })
-    res.json(input)
+    res.json((await changeAppSettings(userOf(req), req.body)).settings)
   })
 
   router.get('/admin/audit', adminOnly, async (_req, res) => {

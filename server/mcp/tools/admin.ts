@@ -15,7 +15,7 @@ import { confirm } from './shared'
 
 /** Admin-only tools (`manage:users`, OAuth login only - personal tokens never carry that permission). */
 
-const isoDate = z
+export const isoDate = z
   .string()
   .refine((s) => !Number.isNaN(Date.parse(s)), 'Data w formacie ISO, np. 2026-10-19 albo 2026-10-19T12:00:00Z')
   .describe('Data ISO, np. 2026-10-19')
