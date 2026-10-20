@@ -9,12 +9,12 @@ tags:
   - plan
   - status/todo
 created: 2026-10-19
-updated: 2026-10-19
+updated: 2026-10-20
 ---
 
 # Magazyn obrazów w S3 — plan wykonawczy
 
-> Obrazki w quizach i lekcjach: przechowywanie w magazynie zgodnym z S3, wysyłanie przez przeglądarkę **i przez MCP**, wstawianie do treści jednym prostym zapisem i bezpieczne renderowanie. Doprecyzowuje sekcję „Moduł media (S3)” z [[Learning-Slice-Plan]] i zastępuje w niej projekt kolumn `image_id` zapisem w treści (patrz D2). Stan: plan, nic jeszcze nie wdrożono.
+> Obrazki w quizach i lekcjach: przechowywanie w magazynie zgodnym z S3, wysyłanie przez przeglądarkę **i przez MCP**, wstawianie do treści jednym prostym zapisem i bezpieczne renderowanie. Doprecyzowuje sekcję „Moduł media (S3)” z [[Learning-Slice-Plan]] i zastępuje w niej projekt kolumn `image_id` zapisem w treści (patrz D2). Stan (2026-10-20): **M1 kod gotowy, migracja do zastosowania** (nie zastosowana na bazie; `npm run db:migrate` należy do właściciela); **M0 czeka na człowieka (CLI Neona)**; D10 zmierzone, wybrany własny SigV4.
 
 ## Cele
 
@@ -41,7 +41,7 @@ Wideo i audio, galeria do ponownego użycia dla uczniów, przetwarzanie obrazów
 | D7 | Dostawca magazynu | po spike'u M0; kod zna tylko S3 | dokumentacja Neon Object Storage ma niewiadome (patrz niżej) |
 | D8 | Typy plików | PNG, JPEG, WebP; GIF i SVG **nie** (SVG może zawierać skrypty, animowany GIF jest ciężki) | rozpoznawanie po pierwszych bajtach, nie po deklarowanym typie |
 | D9 | Limit rozmiaru | 2 MB na plik (`MEDIA_MAX_BYTES`) | limit żądania funkcji Vercela to około 4,5 MB, a base64 powiększa dane o jedną trzecią |
-| D10 | Klient S3 | w M0 zmierzyć, ile `@aws-sdk/client-s3` dodaje do `api/index.mjs` (obecnie `build:api` wyłącza z paczki tylko `pg-native` i `@sentry/node`) i do zimnego startu; domyślnie SDK, a **własny SigV4** (`node:crypto`, około 80 linii, testy na wektorach AWS) jeśli przyrost jest zauważalny | pakiet nie jest dziś zależnością; decyzja przed M1, nie w trakcie |
+| D10 | Klient S3 | w M0 zmierzyć, ile `@aws-sdk/client-s3` dodaje do `api/index.mjs` (obecnie `build:api` wyłącza z paczki tylko `pg-native` i `@sentry/node`) i do zimnego startu; domyślnie SDK, a **własny SigV4** (`node:crypto`, około 80 linii, testy na wektorach AWS) jeśli przyrost jest zauważalny | pakiet nie jest dziś zależnością; decyzja przed M1, nie w trakcie | **Wynik pomiaru (2026-10-20, bez M0):** `@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner` dodają do bundla (`build:api` bez minifikacji) **1 501 451 B** (pomiar: bundle z SDK 1 501 708 B minus bundle pusty 257 B; bieżący `api/index.mjs` ma 3 192 116 B), a zminifikowane **578 111 B** (gzip 170 021 B), czyli powyżej progu 300 KB. **Wybrano własny SigV4** (`server/media/sigv4.ts` na `node:crypto` i `fetch`); SDK nie jest zależnością.
 | D11 | Audyt wysyłek | każde wysłanie i usunięcie trafia do `admin_audit_log` niezależnie od źródła (`browser` jako akcja `media.upload`, MCP jako `mcp.call`) | „kto dodał ten obraz” ma odpowiedź w obu kanałach |
 
 ## Architektura
@@ -267,7 +267,12 @@ Każdy krok to osobny commit. Przed commitem: `npm run lint`, `npm test`, `npm r
 | S1 | **Sprzątanie** | **w ścieżce żądania:** przy `POST /api/media/uploads` usuwane są stare `pending` tego autora (> 1 godzina); dodatkowo endpoint sprzątający z `CRON_SECRET` wołany raz na dobę (`crons` w `vercel.json`, którego jeszcze nie ma) usuwa `ready` bez odwołań starsze niż doba. Plan nie zakłada częstszego crona — na planie Hobby Vercel uruchamia go najwyżej raz dziennie (nie potwierdzone dla tego projektu: `vercel teams ls` nie zwrócił zespołów) | zapytanie i test na danych syntetycznych |
 | S2 | **Dokumentacja** | `docs/mcp.md`, `docs/mcp-clients.md`, `docs/vercel.md`, `docs/Quiz-Engine.md`, `CLAUDE.md`, `.env.example` | opis ścieżek wysyłania i składni zapisu |
 
-### Szacunek (moja ocena, bez M0)
+#### Stan wykonania
+
+- **M0 — czeka na człowieka (CLI Neona).** Spike wymaga logowania do Neona i prawdziwego bucketu; nie wykonano.
+- **M1 — kod gotowy, migracja do zastosowania.** `server/media/`: `driver.ts` (interfejs i `getStorage()` wybierany przez `MEDIA_DRIVER`), `config.ts` (zmienne, błąd z nazwami brakujących), `s3Driver.ts` + `sigv4.ts` (własny SigV4, path-style), `memoryDriver.ts`, `sniff.ts`, `keys.ts`, `limits.ts`, `repo.ts` (cały SQL modułu, `syncRefs`, `MediaRefError`). Migracja `db/migrations/20261020110000_media.sql` tworzy `media` i `media_refs` (addytywnie, bez kolumny `irregular_verbs`, która należy do L2). Testy w `tests/media*.test.ts` (`npm test`) zielone. **Niesprawdzone:** migracja i zapytania `repo.ts` na prawdziwej bazie, zachowanie S3 wobec prawdziwego bucketu (podpisy zweryfikowane tylko na wektorach dokumentacji AWS, nie przez żądanie), CORS i presigned PUT z przeglądarki. `api/index.mjs` nie zmienił się, bo moduł nie jest jeszcze importowany.
+
+## Szacunek (moja ocena, bez M0)
 
 M1 1 dzień, M2 1 dzień, M3–M4 1,5 dnia, M5 2 dni (SSRF jest najdroższe), M6 1 dzień, L1–L2 1 dzień, S1–S2 0,5 dnia — łącznie około 8 dni. M0 pół dnia i zmienia szacunek, jeśli Neon nie wystarczy.
 

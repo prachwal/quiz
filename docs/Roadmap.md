@@ -24,7 +24,7 @@ updated: 2026-10-20
 | Cloze | F1–F4 (znacznik, znaki typograficzne, limity, przecinek), D1 (końcowa kropka w lukach) | |
 | Uwagi z przeglądu | `key` w graczu, TLS i pula, zabezpieczenie `test:mcp`, odsyłacz do `quiz_schema`, kolejność w `ordering`/`matching` ujawniała odpowiedź, `withShownOrders` liczył nietknięte pytania, brak limitu długości `id` w `config` (faza 0) | nic |
 | Podział nauki | nic | kroki 1–8 |
-| Obrazy (S3) | nic (plan) | M0–M6, L1–L2, S1–S2 |
+| Obrazy (S3) | M1 kod gotowy (migracja do zastosowania); M0 czeka na człowieka (CLI Neona) | M0 (człowiek), M2–M6, L1–L2, S1–S2 |
 
 ## Zasady kolejności
 
@@ -107,7 +107,7 @@ Rozpoczyna się po rozstrzygnięciu M0.
 
 | # | Zadanie | Uwagi |
 | --- | --- | --- |
-| 4.1 | **M1** fundament: migracja `media`/`media_refs`, sterownik S3 i atrapa, `sniff` | `db.ts` z 1.1 |
+| 4.1 | 🟡 **M1** fundament: migracja `media`/`media_refs`, sterownik S3 i atrapa, `sniff` — **kod gotowy, migracja do zastosowania** (commit `296e61a`; `npm run db:migrate` po stronie właściciela) | `db.ts` z 1.1 |
 | 4.2 | **M2** zapis `![opis](media:…)`, walidacja „gdzie wolno”, `syncRefs` | `promptText` z cloze (już po D1) |
 | 4.3 | **M3** mapa `media` w odpowiedziach | po 2.3: endpointy przez `injectEndpoints` |
 | 4.4 | **M4** renderowanie: `RichText`, `MediaImage`, `ChoiceTile`, `Cloze`, wynik, lekcja | po 2.2 |
@@ -158,7 +158,7 @@ Zmienne środowiskowe `S3_*` i `MEDIA_*` dodać na Vercelu (Production/Preview/D
 | przed 3.4 | D3 admin zmienia cudze klasy | tylko `class_transfer` (zdecydowane) |
 | przed 3.3 | D4 e-mail w `attempt_list` | nie (zdecydowane) |
 | przed 4.1 | dostawca magazynu (wynik M0) | Neon, jeśli M0 przejdzie, inaczej S3/R2 |
-| przed 4.1 | D10: klient S3 — SDK czy własny SigV4 (wynik pomiaru z M0) | SDK, o ile przyrost bundla jest mały |
+| przed 4.1 | D10: klient S3 — SDK czy własny SigV4 (pomiar 2026-10-20: SDK dodaje 1,5 MB do bundla, 578 KB po minifikacji) | własny SigV4 (zdecydowane) |
 | przed 4.5 | czy `media_upload_from_url` wchodzi (SSRF) | tak, pod warunkiem pełnych zabezpieczeń |
 
 ## Szacunek (moja ocena, 1 osoba)
