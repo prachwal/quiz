@@ -9,7 +9,7 @@ tags:
   - learning
   - status/todo
 created: 2026-10-19
-updated: 2026-10-19
+updated: 2026-10-20
 ---
 
 # Kolejność operacji — plan nadrzędny
@@ -21,7 +21,7 @@ updated: 2026-10-19
 | Obszar | Zrobione | Zostaje |
 | --- | --- | --- |
 | Narzędzia admina MCP | `itemStats`, `attemptsRepo`, `attempt_list`, `attempt_get` (kroki 1–3) | `quiz_stats`, `user_*`, `audit_list`/`feedback_*`/`settings_*`/`system_stats`, dokumentacja; decyzje D1–D4 |
-| Cloze | F1–F4 (znacznik, znaki typograficzne, limity, przecinek) | D1: końcowa kropka w lukach |
+| Cloze | F1–F4 (znacznik, znaki typograficzne, limity, przecinek), D1 (końcowa kropka w lukach) | |
 | Uwagi z przeglądu | `key` w graczu, TLS i pula, zabezpieczenie `test:mcp`, odsyłacz do `quiz_schema` | kolejność w `ordering`/`matching` ujawnia odpowiedź, `withShownOrders` liczy nietknięte pytania, brak limitu długości `id` w `config` |
 | Podział nauki | nic | kroki 1–8 |
 | Obrazy (S3) | nic (plan) | M0–M6, L1–L2, S1–S2 |
@@ -64,7 +64,7 @@ Przed czymkolwiek strukturalnym; małe, niezależne, każde z testem.
 | --- | --- | --- |
 | 0.1 | **`ordering`/`matching`: jedna poprawka, trzy objawy.** `withShownOrders` wstrzykuje do wysyłanej odpowiedzi układ widoczny na ekranie dla nietkniętych pytań `ordering` (także przy ocenie, [QuizPlayer.tsx:140](../src/features/quizzes/QuizPlayer.tsx#L140)); serwer liczy je jako udzielone (seria, cel dzienny, `quiz_attempts.answers`), a `shuffleAwayFrom` gwarantuje, że ten układ nigdy nie jest układem autora, więc takie pytanie zawsze dostaje 0. Poprawka: przestać wstrzykiwać (nietknięte = nieodpowiedziane), tasować jednostajnie, a `isAnswered` liczy tylko faktycznie ułożoną odpowiedź | **D-A:** tak (rekomendacja) |
 | 0.2 | limity długości `id` w `config` dla `ordering` i `matching` w `validate` (JSON Schema ma 64) i test zgodności zod ↔ JSON Schema | brak |
-| 0.3 | cloze D1: końcowa interpunkcja w lukach | **D-B:** tak, tylko dla `cloze` (rekomendacja) |
+| 0.3 | cloze D1: końcowa interpunkcja w lukach (zrobione) | **D-B:** tak, tylko dla `cloze` (zrobione) |
 
 Dlaczego tu: wszystkie siedzą w `QuizPlayer.tsx`, `engine.ts` i `schema.ts`, które później dzieli i przenosi krok 6.
 
@@ -194,5 +194,5 @@ Kolejność 0 → 1 → 2 → **5** → 3 → 4 jest możliwa. Koszt: fazy 3 i 4
 - [[Learning-Slice-Plan]] — kroki 1–8 podziału
 - [[Media-Storage-Plan]] — M0–M6, L1–L2, S1–S2
 - [[MCP-Admin-Tools]] — narzędzia admina i decyzje D1–D4
-- [[Cloze-Fixes-Plan]] — F1–F4 (zrobione) i D1
+- [[Cloze-Fixes-Plan]] — F1–F4 i D1 (zrobione)
 - [[mcp-clients]] — odświeżanie konektorów po zmianie narzędzi

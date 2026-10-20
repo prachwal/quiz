@@ -4,6 +4,7 @@ import {
   clozeMarkers,
   gradeQuiz,
   isAnswered,
+  normalizeGapAnswer,
   normalizeText,
   orderingItems,
   parseNumeric,
@@ -492,4 +493,41 @@ test('ordering and matching still grade old data with ids longer than 64 charact
     { m1: { pairs: { [longId]: longId, p2: 'r2' } } },
   )
   assert.equal(matching.percent, 100)
+})
+
+// ---- cloze: trailing punctuation (D1) ----------------------------------------------------
+
+test('normalizeGapAnswer drops trailing . ! ? only', () => {
+  assert.equal(normalizeGapAnswer('went.'), 'went')
+  assert.equal(normalizeGapAnswer('went!?'), 'went')
+  assert.equal(normalizeGapAnswer('  Went. '), 'went')
+  assert.equal(normalizeGapAnswer('3.'), '3')
+  assert.equal(normalizeGapAnswer('a.b'), 'a.b')
+  // normalizeText itself is unchanged
+  assert.equal(normalizeText('went.'), 'went.')
+})
+
+test('cloze ignores trailing punctuation in both directions', () => {
+  const withDotAnswer = clozeQuestion('He {{1}} home.', [{ answers: ['went.'] }])
+  assert.equal(gradeQuiz(withDotAnswer, { c1: { gaps: { 1: 'went' } } }).percent, 100)
+  const withoutDotAnswer = clozeQuestion('He {{1}} home.', [{ answers: ['went'] }])
+  assert.equal(gradeQuiz(withoutDotAnswer, { c1: { gaps: { 1: 'went.' } } }).percent, 100)
+  assert.equal(gradeQuiz(withoutDotAnswer, { c1: { gaps: { 1: 'went!?' } } }).percent, 100)
+  assert.equal(gradeQuiz(withoutDotAnswer, { c1: { gaps: { 1: 'gone.' } } }).percent, 0)
+})
+
+test('text keeps trailing punctuation significant', () => {
+  const q = [{ id: 'q1', type: 'text' as const, points: 1, explanation: '', options: [{ id: 'a', text: '3', isCorrect: true }] }]
+  assert.equal(gradeQuiz(q, { q1: { text: '3.' } }).percent, 0)
+  const dotted = [{ id: 'q1', type: 'text' as const, points: 1, explanation: '', options: [{ id: 'a', text: '3.', isCorrect: true }] }]
+  assert.equal(gradeQuiz(dotted, { q1: { text: '3' } }).percent, 0)
+})
+
+test('cloze gap that is only punctuation or blank scores 0', () => {
+  const q = clozeQuestion('He {{1}} home.', [{ answers: ['...'] }])
+  assert.equal(gradeQuiz(q, { c1: { gaps: { 1: '' } } }).percent, 0)
+  assert.equal(gradeQuiz(q, { c1: { gaps: { 1: '...' } } }).percent, 0)
+  assert.equal(gradeQuiz(q, { c1: { gaps: { 1: '!?' } } }).percent, 0)
+  assert.equal(gradeQuiz(q, { c1: { gaps: { 1: 'went' } } }).percent, 0)
+  assert.equal(gradeQuiz(q, {}).percent, 0)
 })

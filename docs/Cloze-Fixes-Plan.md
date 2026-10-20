@@ -7,12 +7,12 @@ tags:
   - plan
   - status/todo
 created: 2026-10-19
-updated: 2026-10-19
+updated: 2026-10-20
 ---
 
 # Typ `cloze` (uzupełnianie luk) — plan poprawek
 
-> Cztery błędy wykryte w analizie typu `cloze` 2026-10-19, każdy odtworzony na kodzie. Dokument opisuje poprawki, decyzje do podjęcia, kolejność commitów i testy. Do wdrożenia jeszcze nic nie zmieniono.
+> Cztery błędy wykryte w analizie typu `cloze` 2026-10-19, każdy odtworzony na kodzie. Dokument opisuje poprawki, decyzje do podjęcia, kolejność commitów i testy. Stan: F1–F4 wdrożone (commity 1–4), D1 wdrożone (commit 5, decyzja D-B: tak, tylko `cloze`).
 
 ## Zakres
 
@@ -92,7 +92,7 @@ Pliki: `ConfigEditor.tsx`; test w `QuizEditor.config.test.tsx` („Hello, world�
 | 2 | `fix(engine): fold typographic quotes and dashes when comparing answers` | F2 (bez D1) + testy dla `text`, `cloze`, `ordering`, `matching` |
 | 3 | `fix(schema): enforce the cloze answer limits on save` | F3 + testy zgodności |
 | 4 | `fix(quiz): keep commas inside a cloze answer` | F4 + test edytora |
-| 5 | *(po decyzji D1)* `feat(engine): ignore trailing punctuation in cloze gaps` | `normalizeGapAnswer` |
+| 5 | `feat(engine): ignore trailing punctuation in cloze gaps` (zrobione) | `normalizeGapAnswer` |
 
 Przed każdym commitem: `npm run lint`, `npm test`, `npm run test:ui`, `npm run build`; po commitach dotykających serwera `npm run build:api` (bundle `api/index.mjs` jest w repo) i `MCP_E2E_ALLOW_REMOTE_DB=1 npm run test:mcp`.
 
@@ -112,7 +112,7 @@ Oba walidatory (zod i JSON Schema) muszą dawać ten sam wynik na nowych przypad
 
 ## Decyzje do podjęcia
 
-1. **D1** — zdejmować końcową interpunkcję w lukach? Rekomendacja: tak, tylko dla `cloze` (commit 5).
+1. **D1** — zdejmować końcową interpunkcję w lukach? Decyzja: tak, tylko dla `cloze` (commit 5, zrobione).
 2. **D2** — czy F2 (składanie cudzysłowów i myślników) ma dotyczyć także `text`/`ordering`/`matching`, czy tylko `cloze`? Rekomendacja: wszystkie; ten sam problem z klawiaturą, a ryzyko regresji niskie, bo składane znaki nie występują w dotychczasowych odpowiedziach (sprawdzić zapytaniem przed wdrożeniem).
 3. **D3** — czy odrzucać pusty wariant przy zapisie (F3), czy go po cichu usuwać? Rekomendacja: odrzucać z komunikatem, bo cicha zmiana autorskich danych utrudnia debugowanie.
 

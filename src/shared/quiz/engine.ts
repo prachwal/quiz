@@ -303,6 +303,9 @@ export const normalizeText = (value: string) =>
     .replace(TYPOGRAPHIC_PATTERN, (ch) => TYPOGRAPHIC[ch] ?? ch)
     .toLocaleLowerCase()
 
+/** cloze gaps only: a gap is a word, so a sentence-final `.`, `!` or `?` does not count ("went." = "went"). */
+export const normalizeGapAnswer = (value: string) => normalizeText(value).replace(/[.!?]+$/, '')
+
 /** Random, stable id for a config item (kept in `questions.config`, never derived from the position). */
 export const newItemId = () => Math.random().toString(36).slice(2, 10)
 
@@ -633,9 +636,10 @@ export const questionTypeDefs = {
       const given = answer?.gaps ?? {}
       let correct = 0
       config.gaps.forEach((gap, i) => {
-        const value = normalizeText(given[String(i + 1)] ?? '')
+        // a gap that is empty after normalizing (blank or only punctuation) never scores
+        const value = normalizeGapAnswer(given[String(i + 1)] ?? '')
         if (!value) return
-        if (gap.answers.some((accepted) => normalizeText(accepted) === value)) correct += 1
+        if (gap.answers.some((accepted) => normalizeGapAnswer(accepted) === value)) correct += 1
       })
       return correct / config.gaps.length
     },

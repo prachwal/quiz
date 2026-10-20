@@ -62390,6 +62390,7 @@ var TYPOGRAPHIC = {
 };
 var TYPOGRAPHIC_PATTERN = new RegExp(`[${Object.keys(TYPOGRAPHIC).join("")}]`, "g");
 var normalizeText = (value) => value.normalize("NFC").trim().replace(/\s+/g, " ").replace(TYPOGRAPHIC_PATTERN, (ch) => TYPOGRAPHIC[ch] ?? ch).toLocaleLowerCase();
+var normalizeGapAnswer = (value) => normalizeText(value).replace(/[.!?]+$/, "");
 var newItemId = () => Math.random().toString(36).slice(2, 10);
 var shuffleWith = (items, rng) => {
   for (let i = items.length - 1; i > 0; i--) {
@@ -62672,9 +62673,9 @@ var questionTypeDefs = {
       const given = answer?.gaps ?? {};
       let correct = 0;
       config2.gaps.forEach((gap, i) => {
-        const value = normalizeText(given[String(i + 1)] ?? "");
+        const value = normalizeGapAnswer(given[String(i + 1)] ?? "");
         if (!value) return;
-        if (gap.answers.some((accepted) => normalizeText(accepted) === value)) correct += 1;
+        if (gap.answers.some((accepted) => normalizeGapAnswer(accepted) === value)) correct += 1;
       });
       return correct / config2.gaps.length;
     },
