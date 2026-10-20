@@ -21,6 +21,10 @@
     "test:ui:coverage": "vitest run --coverage",
     "test:integration": "esbuild tests/integration/*.test.ts --bundle --platform=node --format=esm --outdir=.test-build --out-extension:.js=.mjs --log-level=warning && node --test .test-build/integration*.mjs",
     "db:migrate": "node scripts/migrate.mjs",
+    "db:migrate:dev": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/migrate.mjs --env=dev",
+    "db:migrate:e2e": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/migrate.mjs --env=e2e",
+    "db:migrate:preview": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/migrate.mjs --env=preview",
+    "db:migrate:prod": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/migrate.mjs --env=prod",
     "build:api": "esbuild api-src/index.ts --bundle --platform=node --format=esm --target=node22 --outfile=api/index.mjs --external:pg-native --external:@sentry/node --banner:js='import { createRequire as __cr } from \"node:module\"; const require = __cr(import.meta.url);'",
     "dev:full": "npm run build:api && node scripts/dev-server.mjs"
   },
