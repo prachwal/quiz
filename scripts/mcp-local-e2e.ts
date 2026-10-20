@@ -92,8 +92,8 @@ try {
   const getOk = await fetch(`${base}/mcp`, { headers: { Authorization: `Bearer ${await token(PLAIN, [])}` } })
   check('GET /mcp -> 405', getOk.status === 405, getOk.status)
   const names = (await tPlain.listTools()).tools.map((t) => t.name).sort()
-  check('35 tools listed', names.length === 35, names.length)
-  for (const required of ['quiz_create', 'class_create', 'student_search', 'student_add', 'class_analyze', 'assignment_create', 'attempt_list', 'attempt_get', 'quiz_stats', 'user_results', 'user_analysis', 'user_list', 'user_get', 'user_search', 'user_roles_set', 'user_block'])
+  check('36 tools listed', names.length === 36, names.length)
+  for (const required of ['quiz_create', 'class_create', 'student_search', 'student_add', 'class_analyze', 'assignment_create', 'attempt_list', 'attempt_get', 'quiz_stats', 'user_results', 'user_analysis', 'user_list', 'user_get', 'user_search', 'user_roles_set', 'user_block', 'class_transfer'])
     check(`tool ${required} exists`, names.includes(required))
 
   // ---- quizzes ---------------------------------------------------------------------------
@@ -280,6 +280,13 @@ try {
   denied('user_block cannot block yourself (before Auth0)', await call(tAdmin, 'user_block', { userId: ADMIN, blocked: true, confirm: true }), 'zablokować własnego')
   denied('user_block unknown account', await call(tAdmin, 'user_block', { userId: `discord|${P}-nobody`, blocked: true, confirm: true }))
 
+  // ---- class transfer: refusals only (no successful transfer in the test) -----------------------
+  denied('class_transfer as teacher', await call(tTeacher, 'class_transfer', { classId, newOwnerId: OTHER, confirm: true }), 'admina')
+  denied('class_transfer without confirm', await call(tAdmin, 'class_transfer', { classId, newOwnerId: OTHER, confirm: false }))
+  denied('class_transfer unknown class', await call(tAdmin, 'class_transfer', { classId: '00000000-0000-4000-8000-000000000000', newOwnerId: OTHER, confirm: true }), 'Nie znaleziono klasy')
+  denied('class_transfer to the current owner', await call(tAdmin, 'class_transfer', { classId, newOwnerId: TEACHER, confirm: true }), 'już jest właścicielem')
+  denied('class_transfer to an unknown account', await call(tAdmin, 'class_transfer', { classId, newOwnerId: `teacher|${P}-nobody`, confirm: true }))
+
   // ---- removals and archiving --------------------------------------------------------------
   denied('student_remove without confirm', await call(tTeacher, 'student_remove', { classId, userId: STUDENT2, confirm: false }))
   denied('student_remove by other teacher', await call(tOther, 'student_remove', { classId, userId: STUDENT2, confirm: true }), 'Nie znaleziono klasy')
@@ -290,6 +297,7 @@ try {
   denied('class_archive without confirm', await call(tTeacher, 'class_archive', { classId, confirm: false }))
   denied('class_archive by other teacher', await call(tOther, 'class_archive', { classId, confirm: true }), 'Nie znaleziono klasy')
   ok('class_archive', await call(tTeacher, 'class_archive', { classId, confirm: true }), (d) => d.ok === true)
+  denied('class_transfer archived class', await call(tAdmin, 'class_transfer', { classId, newOwnerId: OTHER, confirm: true }), 'Zarchiwizowanej')
   ok('class_list after archive', await call(tTeacher, 'class_list', {}), (d) => d.length === 0)
   ok('archived class is gone from the admin overview', await call(tAdmin, 'class_list', { scope: 'all' }), (d) => d.every((c: any) => c.id !== classId))
 

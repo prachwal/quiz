@@ -8,8 +8,10 @@ import { attemptRows, historyAnalysisInput } from '../../../src/shared/quiz/user
 import * as classes from '../../classesRepo'
 import * as reviews from '../../reviewsRepo'
 import { adminStudentResults, weakVerbDetails } from '../../userResults'
-import { failure, needAdmin, text } from '../context'
+import { transferClass } from '../../userAdmin'
+import { audit, failure, needAdmin, refusing, text } from '../context'
 import type { Ctx } from '../context'
+import { confirm } from './shared'
 
 /** Admin-only tools (`manage:users`, OAuth login only - personal tokens never carry that permission). */
 
@@ -141,6 +143,29 @@ export function registerAdminTools(server: McpServer, ctx: Ctx) {
         weakVerbCount: weakCount,
         weakVerbs,
         analysis: analyzeStudent(historyAnalysisInput(results.attempts, lastActiveDay)),
+      })
+    },
+  )
+
+  server.registerTool(
+    'class_transfer',
+    {
+      title: 'Przekaż klasę (admin)',
+      description:
+        'Zmienia właściciela klasy na innego nauczyciela albo admina (newOwnerId = id Auth0 konta, które ma rolę teacher lub admin). Członkowie, zadania i wyniki zostają. Nie przekażesz klasy zarchiwizowanej ani klasy właścicielowi, który już nią jest. Admin nie zmienia klas inaczej niż przez to narzędzie. Wymaga confirm=true. Zapisuje wpis audytu ze starym i nowym właścicielem.',
+      inputSchema: {
+        classId: z.string().uuid().describe('Id klasy (UUID) z class_list scope=all'),
+        newOwnerId: auth0UserId.describe('Identyfikator Auth0 nowego właściciela (nauczyciela albo admina)'),
+        confirm,
+      },
+      annotations: { destructiveHint: true },
+    },
+    async ({ classId, newOwnerId }) => {
+      if (!admin) return needAdmin()
+      return refusing(async () => {
+        const result = await transferClass(classId, newOwnerId)
+        await audit(ctx, 'class_transfer', { id: classId, label: result.name }, { classId, from: result.from, to: result.to })
+        return text({ classId, ownerId: result.to })
       })
     },
   )

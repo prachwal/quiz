@@ -74507,6 +74507,10 @@ async function archiveClass(id, ownerId) {
   );
   return (r.rowCount ?? 0) > 0;
 }
+async function transferClass(id, newOwnerId) {
+  const r = await pool().query("UPDATE classes SET owner_id = $2 WHERE id = $1 AND archived_at IS NULL", [id, newOwnerId]);
+  return (r.rowCount ?? 0) > 0;
+}
 async function regenerateCode(id, ownerId) {
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
@@ -75535,6 +75539,104 @@ async function weakVerbDetails(userId, limit) {
   });
 }
 
+// server/userAdminPure.ts
+var SELF_ROLE_REFUSAL = "Nie mo\u017Cesz odebra\u0107 sobie roli admin";
+var LAST_ADMIN_ROLE_REFUSAL = "Nie mo\u017Cna odebra\u0107 roli ostatniemu adminowi";
+var SELF_BLOCK_REFUSAL = "Nie mo\u017Cesz zablokowa\u0107 w\u0142asnego konta";
+var LAST_ADMIN_BLOCK_REFUSAL = "Nie mo\u017Cna zablokowa\u0107 ostatniego admina";
+var selfRoleRefusal = (actorId, targetId, desired) => targetId === actorId && !desired.includes("admin") ? SELF_ROLE_REFUSAL : null;
+var lastAdminRoleRefusal = (currentRoles, desired, adminCount) => currentRoles.includes("admin") && !desired.includes("admin") && adminCount <= 1 ? LAST_ADMIN_ROLE_REFUSAL : null;
+var selfBlockRefusal = (actorId, targetId, blocked) => blocked && targetId === actorId ? SELF_BLOCK_REFUSAL : null;
+var lastAdminBlockRefusal = (targetRoles, blocked, adminCount) => blocked && targetRoles.includes("admin") && adminCount <= 1 ? LAST_ADMIN_BLOCK_REFUSAL : null;
+var classTransferBlocker = (input2) => {
+  if (input2.archived) return "Zarchiwizowanej klasy nie mo\u017Cna przekaza\u0107. Najpierw j\u0105 przywr\xF3\u0107.";
+  if (input2.newOwnerId === input2.ownerId) return "Ten u\u017Cytkownik ju\u017C jest w\u0142a\u015Bcicielem klasy.";
+  return null;
+};
+var newOwnerRoleRefusal = (newOwnerRoles) => {
+  if (newOwnerRoles === null) return "Nie znaleziono u\u017Cytkownika o takim identyfikatorze Auth0.";
+  if (!newOwnerRoles.includes("teacher") && !newOwnerRoles.includes("admin")) return "Nowy w\u0142a\u015Bciciel musi mie\u0107 rol\u0119 nauczyciela albo admina.";
+  return null;
+};
+
+// server/userAdmin.ts
+async function setUserRoles(actorId, targetId, roles) {
+  const desired = [...new Set(roles)];
+  const self = selfRoleRefusal(actorId, targetId, desired);
+  if (self) throw new HttpError(409, self);
+  const target = await getUser(targetId);
+  const adminCount = target.roles.includes("admin") && !desired.includes("admin") ? await countAdmins() : 0;
+  const lastAdmin = lastAdminRoleRefusal(target.roles, desired, adminCount);
+  if (lastAdmin) throw new HttpError(409, lastAdmin);
+  await setManagedRoles(targetId, target.roles, desired);
+  await writeAudit({
+    actorId,
+    actorLabel: await userLabel(actorId),
+    action: "roles.update",
+    targetId,
+    targetLabel: target.email ?? target.name,
+    details: { from: target.roles, to: desired }
+  });
+  return { target: { ...target, roles: desired }, from: target.roles, to: desired };
+}
+async function setUserBlocked(actorId, targetId, blocked) {
+  const self = selfBlockRefusal(actorId, targetId, blocked);
+  if (self) throw new HttpError(409, self);
+  const target = await getUser(targetId);
+  const adminCount = blocked && target.roles.includes("admin") ? await countAdmins() : 0;
+  const lastAdmin = lastAdminBlockRefusal(target.roles, blocked, adminCount);
+  if (lastAdmin) throw new HttpError(409, lastAdmin);
+  await setBlocked(targetId, blocked);
+  await writeAudit({
+    actorId,
+    actorLabel: await userLabel(actorId),
+    action: blocked ? "user.block" : "user.unblock",
+    targetId,
+    targetLabel: target.email ?? target.name
+  });
+  return { target: { ...target, blocked }, wasBlocked: target.blocked };
+}
+async function transferClass2(classId2, newOwnerId) {
+  const cls = await getClassAny(classId2);
+  if (!cls) throw new HttpError(404, "Nie znaleziono klasy");
+  const early = classTransferBlocker({ archived: cls.archived, ownerId: cls.ownerId, newOwnerId });
+  if (early) throw new HttpError(409, early);
+  const newOwnerRoles = await getUser(newOwnerId).then(
+    (user) => user.roles,
+    (error62) => {
+      if (error62 instanceof ManagementError && error62.status === 404) return null;
+      throw error62;
+    }
+  );
+  const refusal = newOwnerRoleRefusal(newOwnerRoles);
+  if (refusal) throw new HttpError(409, refusal);
+  await transferClass(classId2, newOwnerId);
+  return { classId: classId2, name: cls.name, from: cls.ownerId, to: newOwnerId };
+}
+
+// server/mcp/tools/shared.ts
+var classId = external_exports.string().uuid().describe("Id klasy (UUID) z class_list");
+var studentId = auth0UserId.describe(
+  "Identyfikator Auth0 ucznia, np. google-oauth2|123 lub discord|456 (widoczny w student_list i w Ustawieniach \u2192 U\u017Cytkownicy)"
+);
+var confirm = external_exports.literal(true).describe("Musi by\u0107 true - potwierdzenie operacji nieodwracalnej");
+function classGuards(ctx) {
+  const v = ctx.viewer;
+  return {
+    reading: async (id, work) => {
+      if (!canReadClasses(v)) return needTeacherOrAdmin();
+      const cls = await readableClass(v, id);
+      return cls ? text(await work(cls)) : classNotFound();
+    },
+    changing: async (id, work) => {
+      if (!v.teacher) return needTeacher();
+      const cls = await writableClass(v, id);
+      if (cls) return text(await work(cls));
+      return await readableClass(v, id) ? notOwner() : classNotFound();
+    }
+  };
+}
+
 // server/mcp/tools/admin.ts
 var isoDate = external_exports.string().refine((s) => !Number.isNaN(Date.parse(s)), "Data w formacie ISO, np. 2026-10-19 albo 2026-10-19T12:00:00Z").describe("Data ISO, np. 2026-10-19");
 var percent2 = external_exports.number().min(0).max(100);
@@ -75653,6 +75755,27 @@ function registerAdminTools(server, ctx) {
     }
   );
   server.registerTool(
+    "class_transfer",
+    {
+      title: "Przeka\u017C klas\u0119 (admin)",
+      description: "Zmienia w\u0142a\u015Bciciela klasy na innego nauczyciela albo admina (newOwnerId = id Auth0 konta, kt\xF3re ma rol\u0119 teacher lub admin). Cz\u0142onkowie, zadania i wyniki zostaj\u0105. Nie przeka\u017Cesz klasy zarchiwizowanej ani klasy w\u0142a\u015Bcicielowi, kt\xF3ry ju\u017C ni\u0105 jest. Admin nie zmienia klas inaczej ni\u017C przez to narz\u0119dzie. Wymaga confirm=true. Zapisuje wpis audytu ze starym i nowym w\u0142a\u015Bcicielem.",
+      inputSchema: {
+        classId: external_exports.string().uuid().describe("Id klasy (UUID) z class_list scope=all"),
+        newOwnerId: auth0UserId.describe("Identyfikator Auth0 nowego w\u0142a\u015Bciciela (nauczyciela albo admina)"),
+        confirm
+      },
+      annotations: { destructiveHint: true }
+    },
+    async ({ classId: classId2, newOwnerId }) => {
+      if (!admin) return needAdmin();
+      return refusing(async () => {
+        const result = await transferClass2(classId2, newOwnerId);
+        await audit(ctx, "class_transfer", { id: classId2, label: result.name }, { classId: classId2, from: result.from, to: result.to });
+        return text({ classId: classId2, ownerId: result.to });
+      });
+    }
+  );
+  server.registerTool(
     "attempt_get",
     {
       title: "Podej\u015Bcie z odpowiedziami (admin)",
@@ -75666,77 +75789,6 @@ function registerAdminTools(server, ctx) {
       return attempt ? text(attempt) : { isError: true, content: [{ type: "text", text: "Nie znaleziono podej\u015Bcia." }] };
     }
   );
-}
-
-// server/userAdminPure.ts
-var SELF_ROLE_REFUSAL = "Nie mo\u017Cesz odebra\u0107 sobie roli admin";
-var LAST_ADMIN_ROLE_REFUSAL = "Nie mo\u017Cna odebra\u0107 roli ostatniemu adminowi";
-var SELF_BLOCK_REFUSAL = "Nie mo\u017Cesz zablokowa\u0107 w\u0142asnego konta";
-var LAST_ADMIN_BLOCK_REFUSAL = "Nie mo\u017Cna zablokowa\u0107 ostatniego admina";
-var selfRoleRefusal = (actorId, targetId, desired) => targetId === actorId && !desired.includes("admin") ? SELF_ROLE_REFUSAL : null;
-var lastAdminRoleRefusal = (currentRoles, desired, adminCount) => currentRoles.includes("admin") && !desired.includes("admin") && adminCount <= 1 ? LAST_ADMIN_ROLE_REFUSAL : null;
-var selfBlockRefusal = (actorId, targetId, blocked) => blocked && targetId === actorId ? SELF_BLOCK_REFUSAL : null;
-var lastAdminBlockRefusal = (targetRoles, blocked, adminCount) => blocked && targetRoles.includes("admin") && adminCount <= 1 ? LAST_ADMIN_BLOCK_REFUSAL : null;
-
-// server/userAdmin.ts
-async function setUserRoles(actorId, targetId, roles) {
-  const desired = [...new Set(roles)];
-  const self = selfRoleRefusal(actorId, targetId, desired);
-  if (self) throw new HttpError(409, self);
-  const target = await getUser(targetId);
-  const adminCount = target.roles.includes("admin") && !desired.includes("admin") ? await countAdmins() : 0;
-  const lastAdmin = lastAdminRoleRefusal(target.roles, desired, adminCount);
-  if (lastAdmin) throw new HttpError(409, lastAdmin);
-  await setManagedRoles(targetId, target.roles, desired);
-  await writeAudit({
-    actorId,
-    actorLabel: await userLabel(actorId),
-    action: "roles.update",
-    targetId,
-    targetLabel: target.email ?? target.name,
-    details: { from: target.roles, to: desired }
-  });
-  return { target: { ...target, roles: desired }, from: target.roles, to: desired };
-}
-async function setUserBlocked(actorId, targetId, blocked) {
-  const self = selfBlockRefusal(actorId, targetId, blocked);
-  if (self) throw new HttpError(409, self);
-  const target = await getUser(targetId);
-  const adminCount = blocked && target.roles.includes("admin") ? await countAdmins() : 0;
-  const lastAdmin = lastAdminBlockRefusal(target.roles, blocked, adminCount);
-  if (lastAdmin) throw new HttpError(409, lastAdmin);
-  await setBlocked(targetId, blocked);
-  await writeAudit({
-    actorId,
-    actorLabel: await userLabel(actorId),
-    action: blocked ? "user.block" : "user.unblock",
-    targetId,
-    targetLabel: target.email ?? target.name
-  });
-  return { target: { ...target, blocked }, wasBlocked: target.blocked };
-}
-
-// server/mcp/tools/shared.ts
-var classId = external_exports.string().uuid().describe("Id klasy (UUID) z class_list");
-var studentId = auth0UserId.describe(
-  "Identyfikator Auth0 ucznia, np. google-oauth2|123 lub discord|456 (widoczny w student_list i w Ustawieniach \u2192 U\u017Cytkownicy)"
-);
-var confirm = external_exports.literal(true).describe("Musi by\u0107 true - potwierdzenie operacji nieodwracalnej");
-function classGuards(ctx) {
-  const v = ctx.viewer;
-  return {
-    reading: async (id, work) => {
-      if (!canReadClasses(v)) return needTeacherOrAdmin();
-      const cls = await readableClass(v, id);
-      return cls ? text(await work(cls)) : classNotFound();
-    },
-    changing: async (id, work) => {
-      if (!v.teacher) return needTeacher();
-      const cls = await writableClass(v, id);
-      if (cls) return text(await work(cls));
-      return await readableClass(v, id) ? notOwner() : classNotFound();
-    }
-  };
 }
 
 // server/mcp/tools/users.ts
