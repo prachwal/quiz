@@ -451,6 +451,7 @@ try {
   ok('media_get by an admin of another author', await call(adminBoth, 'media_get', { mediaId }), (d) => d.mediaId === mediaId)
   denied('media_get by another author is refused like a missing file', await call(writer2, 'media_get', { mediaId }), 'Nie znaleziono pliku')
   denied('media_delete while referenced names the quiz', await call(tAdminWrite, 'media_delete', { mediaId, confirm: true }), 'MCP E2E media upload')
+  denied('media_delete while referenced names the quiz in the Polish form quiz „title”', await call(tAdminWrite, 'media_delete', { mediaId, confirm: true }), 'quiz „MCP E2E media upload”')
   denied('media_delete without confirm', await call(tAdminWrite, 'media_delete', { mediaId, confirm: false }))
   check('refused delete kept the row and the object', (await media.get(mediaId)) !== null && (await storage.head((await keyOf(mediaId)) ?? '')) !== null)
   ok('quiz_delete (the referencing quiz)', await call(tAdminWrite, 'quiz_delete', { id: mediaQuizId, confirm: true }), (d) => d.ok === true)

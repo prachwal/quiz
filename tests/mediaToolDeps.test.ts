@@ -3,8 +3,12 @@ import { test } from 'node:test'
 import { referenceNames } from '../server/media/ownerNames.ts'
 
 // The media tools name the quizzes that use a file through the injected `ownerLabels` (MediaToolDeps, built in
-// server/mcp/index.ts). Here the pure naming step gets the titles from a stub in place of that lookup: the tools
-// module itself pulls in pg, which the node test bundle cannot load, so the e2e run covers the wiring.
+// server/mcp/index.ts). What is covered where:
+// - here: the pure naming step (`referenceNames`), with the titles taken from a stub in place of the lookup;
+// - not here: the tools module itself pulls in pg, which the node test bundle cannot load;
+// - scripts/mcp-local-e2e.ts, media section: the real wiring. `media_get` lists `referencedBy` with the quiz title
+//   ('media_get shows the referencing quiz'), and `media_delete` of a referenced file is refused with
+//   `quiz „<title>”` ('media_delete while referenced names the quiz in the Polish form').
 const refs = [
   { ownerKind: 'quiz', ownerId: 'q1' },
   { ownerKind: 'quiz', ownerId: 'q-gone' },
