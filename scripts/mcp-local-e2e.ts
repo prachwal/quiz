@@ -699,6 +699,34 @@ try {
   )
   check('audit: feedback_update and settings_set are logged as mcp.call', JSON.stringify(ops.rows.map((r) => r.tool)) === JSON.stringify(['feedback_update', 'settings_set']), ops.rows)
 
+  // ==== media cleanup (Media-Storage-Plan S1, request path) — own section, keep it together on merges =========
+  // A stale pending row (older than an hour) of the same author disappears, with its object, when that author starts
+  // a new upload; a fresh pending row and another author's stale row stay. Uploads go through the browser route.
+  const uploadOf = (bytes: Buffer) => ({ contentType: 'image/png', size: bytes.length, sha256: sha(bytes) })
+  const backdate = (id: string) => pool().query(`UPDATE media SET created_at = now() - interval '2 hours' WHERE id = $1::uuid`, [id])
+  const cleanA = await token(`${ADMIN}-clean-a`, ['write:quizzes'])
+  const cleanB = await token(`${ADMIN}-clean-b`, ['write:quizzes'])
+  const staleA = await startUpload(cleanA, uploadOf(pngBytes(21, 21, 1)))
+  check('S1 upload start (author A, first stale candidate) is pending', staleA.status === 200 && staleA.body.status === 'pending', staleA.body)
+  await storage.put((await keyOf(staleA.body.mediaId)) as string, pngBytes(21, 21, 1), { contentType: 'image/png' })
+  const staleB = await startUpload(cleanB, uploadOf(pngBytes(22, 22, 1)))
+  check('S1 upload start (author B) is pending', staleB.status === 200 && staleB.body.status === 'pending', staleB.body)
+  await storage.put((await keyOf(staleB.body.mediaId)) as string, pngBytes(22, 22, 1), { contentType: 'image/png' })
+  const staleAKey = (await keyOf(staleA.body.mediaId)) as string
+  const staleBKey = (await keyOf(staleB.body.mediaId)) as string
+  await backdate(staleA.body.mediaId)
+  await backdate(staleB.body.mediaId)
+  const freshA = await startUpload(cleanA, uploadOf(pngBytes(23, 23, 1)))
+  check('S1 a new upload of author A starts', freshA.status === 200 && freshA.body.status === 'pending', freshA.body)
+  check('S1 stale pending row of the same author is removed', (await media.get(staleA.body.mediaId)) === null)
+  check('S1 stale pending object of the same author is removed from storage', (await storage.head(staleAKey)) === null)
+  check("S1 another author's stale pending row stays", (await media.get(staleB.body.mediaId)) !== null)
+  check("S1 another author's stale object stays in storage", (await storage.head(staleBKey)) !== null)
+  check('S1 the fresh pending row of author A stays', (await media.get(freshA.body.mediaId)) !== null)
+  await storage.put((await keyOf(freshA.body.mediaId)) as string, pngBytes(23, 23, 1), { contentType: 'image/png' })
+  const nextA = await startUpload(cleanA, uploadOf(pngBytes(24, 24, 1)))
+  check('S1 a second upload start keeps the fresh pending row', nextA.status === 200 && (await media.get(freshA.body.mediaId)) !== null)
+
   for (const c of [tTeacher, tAdminWrite, tAdmin, tOther, tPlain, writer2, quotaClient, adminBoth]) await c.close()
 } catch (error) {
   failures.push(`test crashed: ${(error as Error).stack ?? error}`)

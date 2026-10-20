@@ -2,7 +2,8 @@
  * Browser upload routes (Media-Storage-Plan M6, "Przepływy wysyłania" A). Mounted in server/app.ts behind the normal
  * authentication; every route needs `write:quizzes`.
  *
- *   POST /media/uploads          start: reuse the author's ready copy, or a pending row and the PUT target
+ *   POST /media/uploads          start: first removes the author's stale pending rows (S1), then reuses the author's
+ *                                ready copy, or creates a pending row and the PUT target
  *   PUT  /media/:id/content      memory driver only (404 otherwise): the bytes, for dev and tests
  *   POST /media/:id/complete     check the stored object and mark it ready (or remove it when it does not match)
  *
@@ -20,7 +21,7 @@ import { hasPermission, MANAGE_USERS, requirePermission, WRITE_QUIZZES } from '.
 import { HttpError, idParam, userOf } from '../http'
 import { isMemoryDriver, resolveMediaConfig } from './config'
 import type { MediaRow } from './repo'
-import { beginUpload, completeUpload, type Completion, MediaRequestError, mediaRuntime, type MediaRuntime, ownedMedia, urlOf } from './service'
+import { beginUpload, completeUpload, type Completion, MediaRequestError, mediaRuntime, type MediaRuntime, ownedMedia, removeStalePendingOf, urlOf } from './service'
 import { validateAlt, uploadTargetUrl } from './uploads'
 
 const writer = requirePermission(WRITE_QUIZZES)
@@ -95,6 +96,8 @@ export function registerMediaRoutes(router: Router) {
     }
     const answer = await refusing(async (): Promise<MediaUploadStarted> => {
       const runtime = mediaRuntime()
+      // S1: this author's abandoned uploads (pending, older than an hour) go before a new one is started
+      await removeStalePendingOf(runtime, userOf(req), runtime.now())
       const started = await beginUpload(runtime, {
         ownerId: userOf(req),
         contentType: input.contentType,

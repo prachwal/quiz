@@ -242,6 +242,30 @@ export async function remove(id: string, db: Db = pool()): Promise<RemoveResult>
   }
 }
 
+/**
+ * `pending` rows created before `olderThan`, oldest first, at most `limit`. `ownerId` null selects every author
+ * (the daily run); a string selects one author (the upload start). A pending row has no references (syncRefs only
+ * accepts `ready` files), so the result is safe to remove.
+ */
+export async function stalePendingOf(
+  ownerId: string | null,
+  olderThan: Date,
+  limit = 200,
+  db: Db = pool(),
+): Promise<MediaRow[]> {
+  const { rows } = await db.query<RawMediaRow>(
+    `SELECT ${MEDIA_COLUMNS}
+       FROM media
+      WHERE status = 'pending'
+        AND created_at < $2
+        AND ($1::text IS NULL OR owner_id = $1)
+      ORDER BY created_at, id
+      LIMIT $3`,
+    [ownerId, olderThan.toISOString(), Math.min(Math.max(Math.trunc(limit), 1), 1000)],
+  )
+  return rows.map(toRow)
+}
+
 /** Files and bytes this author created today (UTC day, pending rows included). */
 export async function countsToday(ownerId: string, db: Db = pool()): Promise<{ files: number; bytes: number }> {
   const { rows } = await db.query<{ files: number; bytes: string }>(
