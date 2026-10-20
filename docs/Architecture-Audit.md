@@ -368,19 +368,21 @@ Po rozdzieleniu `types.ts` znikają krawędzie `shared-types -> *` (naprawy 20�
 
 ## Kanarek
 
-Test `tests/architecture.test.ts` działa w `npm test` (ok. 0,4 s). Analizę robi `scripts/arch-core.mjs` (czysta funkcja `auditRepo(rootDir)`, bez wypisywania i bez `exit`); `scripts/arch-audit.mjs` to tylko CLI. Test porównuje wynik z `scripts/arch-allowlist.json` i sprawdza pięć rzeczy:
+Test `tests/architecture.test.ts` działa w `npm test` (ok. 0,4 s). Analizę robi `scripts/arch-core.mjs` (czysta funkcja `auditRepo(rootDir)`, bez wypisywania i bez `exit`); `scripts/arch-audit.mjs` to tylko CLI. Test porównuje wynik z `scripts/arch-allowlist.json` i sprawdza siedem rzeczy:
 
 1. **Nowe naruszenie.** Para plik → plik, która narusza granicę i nie jest na liście. Komunikat wypisuje `plik -> cel (moduł -> moduł)` i podpowiada: `napraw import albo (wyjątkowo) dopisz do scripts/arch-allowlist.json z uzasadnieniem`. Domyślna odpowiedź to naprawa importu (stan napraw wyżej). Wpis na liście wymaga uzasadnienia w review.
 2. **Wpis nieaktualny.** Wpis, który już nie narusza granicy (plik usunięty, import naprawiony). Komunikat kończy się `usuń z scripts/arch-allowlist.json`. Dzięki temu lista tylko się kurczy.
 3. **Pole `pair`.** Musi zgadzać się z aktualnym modułem plików. Inaczej test prosi o poprawienie pola (np. po przeniesieniu pliku między modułami).
 4. **Cykle.** Liczba cykli modułów nie może wzrosnąć, a każdy cykl musi mieć skład znany z `EXPECTED_CYCLES` w teście (dziś: `shared-quizzes`, `shared-types`). Nowy cykl albo większy skład pada. Usunięty cykl jest w porządku (wtedy lista w teście też się skraca).
 5. **Reguły twarde** (`HARD_RULES` w `arch-core.mjs`), niezależne od listy: moduły `media`, `f-media`, `shared-media` nie importują domeny (`quizzes`, `learning`, `progress`, `classes`), a `src/**` nie importuje `server/**`. Wpis allowlisty nie może ukrywać takiego importu. Lista wyjątków `HARD_RULE_EXCEPTIONS` jest pusta (wyjątek `media -> quizzes` zlikwidowano w naprawie 14, `db5d02a`); pusta lista też jest sprawdzana: wyjątek, który już nie narusza, pada z komunikatem `usuń wyjątek`.
+6. **Plik poza modułami.** Każdy plik kodu musi pasować do reguły z manifestu. Plik bez modułu nie jest oceniany przez krawędzie, więc bez tego testu mógłby importować cokolwiek; test pada z komunikatem `plik poza modułami: dodaj regułę do scripts/arch-manifest.json`.
+7. **Dynamiczny import bez literału.** `import(x)` i `require(x)` z argumentem niebędącym literałem ukrywają cel przed grafem; w `server/**` i `src/**` nie mogą wystąpić (w `scripts/dev-server.mjs` jeden przypadek zostaje, poza zakresem). Test wypisuje plik i linię.
 
 **Jak czytać porażkę.** Nazwa testu mówi, która reguła padła, a komunikat wypisuje pliki i pary modułów. Dla każdego naruszenia wybierz: naprawić import (zwykle najlepsze), albo dopisać wpis z `reason` (rzadko, z review). Wpis nieaktualny zawsze się usuwa.
 
 **Jak regenerować listę.** `node scripts/arch-audit.mjs --print-allowlist` wypisuje JSON (`$comment` i `entries`) dla bieżących naruszeń, z `reason` `do naprawy w 5.C`. Służy do przeglądu, nie do dopisywania: po naprawie porównaj wynik z plikiem (`diff`), powinny zniknąć wyłącznie wpisy naprawionych naruszeń. Obecny plik ma 2 wpisy (typy `shared-types`).
 
-**Test syntetyczny.** Ostatni test buduje w `os.tmpdir()` drzewo z dwoma modułami i jednym naruszeniem, wpisem nieaktualnym, importem `media -> quizzes` i cyklem, i sprawdza, że kanarek to wszystko wykrywa. Dzięki temu porażka nie jest jedynym dowodem, że kanarek działa.
+**Test syntetyczny.** Ostatni test buduje w `os.tmpdir()` drzewo z dwoma modułami i jednym naruszeniem, wpisem nieaktualnym, importem `media -> quizzes` i cyklem, i sprawdza, że kanarek to wszystko wykrywa. Dzięki temu porażka nie jest jedynym dowodem, że kanarek działa. Drugi test syntetyczny buduje drzewo z plikiem bez modułu importującym `./quizRepo` (obejście, które bez kontroli nieprzypisanych plików przechodzi zielono) oraz z `import(x)` i `require(x)`, i sprawdza, że oba są wykrywane.
 
 ## Ograniczenia pomiaru
 

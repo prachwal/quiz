@@ -547,7 +547,8 @@ export function allowlistFor(result) {
 }
 
 // Compares an audit with the allowlist and the hard rules. Everything it returns is
-// a failure for the canary, except `cycleCount`, which is informational.
+// a failure for the canary, except `cycleCount`, which is informational. That covers
+// `unassigned` (files no manifest rule matches) and `nonLiteralDynamic` (server/ and src/ only).
 //   allowlist:    entries { from, to, pair, reason } (files, not lines)
 //   exceptions:   { from, to } hard-rule edges accepted for now (kept out of the allowlist)
 //   expectedCycles: arrays of module names; a cycle with another member set, or more cycles, fails
@@ -590,6 +591,12 @@ export function checkArchitecture(result, { allowlist = [], exceptions = [], har
   const unexpectedCycles = expectedCycles === null ? [] : cycles.filter((cycle) => !expectedCycles.some((expected) => sameSet(expected, cycle)));
   const cycleCountExceeded = expectedCycles !== null && cycles.length > expectedCycles.length;
 
+  // reasonFor does not judge edges that touch an unassigned file, so a file outside every module
+  // would bypass the whole check: it is reported here instead.
+  const unassigned = result.unassigned;
+  // A non-literal import(x) or require(x) hides its target from the graph; server/ and src/ must have none.
+  const nonLiteralDynamic = result.dynamic.filter((call) => call.file.startsWith('server/') || call.file.startsWith('src/'));
+
   return {
     newViolations,
     staleEntries,
@@ -600,5 +607,7 @@ export function checkArchitecture(result, { allowlist = [], exceptions = [], har
     unexpectedCycles,
     cycleCountExceeded,
     cycleCount: cycles.length,
+    unassigned,
+    nonLiteralDynamic,
   };
 }

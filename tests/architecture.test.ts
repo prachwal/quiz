@@ -80,6 +80,24 @@ test('hard rule: src/** never imports server/**', () => {
   assert.equal(srcRules.length, 0, `src/ importuje server/:\n${show(srcRules)}`)
 })
 
+test('every code file belongs to a module', () => {
+  assert.equal(
+    report.unassigned.length,
+    0,
+    `plik poza modułami: dodaj regułę do scripts/arch-manifest.json\n${report.unassigned.map((file: string) => `  - ${file}`).join('\n')}`,
+  )
+})
+
+test('server/ and src/ have no non-literal import() or require()', () => {
+  assert.equal(
+    report.nonLiteralDynamic.length,
+    0,
+    `Dynamiczny import albo require bez literału (cel niewidoczny dla grafu):\n${report.nonLiteralDynamic
+      .map((d: { file: string; line: number; text: string }) => `  - ${d.file}:${d.line} ${d.text}(...)`)
+      .join('\n')}`,
+  )
+})
+
 test('allowlist never hides a hard-rule import', () => {
   assert.equal(
     report.allowlistHardRule.length,
@@ -144,6 +162,50 @@ test('canary detects violation, stale entry, hard rule and cycle in a synthetic 
       allowlist: [quizToMedia, { from: 'src/media/m.ts', to: 'src/quizzes/q.ts', pair: 'media -> quizzes', reason: 'test' }],
     })
     assert.equal(hiding.allowlistHardRule.length, 1)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+// A file that no manifest rule matches is invisible to the module edge check (its edges are never judged),
+// so the canary must catch it on its own. The import below would be a violation if the file had a module.
+test('canary detects a file outside every module and a non-literal dynamic import', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'arch-unassigned-'))
+  const write = (rel: string, text: string) => {
+    mkdirSync(dirname(join(dir, rel)), { recursive: true })
+    writeFileSync(join(dir, rel), text)
+  }
+  try {
+    write(
+      'scripts/arch-manifest.json',
+      JSON.stringify({
+        version: 1,
+        rules: [{ module: 'quizzes', match: 'server/quizRepo.ts' }],
+        allow: { quizzes: [] },
+        open: [],
+        incoming: {},
+      }),
+    )
+    const importLine = (names: string, path: string) => ['import', names, 'from', `'${path}'`].join(' ')
+    write('server/quizRepo.ts', 'export const repo = 1\n')
+    write('server/mediaHelpers.ts', `${importLine('{ repo }', './quizRepo')}\nexport const helper = repo\n`)
+    // The call is assembled from pieces so the real scanner of this test file does not see a dynamic import.
+    const keyword = 'import'
+    write('server/loader.ts', `export const load = (name: string) => ${keyword}(name)\nexport const old = (name: string) => require(name)\n`)
+    write('src/literal.ts', `export const lazy = () => ${keyword}('./quizRepo')\n`)
+
+    const tree = auditRepo(dir)
+    const found = checkArchitecture(tree, { allowlist: [], expectedCycles: [] })
+    assert.deepEqual(found.unassigned, ['server/loader.ts', 'server/mediaHelpers.ts', 'src/literal.ts'])
+    // The unassigned import is not judged as a violation, which is exactly why `unassigned` must fail.
+    assert.deepEqual(found.newViolations, [])
+    assert.deepEqual(
+      found.nonLiteralDynamic.map((d: { file: string; line: number; text: string }) => [d.file, d.line, d.text]),
+      [
+        ['server/loader.ts', 1, 'import'],
+        ['server/loader.ts', 2, 'require'],
+      ],
+    )
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
