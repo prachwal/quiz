@@ -89,7 +89,7 @@ Po fazie 2 produkt jest nietknięty dla użytkownika, a jądro quizów nie zna k
 
 | # | Zadanie | Zależność |
 | --- | --- | --- |
-| 3.1 | **Decyzje D1–D4** z [[MCP-Admin-Tools]] (domyślnie: tylko OAuth, migawka pytań A, `class_transfer`, bez e-maila w liście podejść) | przed 3.2 |
+| 3.1 | ✅ **Decyzje D1–D4** z [[MCP-Admin-Tools]] (zrobione: tylko OAuth, migawka pytań A, `class_transfer`, bez e-maila w liście podejść) | przed 3.2 |
 | 3.2 | migracja `quiz_attempts.questions_snapshot` + zapis w `saveAttempt` (w fazie `beforeSave` z 2.1) + częściowe uzupełnienie istniejących wierszy | po 2.1 |
 | 3.3 | **`quiz_stats`** (`itemStats` + `attemptsOfQuiz` + snapshot) | po 3.2; wydanie 1 narzędzi (razem z 3.4) |
 | 3.4 | `user_results`, `user_analysis` (cała historia użytkownika bez klasy — to one odpowiadają na pytanie, od którego zaczął się [[MCP-Admin-Tools]]; read path z `classes.allAttempts` i `analyzeStudent`) | niezależne od 3.2 |
@@ -153,10 +153,10 @@ Zmienne środowiskowe `S3_*` i `MEDIA_*` dodać na Vercelu (Production/Preview/D
 | --- | --- | --- |
 | przed 0.1 | D-A: nie wstrzykiwać układu i tasować `ordering`/`matching` jednostajnie | tak (zrobione) |
 | przed 0.3 | D-B: końcowa interpunkcja w lukach tylko w `cloze` | tak |
-| przed 3.2 | D2 migawka pytań (wariant A) | A |
-| przed 3.3 | D1 tokeny z `manage:users` | nie (wariant A: tylko OAuth) |
-| przed 3.4 | D3 admin zmienia cudze klasy | tylko `class_transfer` |
-| przed 3.3 | D4 e-mail w `attempt_list` | nie |
+| przed 3.2 | D2 migawka pytań (wariant A) | A (zdecydowane) |
+| przed 3.3 | D1 tokeny z `manage:users` | nie (wariant A: tylko OAuth) (zdecydowane) |
+| przed 3.4 | D3 admin zmienia cudze klasy | tylko `class_transfer` (zdecydowane) |
+| przed 3.3 | D4 e-mail w `attempt_list` | nie (zdecydowane) |
 | przed 4.1 | dostawca magazynu (wynik M0) | Neon, jeśli M0 przejdzie, inaczej S3/R2 |
 | przed 4.1 | D10: klient S3 — SDK czy własny SigV4 (wynik pomiaru z M0) | SDK, o ile przyrost bundla jest mały |
 | przed 4.5 | czy `media_upload_from_url` wchodzi (SSRF) | tak, pod warunkiem pełnych zabezpieczeń |

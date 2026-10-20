@@ -5,7 +5,7 @@ tags:
   - plan
   - status/todo
 created: 2026-10-19
-updated: 2026-10-19
+updated: 2026-10-20
 ---
 
 # Narzędzia MCP dla administratora — projekt
@@ -102,23 +102,27 @@ pytania**. Reszta (quizy, klasy, uczniowie) jest już pokryta.
 
 ## 4. Decyzje wymagające rozstrzygnięcia
 
-### D1 — Token osobisty czy tylko OAuth
+Wszystkie cztery **zdecydowane 2026-10-20** — właściciel przyjął domyślne warianty
+(A dla D1–D3, bez e-maila dla D4). Odrzucone warianty zostawiono w skrócie, żeby
+było widać, dlaczego. Kolejność wdrożenia: [[Roadmap]], faza 3.
+
+### D1 — Token osobisty czy tylko OAuth — **zdecydowane: A**
 
 `POST /api/tokens` (`server/routes/tokens.ts`) tworzy tokeny wyłącznie z
 `write:quizzes` i `manage:classes`; **`manage:users` nigdy nie trafia do
 tokenu**. Skutek: narzędzia z tego dokumentu działają **tylko po zalogowaniu
 OAuth** (Claude, ChatGPT, Grok), a klient z `qz_…` dostanie odmowę.
 
-- **A (rekomendacja):** zostawić. Admin używa klienta z OAuth; skrypty
+- **A (wybrane):** zostawić. Admin używa klienta z OAuth; skrypty
   administracyjne wołają REST z ciasteczkiem sesji. Zero nowego ryzyka.
-- **B:** flaga `admin: true` przy tworzeniu tokenu (tylko dla admina, maks.
+- **B (odrzucone):** flaga `admin: true` przy tworzeniu tokenu (tylko dla admina, maks.
   ważność 30 dni, wymóg `confirm` przy tworzeniu). Wygodniejsze skrypty,
   ale token z `manage:users` może zmieniać role i blokować konta.
 
 Dokument zakłada **A**; jeśli wybierzemy B, zmienia się tylko `tokens.ts` i
 `context.ts` (lista uprawnień), nie kontrakt narzędzi.
 
-### D2 — Tożsamość pytania w statystyce (najpoważniejsze)
+### D2 — Tożsamość pytania w statystyce (najpoważniejsze) — **zdecydowane: A**
 
 `replaceQuiz` robi `DELETE FROM questions WHERE quiz_id = $1` i wstawia pytania
 od nowa, więc **`PUT /api/quizzes/:id` generuje nowe `id` pytań**. Podejścia
@@ -129,31 +133,32 @@ Dziś w bazie **0 z 21 podejść** ma osierocone pytania (nikt nie edytował qui
 po rozegraniu), ale problem jest **utajony**: pierwsza edycja zepsuje statystykę
 starszych podejść.
 
-- **A (rekomendacja):** migracja dodająca `quiz_attempts.questions_snapshot jsonb`
+- **A (wybrane):** migracja dodająca `quiz_attempts.questions_snapshot jsonb`
   (tablica `{id, type, prompt, points}` zapisywana w `saveAttempt`). `quiz_stats`
   czyta snapshot i **nie zależy** od aktualnej treści quizu. Backfill dla
   istniejących wierszy możliwy tylko częściowo (z bieżących pytań tam, gdzie
   `id` jeszcze istnieje).
-- **B:** bez migracji — `quiz_stats` grupuje po `(questionId)`, a pytania
+- **B (odrzucone):** bez migracji — `quiz_stats` grupuje po `(questionId)`, a pytania
   osierocone zwraca jako `unattributedAttempts` z ostrzeżeniem. Tańsze, ale
   statystyka „po edycji” pokaże niepełne dane.
 
-### D3 — Czy admin może zmieniać cudze klasy
+### D3 — Czy admin może zmieniać cudze klasy — **zdecydowane: A**
 
 Dziś `writableClass` zwraca `null` dla nie-właściciela, więc admin ma tylko
 podgląd — świadoma decyzja: uczniowie są informowani, że **nauczyciel** widzi
 ich wyniki i klasy. Rozszerzenie na admina jest technicznie trywialne, ale
 zmienia obietnicę, nie tylko uprawnienia.
 
-- **A (rekomendacja):** zostawić podgląd; dodać tylko `class_transfer`
+- **A (wybrane):** zostawić podgląd; dodać tylko `class_transfer`
   (przepisanie właściciela, gdy nauczyciel odchodzi) — jawna, audytowana
   operacja administracyjna zamiast cichego prawa zapisu.
-- **B:** pełne `class_update`/`class_archive` dla admina.
+- **B (odrzucone):** pełne `class_update`/`class_archive` dla admina.
 
-### D4 — Zakres e-maili
+### D4 — Zakres e-maili — **zdecydowane: bez e-maila w `attempt_list`**
 
-Patrz §3.7. Do potwierdzenia: czy `attempt_list` ma pokazywać e-mail autora
-podejścia, czy wystarczy `userId` + imię (e-mail dopiero w `user_get`).
+Patrz §3.7. `attempt_list` zwraca `userId` + imię; e-mail pojawia się dopiero w
+`user_get` (odrzucone: e-mail już na liście podejść, większe rozlanie danych osobowych
+w odpowiedziach modelu).
 
 ## 5. Narzędzia
 
