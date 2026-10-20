@@ -76584,7 +76584,7 @@ async function systemStats() {
 }
 
 // server/mcp/tools/operations.ts
-var AUDIT_ACTIONS = ["roles.update", "user.block", "user.unblock", "feedback.status", "mcp.call", "settings.update", "media.upload"];
+var AUDIT_ACTIONS = ["roles.update", "user.block", "user.unblock", "feedback.status", "mcp.call", "settings.update", "media.upload", "verb.image"];
 var pageSize = external_exports.number().int().min(1).max(200);
 function registerOperationTools(server, ctx) {
   const isAdmin = ctx.viewer.admin;
@@ -76592,7 +76592,7 @@ function registerOperationTools(server, ctx) {
     "audit_list",
     {
       title: "Dziennik audytu (admin)",
-      description: "Wpisy audytu, od najnowszego. Filtry: action (roles.update, user.block, user.unblock, feedback.status, mcp.call, settings.update, media.upload), actorId (kto), targetId (czego dotyczy\u0142o), from (w\u0142\u0105cznie) i to (wy\u0142\u0105cznie) jako daty ISO. mcp.call ma details.tool. Domy\u015Blnie 50, maks. 200; hasMore m\xF3wi, czy jest nast\u0119pna strona (offset).",
+      description: "Wpisy audytu, od najnowszego. Filtry: action (roles.update, user.block, user.unblock, feedback.status, mcp.call, settings.update, media.upload, verb.image), actorId (kto), targetId (czego dotyczy\u0142o), from (w\u0142\u0105cznie) i to (wy\u0142\u0105cznie) jako daty ISO. mcp.call ma details.tool. Domy\u015Blnie 50, maks. 200; hasMore m\xF3wi, czy jest nast\u0119pna strona (offset).",
       inputSchema: {
         action: external_exports.enum(AUDIT_ACTIONS).optional(),
         actorId: external_exports.string().trim().min(1).max(200).optional(),

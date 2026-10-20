@@ -16,7 +16,7 @@ import { isoDate } from './admin'
  * (`server/userAdmin.ts`) and add an `mcp.call` audit entry on top of the panel's own entry.
  */
 
-const AUDIT_ACTIONS = ['roles.update', 'user.block', 'user.unblock', 'feedback.status', 'mcp.call', 'settings.update', 'media.upload'] as const
+const AUDIT_ACTIONS = ['roles.update', 'user.block', 'user.unblock', 'feedback.status', 'mcp.call', 'settings.update', 'media.upload', 'verb.image'] as const
 const pageSize = z.number().int().min(1).max(200)
 
 export function registerOperationTools(server: McpServer, ctx: Ctx) {
@@ -27,7 +27,7 @@ export function registerOperationTools(server: McpServer, ctx: Ctx) {
     {
       title: 'Dziennik audytu (admin)',
       description:
-        'Wpisy audytu, od najnowszego. Filtry: action (roles.update, user.block, user.unblock, feedback.status, mcp.call, settings.update, media.upload), actorId (kto), targetId (czego dotyczyło), from (włącznie) i to (wyłącznie) jako daty ISO. mcp.call ma details.tool. Domyślnie 50, maks. 200; hasMore mówi, czy jest następna strona (offset).',
+        'Wpisy audytu, od najnowszego. Filtry: action (roles.update, user.block, user.unblock, feedback.status, mcp.call, settings.update, media.upload, verb.image), actorId (kto), targetId (czego dotyczyło), from (włącznie) i to (wyłącznie) jako daty ISO. mcp.call ma details.tool. Domyślnie 50, maks. 200; hasMore mówi, czy jest następna strona (offset).',
       inputSchema: {
         action: z.enum(AUDIT_ACTIONS).optional(),
         actorId: z.string().trim().min(1).max(200).optional(),

@@ -4,6 +4,7 @@ import { errorMessage } from '../../app/api'
 import { useListAuditQuery } from './api'
 import { PHONE_QUERY, useMediaQuery } from '../../app/useMediaQuery'
 import type { AuditEntry } from '../../shared/quiz/types'
+import { describeVerbImage } from '../../shared/quiz/verbImageAudit'
 
 const ACTIONS: Record<AuditEntry['action'], string> = {
   'roles.update': 'Zmiana ról',
@@ -13,6 +14,7 @@ const ACTIONS: Record<AuditEntry['action'], string> = {
   'mcp.call': 'Zmiana przez MCP',
   'settings.update': 'Ustawienia aplikacji',
   'media.upload': 'Wysłanie obrazu',
+  'verb.image': 'Obraz czasownika',
 }
 
 const formatDate = (value: string) =>
@@ -22,6 +24,7 @@ const describe = (entry: AuditEntry) => {
   const d = entry.details as { from?: string[]; to?: string[]; status?: string }
   if (entry.action === 'roles.update') return `${(d.from ?? []).join(', ') || '—'} → ${(d.to ?? []).join(', ') || '—'}`
   if (entry.action === 'feedback.status') return `status: ${d.status}`
+  if (entry.action === 'verb.image') return describeVerbImage(entry.details)
   if (entry.action === 'mcp.call' || entry.action === 'settings.update' || entry.action === 'media.upload') return JSON.stringify(entry.details)
   return ''
 }

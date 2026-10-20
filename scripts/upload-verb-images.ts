@@ -17,8 +17,8 @@
  * `--apply` goes through the same path as the MCP tools: the bytes are sniffed (PNG, JPEG or WebP only, at most
  * MEDIA_MAX_BYTES), the author's ready copy with the same SHA-256 is reused, the daily limits apply, the object gets
  * a random key and the row becomes ready; then the verb gets the image and its media reference in one transaction
- * (server/irregularVerbs.ts setVerbImage). A new file writes one `media.upload` audit row (source `script`).
- * The verb change itself is not audited (a known gap, see the Media-Storage-Plan).
+ * (server/irregularVerbs.ts setVerbImage). A new file writes one `media.upload` audit row (source `script`), and every
+ * verb that gets its image one `verb.image` row (the previous and the new media id, the `--owner` as actor).
  *
  * Refuses `--apply` with MEDIA_DRIVER=memory: the files would not reach the bucket. Needs DATABASE_URL and the
  * S3_* / MEDIA_PUBLIC_BASE_URL settings (npm bundles this file and runs it with .env and .env.local).
@@ -32,6 +32,7 @@ import { closePool } from '../server/db'
 import { allVerbImageRefs, setVerbImage } from '../server/irregularVerbs'
 import { mediaRuntime, storeBytes } from '../server/media/service'
 import { applyBlockReason, planVerbImages, type PlannedMatch } from '../server/verbImageMatch'
+import { verbImageAudit } from '../src/shared/quiz/verbImageAudit'
 
 const USAGE = 'Użycie: npm run media:verb-images -- --dir <katalog> [--owner <auth0 id> --apply] [--replace]'
 
@@ -67,6 +68,11 @@ async function applyPlan(dir: string, owner: string, matches: PlannedMatch[]): P
       const stored = await storeBytes(mediaRuntime(), { ownerId: owner, bytes, source: 'script' })
       const change = await setVerbImage(match.verbId, stored.row.id)
       if (!change) throw new Error('Nie znaleziono czasownika')
+      await writeAudit({
+        actorId: owner,
+        actorLabel: null,
+        ...verbImageAudit({ verbId: match.verbId, base: match.base, mediaBefore: change.before, mediaAfter: change.after, ownerId: owner }),
+      })
       if (!stored.reused) {
         await writeAudit({
           actorId: owner,
