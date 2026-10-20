@@ -112,7 +112,7 @@ Każdy krok to osobny commit; przed commitem `npm run lint`, `npm test`, `npm ru
 | 1 | **`pool` do `server/db.ts`** (zrobione) | mechaniczna zmiana 11 importów; bez re-eksportu z `quizRepo` | niskie |
 | 2 | **Zdarzenie po ocenie** (zrobione: `server/gradeHooks.ts`, rejestracja w `server/learningGradeHooks.ts`) | `grade` publikuje `onGraded({ quiz, userId, result, attemptId })`; `learning` rejestruje obsługę: `passed` kursu, `reviews.applyResults`, `progress.recordActivity`; `course` w odpowiedzi dokłada `learning` | średnie (kolejność skutków ubocznych, błąd obsługi nie może zgubić zapisanego podejścia) |
 | 3 | **UI quizów bez nauki** (zrobione: `ResultView` dostaje `outcome?: ResultOutcome`, `QuizPlayer` `outcomeFor`/`backLinkFor`; `pages/QuizPlay.tsx` składa je z `features/learn/courseExam.tsx`; wpisany `/learn/...` usunięty) | niskie |
-| 4 | **RTK Query na slice'y** | `api.injectEndpoints` w każdym module; baza i tagi zostają w `app/api.ts` | niskie |
+| 4 | **RTK Query na slice'y** (zrobione) | `api.injectEndpoints` w każdym module; baza i tagi zostają w `app/api.ts` | niskie |
 | 5 | **Klasy przez publiczne API nauki** | `learning.progressFacts(userIds)` zamiast SQL na `lessons`/`lesson_progress`/`courses` w `classes`, `attemptsRepo`, MCP | średnie |
 | 6 | **Przeniesienie plików do slice'ów** | `server/modules/*`, `src/features/learning`, podział `shared/quiz/` i `types.ts` | niskie logicznie, duży diff |
 | 7 | **Egzekwowanie granic** | reguła zakazująca importów „w górę” (patrz niżej) | niskie |
