@@ -41,7 +41,8 @@ Deployment z CLI nie ma aliasu git — push na `vercel-neon` tworzy tylko **Depl
 przez Vercel Authentication, `302`). Produkcja jest publiczna: <https://quiz-vercel-rho.vercel.app>.
 
 Zmienne środowiskowe (Production/Preview/Development): `DATABASE_URL` (+ `*_UNPOOLED`), `AUTH0_*`,
-`AUTH0_MGMT_*`, `SENTRY_DSN`, `VITE_AUTH0_*`, `VITE_SENTRY_DSN`. Są wspólne dla wszystkich środowisk,
+`AUTH0_MGMT_*`, `SENTRY_DSN`, `VITE_AUTH0_*`, `VITE_SENTRY_DSN`; magazyn obrazów `S3_*` i `MEDIA_*` (opis w
+[Media-Storage-Plan](Media-Storage-Plan.md), „Konfiguracja”; `MEDIA_URL_FETCH` zostaje `false`, dopóki nie zweryfikowano przypinania połączeń na Vercelu). Są wspólne dla wszystkich środowisk,
 więc preview widzi te same dane co produkcja.
 
 ## Baza

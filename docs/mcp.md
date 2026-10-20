@@ -48,6 +48,18 @@ Nazwy mają postać `obiekt_czynność`. Operacje nieodwracalne wymagają `confi
 | `quiz_update` | zastępuje cały quiz i jego ustawienia (id pytań się zmieniają) |
 | `quiz_delete` | usuwa quiz; wymaga `confirm: true` |
 
+**Obrazy** – `write:quizzes`; obraz trafia do treści jako zapis `![opis](media:<id>)`. Składnię i to, gdzie wolno ją użyć, sprawdzaj w `quiz_schema`
+
+| Narzędzie | Opis |
+| --------- | ---- |
+| `media_upload` | wysyła obraz (PNG, JPEG, WebP; do 2 MB po zdekodowaniu) w wywołaniu jako base64; zwraca `mediaId`, `url`, wymiary i gotowy `markdown`. Każdy znak base64 to tokeny, więc to ścieżka dla małych ilustracji |
+| `media_upload_from_url` | serwer pobiera obraz z adresu `https` (zalecane dla większych plików); działa tylko przy `MEDIA_URL_FETCH=true` |
+| `media_create_upload` | dla klientów z HTTP PUT: zwraca `uploadUrl` i `headers` podpisane na rozmiar; potem wysyłasz bajty i wołasz `media_complete` |
+| `media_complete` | po PUT sprawdza w magazynie rozmiar, skrót i typ; niezgodny plik jest usuwany |
+| `media_list` | pliki autora (admin widzi wszystkie i może podać `ownerId`); `unreferenced`, `limit`, `offset`, `total`, `hasMore` |
+| `media_get` | metadane, adres i `referencedBy` (quizy, które używają pliku, z tytułami) |
+| `media_delete` | usuwa plik (obiekt i wpis); wymaga `confirm: true`; odmawia, gdy quiz go używa, i podaje te quizy |
+
 **Klasy** – nauczyciel (`manage:classes`) pracuje na swoich klasach; admin (`manage:users`, logowanie OAuth) ma **podgląd wszystkich klas**, ale nie zmienia cudzych
 
 | Narzędzie | Opis |
@@ -101,6 +113,26 @@ Przepływy:
 Dodanie ucznia po id nie wymaga jego zgody – uczeń widzi klasę w „Zadania” i może ją opuścić. Nauczyciel widzi jego imię, e‑mail i wyniki z zadań klasy (patrz informacja przy dołączaniu).
 
 **Administrator** – `quiz_get`/`quiz_list` czytają **każdy** quiz (nie tylko własny), a `quiz_update`/`quiz_delete` wymagają jedynie `write:quizzes`, więc kontrola nad treścią quizów jest pełna. Wyniki poza klasą dają narzędzia z sekcji „Administrator” wyżej.
+
+## Obrazy: ścieżki wysyłania i zabezpieczenia
+
+Każda ścieżka kończy się tym samym: plik `ready` i odpowiedź z `mediaId`, `url`, wymiarami i `markdown`. Szczegóły zasad: [[Media-Storage-Plan]].
+
+- **Typ** rozpoznaje serwer po pierwszych bajtach; deklaracja klienta się nie liczy. GIF i SVG są odrzucane.
+- **Limity:** 2 MB na plik (`MEDIA_MAX_BYTES`), 100 plików i 50 MB dziennie na autora, 20 udanych pobrań z adresu na godzinę. Ten sam plik tego samego autora (ten sam skrót) to jeden wpis; ponowne wysłanie zwraca go z `reused: true`.
+- **Audyt:** każda zmiana trafia do dziennika jako `mcp.call` z rozmiarem, źródłem i skrótem SHA-256 (nigdy bajty ani base64).
+
+**Zabezpieczenia `media_upload_from_url` (SSRF)** – serwer wykonuje żądanie w imieniu klienta, więc:
+
+- tylko `https`, port 443, bez loginu i hasła, adres do 2048 znaków;
+- nazwy `localhost`, `*.localhost`, `*.local`, `*.internal`, `*.localdomain` i nazwy bez kropki są odrzucane; adresy IP są sprawdzane (loopback, prywatne, link-local, metadane chmury `169.254.169.254`, zarezerwowane; adresy IPv4 zmapowane w IPv6, NAT64 i 6to4 według osadzonego IPv4);
+- nazwa jest rozwiązywana **przed** połączeniem, **wszystkie** zwrócone adresy muszą być publiczne, a połączenie idzie na sprawdzony adres (obrona przed DNS rebinding);
+- przekierowania: najwyżej 3, każde sprawdzane od nowa, przejście na `http` zakazane;
+- limit czasu 8 s łącznie; limit 2 MB liczony na strumieniu, nie po `Content-Length`; wysyłane są tylko nagłówki `User-Agent` i `Accept` (bez ciasteczek, bez nagłówków klienta, bez ponownego użycia połączeń).
+
+**Bramka `MEDIA_URL_FETCH`.** Domyślnie wyłączona: bez `MEDIA_URL_FETCH=true` narzędzie odmawia z komunikatem. Włączenie to decyzja właściciela, po sprawdzeniu na Vercelu, że połączenie jest przypięte do sprawdzonego adresu. Testy używają atrap DNS i transportu i niczego nie pobierają; przypięcie przez hak `lookup` nie zostało zweryfikowane na prawdziwym wdrożeniu. Lokalny `test:mcp` ustawia `MEDIA_URL_FETCH=false`.
+
+**Znane ograniczenie:** limit godzinowy liczy wpisy utworzone przez pobranie. Nieudane pobranie i pobranie pliku, który już istnieje, nie są liczone, więc nie wydłużają ani nie skracają limitu.
 
 ## Podłączenie klientów
 
@@ -158,7 +190,7 @@ npm run test:mcp
 
 `MCP_E2E_VIA_DEV=1 npm run test:mcp` powtarza te same sprawdzenia przez zbundlowaną funkcję za proxy `npm run dev:full`, a nie tylko na aplikacji w procesie.
 
-Skrypt uruchamia `scripts/dev-server.mjs`, a gdy port 8888 jest już zajęty, używa działającego serwera i niczego nie zatrzymuje. Oficjalnym klientem MCP wywołuje **wszystkie 42 narzędzia** na prawdziwej aplikacji i bazie: poprawne scenariusze, walidację, odmowy dla innego nauczyciela, admina (tylko podgląd), tokenu bez uprawnień i bez potwierdzenia oraz wpisy w audycie. Dane testowe mają prefiks `mcp-e2e` i są usuwane przed i po teście; kod wyjścia ≠ 0 przy błędzie. Test produkcji (tylko quizy, tymczasowy quiz): `node scripts/mcp-smoke.mjs`.
+Skrypt uruchamia `scripts/dev-server.mjs`, a gdy port 8888 jest już zajęty, używa działającego serwera i niczego nie zatrzymuje. Oficjalnym klientem MCP wywołuje **wszystkie 49 narzędzi** na prawdziwej aplikacji i bazie: poprawne scenariusze, walidację, odmowy dla innego nauczyciela, admina (tylko podgląd), tokenu bez uprawnień i bez potwierdzenia oraz wpisy w audycie. Dane testowe mają prefiks `mcp-e2e` i są usuwane przed i po teście; kod wyjścia ≠ 0 przy błędzie. Test produkcji (tylko quizy, tymczasowy quiz): `node scripts/mcp-smoke.mjs`.
 
 ## Szybki test z linii poleceń
 

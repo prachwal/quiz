@@ -111,7 +111,7 @@ Rozpoczyna się po rozstrzygnięciu M0.
 | 4.2 | ✅ **M2** zapis `![opis](media:…)`, walidacja „gdzie wolno”, `syncRefs` (zrobione 2026-10-20) | `promptText` z cloze (już po D1) |
 | 4.3 | ✅ **M3** mapa `media` w odpowiedziach (zrobione 2026-10-20) | po 2.3: endpointy przez `injectEndpoints` |
 | 4.4 | ✅ **M4** renderowanie w quizie: `RichText`, `MediaImage`, `MediaProvider`, `ChoiceTile` z obrazem, `Cloze`, wynik (zrobione 2026-10-20; **nie zrobione:** wstęp lekcji (L1) i podgląd w edytorze (M6)) | po 2.2 |
-| 4.5 | **M5** narzędzia MCP do wysyłania (`media_upload`, `media_upload_from_url`, …) | najpierw testy `ssrf`; wydanie 2 narzędzi |
+| 4.5 | ✅ **M5** narzędzia MCP do wysyłania (`media_upload`, `media_upload_from_url`, …) — zrobione 2026-10-20 (`f8cfd4a` … `a8b891e`; pobieranie z adresu za bramką `MEDIA_URL_FETCH`, domyślnie wyłączone) | najpierw testy `ssrf`; wydanie 2 narzędzi |
 | 4.6 | **M6** wysyłanie w edytorze (`ImageUpload`) | po M4 |
 | 4.7 | **Podział, krok 5:** klasy czytają postęp lekcji przez API nauki | przed L1, żeby narzędzia lekcji lądowały na ustalonym API |
 | 4.8 | **L1** wstęp lekcji, **L2** ilustracje czasowników | `lesson_get`/`lesson_update`/`verb_set_image` w wydaniu 3 narzędzi |
@@ -127,7 +127,7 @@ Rozpoczyna się po rozstrzygnięciu M0.
 
 ## Licznik narzędzi MCP
 
-Plany podają przyrosty, nie liczby bezwzględne, bo zależą od kolejności faz. Przy kolejności z tego dokumentu: przed fazą 3 było 27 → **po fazie 3 jest 42** (stan 2026-10-20, sprawdzany przez `npm run test:mcp`) → po M5 **49** → po L1 **51** → po L2 **52**. Każdy commit, który dodaje narzędzia, aktualizuje asercję w `scripts/mcp-local-e2e.ts` i liczbę w `docs/mcp-clients.md`.
+Plany podają przyrosty, nie liczby bezwzględne, bo zależą od kolejności faz. Przy kolejności z tego dokumentu: przed fazą 3 było 27 → **po fazie 3 jest 42** (stan 2026-10-20, sprawdzany przez `npm run test:mcp`) → po M5 **49** (stan 2026-10-20: 49 zweryfikowanych przez `npm run test:mcp`) → po L1 **51** → po L2 **52**. Każdy commit, który dodaje narzędzia, aktualizuje asercję w `scripts/mcp-local-e2e.ts` i liczbę w `docs/mcp-clients.md`.
 
 ## Zacommitowany bundle `api/index.mjs`
 
