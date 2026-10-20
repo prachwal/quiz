@@ -62,7 +62,7 @@ Przed czymkolwiek strukturalnym; małe, niezależne, każde z testem.
 
 | # | Zadanie | Decyzja |
 | --- | --- | --- |
-| 0.1 | **`ordering`/`matching`: jedna poprawka, trzy objawy.** `withShownOrders` wstrzykuje do wysyłanej odpowiedzi układ widoczny na ekranie dla nietkniętych pytań `ordering` (także przy ocenie, [QuizPlayer.tsx:140](../src/features/quizzes/QuizPlayer.tsx#L140)); serwer liczy je jako udzielone (seria, cel dzienny, `quiz_attempts.answers`), a `shuffleAwayFrom` gwarantuje, że ten układ nigdy nie jest układem autora, więc takie pytanie zawsze dostaje 0. Poprawka: przestać wstrzykiwać (nietknięte = nieodpowiedziane), tasować jednostajnie, a `isAnswered` liczy tylko faktycznie ułożoną odpowiedź | **D-A:** tak (rekomendacja) |
+| 0.1 | **`ordering`/`matching`: jedna poprawka, trzy objawy (zrobione).** `withShownOrders` wstrzykuje do wysyłanej odpowiedzi układ widoczny na ekranie dla nietkniętych pytań `ordering` (także przy ocenie, [QuizPlayer.tsx:140](../src/features/quizzes/QuizPlayer.tsx#L140)); serwer liczy je jako udzielone (seria, cel dzienny, `quiz_attempts.answers`), a `shuffleAwayFrom` gwarantuje, że ten układ nigdy nie jest układem autora, więc takie pytanie zawsze dostaje 0. Poprawka: przestać wstrzykiwać (nietknięte = nieodpowiedziane), tasować jednostajnie, a `isAnswered` liczy tylko faktycznie ułożoną odpowiedź | **D-A:** tak (zrobione) |
 | 0.2 | limity długości `id` w `config` dla `ordering` i `matching` w `validate` (JSON Schema ma 64) i test zgodności zod ↔ JSON Schema (zrobione) | brak (zrobione) |
 | 0.3 | cloze D1: końcowa interpunkcja w lukach (zrobione) | **D-B:** tak, tylko dla `cloze` (zrobione) |
 
@@ -151,7 +151,7 @@ Zmienne środowiskowe `S3_*` i `MEDIA_*` dodać na Vercelu (Production/Preview/D
 
 | Kiedy | Decyzja | Domyślnie |
 | --- | --- | --- |
-| przed 0.1 | D-A: nie wstrzykiwać układu i tasować `ordering`/`matching` jednostajnie | tak |
+| przed 0.1 | D-A: nie wstrzykiwać układu i tasować `ordering`/`matching` jednostajnie | tak (zrobione) |
 | przed 0.3 | D-B: końcowa interpunkcja w lukach tylko w `cloze` | tak |
 | przed 3.2 | D2 migawka pytań (wariant A) | A |
 | przed 3.3 | D1 tokeny z `manage:users` | nie (wariant A: tylko OAuth) |

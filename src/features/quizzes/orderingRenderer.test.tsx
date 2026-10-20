@@ -65,6 +65,17 @@ describe('ordering renderer', () => {
     expect(labels[2]).toContain('Trzeci')
   })
 
+  it('offers to keep the shown arrangement until the player moves something', () => {
+    const onChange = renderOrdering()
+    fireEvent.click(screen.getByRole('button', { name: 'Zostaw w tej kolejności' }))
+    expect(onChange).toHaveBeenCalledWith({ order: ['c', 'a', 'b'] })
+  })
+
+  it('hides the keep button once an order exists', () => {
+    renderOrdering({ order: ['a', 'b', 'c'] })
+    expect(screen.queryByRole('button', { name: 'Zostaw w tej kolejności' })).toBeNull()
+  })
+
   it('orderingItems returns the player payload', () => {
     expect(orderingItems(question.config).map((item) => item.id)).toEqual(['c', 'a', 'b'])
   })

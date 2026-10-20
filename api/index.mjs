@@ -62401,11 +62401,6 @@ var shuffleWith = (items, rng) => {
   }
   return items;
 };
-var shuffleAwayFrom = (items, isAuthorOrder, rng) => {
-  for (let attempt = 0; attempt < 8 && isAuthorOrder(); attempt += 1) shuffleWith(items, rng);
-  if (items.length >= 2 && isAuthorOrder()) items.push(items.shift());
-  return items;
-};
 var gradeChoice = (question, answer) => {
   const selected = new Set(answer?.optionIds ?? []);
   const correct = new Set(question.options.filter((o) => o.isCorrect).map((o) => o.id));
@@ -62549,10 +62544,7 @@ var questionTypeDefs = {
       const config2 = orderingConfig(question.config);
       if (!config2) return { options: [] };
       if (withAnswers) return { options: [], config: config2 };
-      const items = [...config2.items];
-      const inAuthorOrder = () => items.every((item, i) => item.id === config2.items[i].id);
-      const indistinguishable = items.every((item) => normalizeText(item.text) === normalizeText(items[0].text));
-      if (!indistinguishable) shuffleAwayFrom(items, inAuthorOrder, rng);
+      const items = shuffleWith([...config2.items], rng);
       return { options: [], config: { items: items.map(({ id, text: text2 }) => ({ id, text: text2 })) } };
     },
     describe: (question, answer) => {
@@ -62616,10 +62608,10 @@ var questionTypeDefs = {
       const config2 = matchingConfig(question.config);
       if (!config2) return { options: [] };
       if (withAnswers) return { options: [], config: config2 };
-      const rights = config2.pairs.map((pair) => ({ id: pair.rightId, text: pair.right }));
-      const inAuthorOrder = () => rights.every((right, i) => right.id === config2.pairs[i].rightId);
-      const indistinguishable = rights.every((right) => normalizeText(right.text) === normalizeText(rights[0].text));
-      if (!indistinguishable) shuffleAwayFrom(rights, inAuthorOrder, rng);
+      const rights = shuffleWith(
+        config2.pairs.map((pair) => ({ id: pair.rightId, text: pair.right })),
+        rng
+      );
       return {
         options: [],
         config: { lefts: config2.pairs.map((pair) => ({ id: pair.id, text: pair.left })), rights }

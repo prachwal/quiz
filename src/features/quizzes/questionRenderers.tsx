@@ -86,6 +86,8 @@ const Numeric = ({ value, onChange }: RendererProps) => (
 
 const Ordering = ({ question, value, onChange }: RendererProps) => {
   const items = orderingItems(question.config)
+  // until the player moves something, the list shows the server arrangement (not yet an answer)
+  const answered = Boolean(value?.order?.length)
   const order = value?.order?.length ? value.order : items.map((item) => item.id)
   const textOf = (id: string) => items.find((item) => item.id === id)?.text ?? ''
   // up/down buttons instead of drag & drop: HTML5 DnD does not work on touch screens
@@ -132,6 +134,11 @@ const Ordering = ({ question, value, onChange }: RendererProps) => {
           </Flex>
         ))}
       </Flex>
+      {!answered && (
+        <Button style={{ marginTop: 12 }} onClick={() => onChange({ order: items.map((item) => item.id) })}>
+          Zostaw w tej kolejności
+        </Button>
+      )}
     </>
   )
 }

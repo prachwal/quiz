@@ -274,18 +274,46 @@ test('ordering accepts a swap of two identical items', () => {
   assert.equal(gradeQuiz(orderingQuestion(list), { o1: { order: ['a', 'c', 'b'] } }).percent, 0)
 })
 
-test('ordering playerView shuffles and never returns the correct order', () => {
-  // a degenerate rng would leave the list untouched: the fallback rotation must kick in
+test('ordering playerView shuffles uniformly with the injected rng', () => {
+  // rng 0 always swaps with index 0: Fisher-Yates on [a, b, c] gives [b, c, a]
   const view = typeDef('ordering').playerView(
+    { type: 'ordering', options: [], config: { items } },
+    () => 0,
+    false,
+  ) as { config: { items: { id: string }[] } }
+  assert.deepEqual(
+    view.config.items.map((i) => i.id),
+    ['b', 'c', 'a'],
+  )
+  // the author order is a possible arrangement: an identity permutation from the rng keeps it
+  const identity = typeDef('ordering').playerView(
     { type: 'ordering', options: [], config: { items } },
     () => 0.999999,
     false,
   ) as { config: { items: { id: string }[] } }
-  assert.notDeepEqual(
-    view.config.items.map((i) => i.id),
+  assert.deepEqual(
+    identity.config.items.map((i) => i.id),
     ['a', 'b', 'c'],
   )
-  assert.deepEqual([...view.config.items.map((i) => i.id)].sort(), ['a', 'b', 'c'])
+})
+
+test('ordering playerView returns a permutation of the same items', () => {
+  const view = typeDef('ordering').playerView(
+    { type: 'ordering', options: [], config: { items } },
+    rngFrom([0.3, 0.8, 0.1]),
+    false,
+  ) as { config: { items: { id: string; text: string }[] } }
+  assert.deepEqual(
+    [...view.config.items].sort((x, y) => x.id.localeCompare(y.id)),
+    [...items].sort((x, y) => x.id.localeCompare(y.id)),
+  )
+})
+
+test('ordering without an order is unanswered and grades 0', () => {
+  assert.equal(gradeQuiz(orderingQuestion(), { o1: {} }).percent, 0)
+  assert.equal(gradeQuiz(orderingQuestion(), {}).percent, 0)
+  assert.equal(isAnswered(undefined), false)
+  assert.equal(isAnswered({}), false)
 })
 
 test('ordering playerView keeps the author order in the editor view', () => {
@@ -334,6 +362,15 @@ test('matching validates pair count, both sides and distinct ids', () => {
   assert.ok(t.validate({ type: 'matching', options: [], config: { pairs: [pairs[0], { ...pairs[1], id: 'p1' }] } }))
   assert.ok(t.validate({ type: 'matching', options: [], config: { pairs: [pairs[0], { ...pairs[1], rightId: 'r1' }] } }))
   assert.ok(t.validate({ type: 'matching', options: [], config: undefined }))
+})
+
+test('matching playerView shuffles the rights with the injected rng and keeps the lefts', () => {
+  // rng 0 on [r1, r2]: one swap with index 0 gives [r2, r1]
+  const view = typeDef('matching').playerView({ type: 'matching', options: [], config: { pairs } }, () => 0, false) as {
+    config: { lefts: { id: string }[]; rights: { id: string }[] }
+  }
+  assert.deepEqual(view.config.rights.map((r) => r.id), ['r2', 'r1'])
+  assert.deepEqual(view.config.lefts.map((l) => l.id), ['p1', 'p2'])
 })
 
 test('matching grades proportionally', () => {

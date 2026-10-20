@@ -320,18 +320,6 @@ const shuffleWith = <T>(items: T[], rng: () => number): T[] => {
   return items
 }
 
-/**
- * Shuffles in place until the result is not the author order: a player who never touches the
- * list must not get the correct arrangement for free. Indistinguishable items make every
- * arrangement correct, so retrying is pointless; the rotation is a guaranteed fallback for a
- * degenerate `rng`.
- */
-const shuffleAwayFrom = <T>(items: T[], isAuthorOrder: () => boolean, rng: () => number): T[] => {
-  for (let attempt = 0; attempt < 8 && isAuthorOrder(); attempt += 1) shuffleWith(items, rng)
-  if (items.length >= 2 && isAuthorOrder()) items.push(items.shift() as T)
-  return items
-}
-
 const gradeChoice = (question: GradableQuestion, answer: Answer | undefined) => {
   const selected = new Set(answer?.optionIds ?? [])
   const correct = new Set(question.options.filter((o) => o.isCorrect).map((o) => o.id))
@@ -508,11 +496,8 @@ export const questionTypeDefs = {
       const config = orderingConfig(question.config)
       if (!config) return { options: [] }
       if (withAnswers) return { options: [], config }
-      const items = [...config.items]
-      const inAuthorOrder = () => items.every((item, i) => item.id === config.items[i].id)
-      // indistinguishable items make every arrangement correct, so retrying is pointless
-      const indistinguishable = items.every((item) => normalizeText(item.text) === normalizeText(items[0].text))
-      if (!indistinguishable) shuffleAwayFrom(items, inAuthorOrder, rng)
+      // a uniform shuffle: the author order is one of the possible arrangements
+      const items = shuffleWith([...config.items], rng)
       return { options: [], config: { items: items.map(({ id, text }) => ({ id, text })) } }
     },
     describe: (question, answer) => {
@@ -576,10 +561,10 @@ export const questionTypeDefs = {
       const config = matchingConfig(question.config)
       if (!config) return { options: [] }
       if (withAnswers) return { options: [], config }
-      const rights = config.pairs.map((pair) => ({ id: pair.rightId, text: pair.right }))
-      const inAuthorOrder = () => rights.every((right, i) => right.id === config.pairs[i].rightId)
-      const indistinguishable = rights.every((right) => normalizeText(right.text) === normalizeText(rights[0].text))
-      if (!indistinguishable) shuffleAwayFrom(rights, inAuthorOrder, rng)
+      const rights = shuffleWith(
+        config.pairs.map((pair) => ({ id: pair.rightId, text: pair.right })),
+        rng,
+      )
       return {
         options: [],
         config: { lefts: config.pairs.map((pair) => ({ id: pair.id, text: pair.left })), rights },
