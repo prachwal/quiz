@@ -8,9 +8,17 @@ import { useFocusMode } from '../../components/useFocusMode'
 import { useAppSelector } from '../../app/hooks'
 import type { Answer } from '../../shared/quiz/engine'
 import { effectiveShuffle, sampleFromPool, shuffle } from '../../shared/quiz/sampling'
-import type { QuizDetail } from '../../shared/quiz/types'
+import type { GradedAttempt, QuizDetail } from '../../shared/quiz/types'
 import { isAnswered, questionRenderers } from './questionRenderers'
-import ResultView from './ResultView'
+import ResultView, { type ResultOutcome } from './ResultView'
+
+export interface QuizPlayerProps {
+  id: string
+  /** Optional result header for a quiz that belongs to another feature (e.g. a course exam). */
+  outcomeFor?: (quiz: QuizDetail, result: GradedAttempt) => ResultOutcome | undefined
+  /** Optional back link of the page header; defaults to the quiz list. */
+  backLinkFor?: (quiz: QuizDetail) => { to: string; label: string } | undefined
+}
 
 const PAD = 'clamp(16px, 4vw, 28px)'
 
@@ -23,7 +31,15 @@ const prepareQuestions = (quiz: QuizDetail, playerShuffles: boolean) => {
     : ordered
 }
 
-function Runner({ quiz, onRestart }: { quiz: QuizDetail; onRestart: () => void }) {
+function Runner({
+  quiz,
+  onRestart,
+  outcomeFor,
+}: {
+  quiz: QuizDetail
+  onRestart: () => void
+  outcomeFor?: QuizPlayerProps['outcomeFor']
+}) {
   const { shuffleQuestions, showExplanations } = useAppSelector((state) => state.settings)
   const [questions] = useState(() => prepareQuestions(quiz, shuffleQuestions))
   const [index, setIndex] = useState(0)
@@ -51,6 +67,7 @@ function Runner({ quiz, onRestart }: { quiz: QuizDetail; onRestart: () => void }
         result={result}
         showExplanations={showExplanations}
         onRestart={onRestart}
+        outcome={outcomeFor?.(quiz, result)}
       />
     )
   }
@@ -145,7 +162,7 @@ function Runner({ quiz, onRestart }: { quiz: QuizDetail; onRestart: () => void }
   )
 }
 
-export default function QuizPlayer({ id }: { id: string }) {
+export default function QuizPlayer({ id, outcomeFor, backLinkFor }: QuizPlayerProps) {
   // currentData (not data): while a different quiz id is loading, `data` would still hold the previous quiz
   const { currentData: data, error } = useGetQuizQuery({ id })
   const [run, setRun] = useState(0)
@@ -156,7 +173,7 @@ export default function QuizPlayer({ id }: { id: string }) {
   return (
     <div style={{ maxWidth: 880, margin: '0 auto' }}>
       <PageHeader
-        back={data.courseId ? { to: `/learn/${data.courseId}`, label: 'Wróć do kursu' } : { to: '/', label: 'Wszystkie quizy' }}
+        back={backLinkFor?.(data) ?? { to: '/', label: 'Wszystkie quizy' }}
         title={data.title}
         subtitle={data.description || undefined}
         meta={
@@ -166,7 +183,12 @@ export default function QuizPlayer({ id }: { id: string }) {
           </>
         }
       />
-      <Runner key={`${data.id}:${run}`} quiz={data} onRestart={() => setRun((n) => n + 1)} />
+      <Runner
+        key={`${data.id}:${run}`}
+        quiz={data}
+        onRestart={() => setRun((n) => n + 1)}
+        outcomeFor={outcomeFor}
+      />
     </div>
   )
 }

@@ -80,7 +80,7 @@ Dlaczego tu: wszystkie siedzą w `QuizPlayer.tsx`, `engine.ts` i `schema.ts`, kt
 | # | Zadanie | Uzasadnienie |
 | --- | --- | --- |
 | 2.1 | **Krok 2:** zdarzenie po ocenie (`beforeSave`/`afterSave`); `learning` i `progress` rejestrują obsługę (zrobione) | przebudowuje handler `grade`, w którym później dopisujemy migawkę pytań |
-| 2.2 | **Krok 3:** `ResultView` z `outcome`/`backLink`, `QuizPlayer` bez wpisanego `/learn/…` | zanim M4 dopisze tam obrazy |
+| 2.2 | **Krok 3:** `ResultView` z `outcome`, `QuizPlayer` bez wpisanego `/learn/…` (zrobione) | zanim M4 dopisze tam obrazy |
 | 2.3 | **Krok 4:** `api.injectEndpoints` per moduł | zanim `media` doda endpointy; unika dopisywania do 366-linijkowego `api.ts` |
 
 Po fazie 2 produkt jest nietknięty dla użytkownika, a jądro quizów nie zna kursów.

@@ -1,5 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
+import type { ComponentProps } from 'react'
 import { render, screen, cleanup } from '@testing-library/react'
+import { Button } from 'antd'
 import { App as AntdApp, ConfigProvider } from 'antd'
 import { Provider } from 'react-redux'
 import { configureStore } from '@reduxjs/toolkit'
@@ -21,21 +23,46 @@ const result: any = {
   attemptId: 'a1',
 }
 
+const renderResult = (props: Partial<ComponentProps<typeof ResultView>> = {}) => {
+  const store = configureStore({ reducer: { [api.reducerPath]: api.reducer, settings: settingsReducer, feedbackUi: feedbackReducer }, middleware: (g) => g().concat(api.middleware) })
+  return render(
+    <Provider store={store}>
+      <ConfigProvider>
+        <MemoryRouter>
+          <AntdApp>
+            <ResultView quiz={quiz} questions={questions} answers={answers} result={result} showExplanations={false} onRestart={() => {}} {...props} />
+          </AntdApp>
+        </MemoryRouter>
+      </ConfigProvider>
+    </Provider>,
+  )
+}
+
 describe('ResultView', () => {
   afterEach(() => cleanup())
   it('renders headline', () => {
-    const store = configureStore({ reducer: { [api.reducerPath]: api.reducer, settings: settingsReducer, feedbackUi: feedbackReducer }, middleware: (g) => g().concat(api.middleware) })
-    render(
-      <Provider store={store}>
-        <ConfigProvider>
-          <MemoryRouter>
-            <AntdApp>
-              <ResultView quiz={quiz} questions={questions} answers={answers} result={result} showExplanations={false} onRestart={() => {}} />
-            </AntdApp>
-          </MemoryRouter>
-        </ConfigProvider>
-      </Provider>,
-    )
+    renderResult()
     expect(screen.getByText('Znakomicie!')).toBeInTheDocument()
+  })
+  it('without an outcome keeps the default restart button', () => {
+    renderResult()
+    expect(screen.getByRole('button', { name: /Zagraj ponownie/  })).toBeInTheDocument()
+  })
+  it('with an outcome shows its headline, subline and actions instead of the defaults', () => {
+    renderResult({
+      outcome: {
+        tone: 'error',
+        headline: 'Wynik testowy',
+        subline: 'Podtytuł testowy',
+        actions: <Button>Akcja testowa</Button>,
+      },
+    })
+    expect(screen.getByText('Wynik testowy')).toBeInTheDocument()
+    expect(screen.getByText('Podtytuł testowy')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Akcja testowa/  })).toBeInTheDocument()
+    expect(screen.queryByText('Znakomicie!')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Zagraj ponownie/  })).not.toBeInTheDocument()
+    // shared buttons stay for every result
+    expect(screen.getByRole('link', { name: /Wszystkie quizy/ })).toBeInTheDocument()
   })
 })

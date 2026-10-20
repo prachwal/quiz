@@ -8,7 +8,7 @@ tags:
   - plan
   - status/todo
 created: 2026-10-19
-updated: 2026-10-19
+updated: 2026-10-20
 ---
 
 # Moduł nauki jako pionowy slice — analiza i plan
@@ -46,8 +46,8 @@ Czwarta część, **jeszcze nieistniejąca**: **media** — obrazki przechowywan
 | `server/routes/quizzes.ts:147-173` (`grade`) | woła `coursesRepo.coursePassInfo`, `reviews.applyResults`, `progress.recordActivity`; dokłada `course` do odpowiedzi |
 | `server/quizRepo.ts` | `courseId` w `createQuiz`, `saveAttempt`, `QuizDetail` |
 | baza | `quizzes.course_id`, `quiz_attempts.course_id` (FK do `courses`) |
-| `features/quizzes/ResultView.tsx` | zna `result.course` (baner, link, „kolejny egzamin”) |
-| `features/quizzes/QuizPlayer.tsx:176` | wpisany link `/learn/${courseId}` |
+| `features/quizzes/ResultView.tsx` | ~~zna `result.course`~~ (krok 3: baner i przyciski egzaminu przeniesione do `features/learn/courseExam.tsx`) |
+| `features/quizzes/QuizPlayer.tsx:176` | ~~wpisany link `/learn/${courseId}`~~ (krok 3: `backLinkFor` z `pages/QuizPlay.tsx`) |
 
 **Inni sięgają do tabel nauki surowym SQL-em:** `classes/assignments.ts`, `classes/results.ts`, `attemptsRepo.ts`, część narzędzi MCP (`lessons`, `lesson_progress`, `courses`).
 
@@ -111,7 +111,7 @@ Każdy krok to osobny commit; przed commitem `npm run lint`, `npm test`, `npm ru
 | --- | --- | --- | --- |
 | 1 | **`pool` do `server/db.ts`** (zrobione) | mechaniczna zmiana 11 importów; bez re-eksportu z `quizRepo` | niskie |
 | 2 | **Zdarzenie po ocenie** (zrobione: `server/gradeHooks.ts`, rejestracja w `server/learningGradeHooks.ts`) | `grade` publikuje `onGraded({ quiz, userId, result, attemptId })`; `learning` rejestruje obsługę: `passed` kursu, `reviews.applyResults`, `progress.recordActivity`; `course` w odpowiedzi dokłada `learning` | średnie (kolejność skutków ubocznych, błąd obsługi nie może zgubić zapisanego podejścia) |
-| 3 | **UI quizów bez nauki** | `ResultView` dostaje `outcome?: ReactNode` i `backLink`; `QuizPlay` (poziom routingu) składa je z komponentów `learning`; `QuizPlayer` traci wpisany `/learn/...` | niskie |
+| 3 | **UI quizów bez nauki** (zrobione: `ResultView` dostaje `outcome?: ResultOutcome`, `QuizPlayer` `outcomeFor`/`backLinkFor`; `pages/QuizPlay.tsx` składa je z `features/learn/courseExam.tsx`; wpisany `/learn/...` usunięty) | niskie |
 | 4 | **RTK Query na slice'y** | `api.injectEndpoints` w każdym module; baza i tagi zostają w `app/api.ts` | niskie |
 | 5 | **Klasy przez publiczne API nauki** | `learning.progressFacts(userIds)` zamiast SQL na `lessons`/`lesson_progress`/`courses` w `classes`, `attemptsRepo`, MCP | średnie |
 | 6 | **Przeniesienie plików do slice'ów** | `server/modules/*`, `src/features/learning`, podział `shared/quiz/` i `types.ts` | niskie logicznie, duży diff |

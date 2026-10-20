@@ -1,7 +1,6 @@
 import {
   BulbOutlined,
   CheckCircleFilled,
-  CheckOutlined,
   CloseCircleFilled,
   HistoryOutlined,
   ReloadOutlined,
@@ -14,18 +13,28 @@ import {
   errorMessage,
   useGenerateIrregularVerbsQuizMutation,
   useRetryWrongMutation,
-  useStartExamMutation,
   useStartReviewMutation,
 } from '../../app/api'
 import SpeakButton from '../audio/SpeakButton'
 import { recallGenerate, rememberGenerate } from './lastGenerate'
-import { EXAM_COUNT, GENERATE_COUNT, REVIEW_COUNT, clampCount } from './counts'
+import { GENERATE_COUNT, REVIEW_COUNT, clampCount } from './counts'
 import ProgressLine from '../progress/ProgressLine'
 import { useScoreColors } from '../results/useScoreColors'
 import type { Answer } from '../../shared/quiz/engine'
 import type { GradedAttempt, QuizDetail } from '../../shared/quiz/types'
 
 type Tone = 'success' | 'warning' | 'error'
+
+/**
+ * Replaces the default headline, subline and action group of the result hero.
+ * Built by the feature that owns the context (e.g. a course exam in `features/learn`).
+ */
+export interface ResultOutcome {
+  tone: 'success' | 'error'
+  headline: string
+  subline: string
+  actions: ReactNode
+}
 
 function Stat({ label, value, color }: { label: string; value: ReactNode; color?: string }) {
   const { token } = theme.useToken()
@@ -213,6 +222,7 @@ export default function ResultView({
   result,
   showExplanations,
   onRestart,
+  outcome,
 }: {
   quiz: QuizDetail
   questions: QuizDetail['questions']
@@ -220,11 +230,11 @@ export default function ResultView({
   result: GradedAttempt
   showExplanations: boolean
   onRestart: () => void
+  outcome?: ResultOutcome
 }) {
   const { token } = theme.useToken()
   const navigate = useNavigate()
   const [generate, { isLoading: generating }] = useGenerateIrregularVerbsQuizMutation()
-  const [startExam, { isLoading: restartingExam }] = useStartExamMutation()
   const [startReview, { isLoading: startingReview }] = useStartReviewMutation()
   const isGenerated = quiz.source === 'irregular-verbs'
   const isReview = quiz.source === 'review'
@@ -271,18 +281,6 @@ export default function ResultView({
       navigate('/')
     }
   }
-  const retryExam = async () => {
-    if (!result.course) return
-    try {
-      const next = await startExam({
-        courseId: result.course.id,
-        count: clampCount(quiz.questions.length, EXAM_COUNT),
-      }).unwrap()
-      navigate(`/quizzes/${next.id}/play`)
-    } catch (e) {
-      void message.error(errorMessage(e))
-    }
-  }
   const byId = new Map(result.results.map((r) => [r.questionId, r]))
   const optionText = (questionId: string, ids: string[] | undefined) =>
     questions
@@ -292,19 +290,15 @@ export default function ResultView({
       .join(', ')
 
   const { band } = useScoreColors()
-  const tone: Tone = result.course
-    ? result.course.passed
-      ? 'success'
-      : 'error'
+  const tone: Tone = outcome
+    ? outcome.tone
     : ({ low: 'error', mid: 'warning', high: 'success' } as const)[band(result.percent)]
   const toneColor = { success: token.colorSuccess, warning: token.colorWarning, error: token.colorError }[tone]
   const toneText = { success: token.colorSuccessText, warning: token.colorWarningText, error: token.colorErrorText }[tone]
   const toneBg = { success: token.colorSuccessBg, warning: token.colorWarningBg, error: token.colorErrorBg }[tone]
   const correctCount = result.results.filter((r) => r.correct).length
-  const headline = result.course
-    ? result.course.passed
-      ? 'Egzamin zaliczony!'
-      : 'Egzamin niezaliczony'
+  const headline = outcome
+    ? outcome.headline
     : result.percent >= 90
       ? 'Znakomicie!'
       : result.percent >= 70
@@ -312,9 +306,7 @@ export default function ResultView({
         : result.percent >= 50
           ? 'Dobry wynik'
           : 'Spróbuj jeszcze raz'
-  const subline = result.course
-    ? `${result.course.title} · próg zaliczenia ${result.course.passPercent}%`
-    : quiz.title
+  const subline = outcome ? outcome.subline : quiz.title
 
   return (
     <Flex vertical gap={24}>
@@ -355,17 +347,8 @@ export default function ResultView({
               <Stat label="Błędne" value={result.results.length - correctCount} color={token.colorErrorText} />
             </Flex>
             <Flex wrap gap={8} className="result-actions" style={{ marginTop: 4 }}>
-              {result.course && (
-                <Link to={`/learn/${result.course.id}`}>
-                  <Button type="primary" size="large" icon={<CheckOutlined />}>
-                    Wróć do kursu
-                  </Button>
-                </Link>
-              )}
-              {result.course ? (
-                <Button size="large" icon={<ReloadOutlined />} loading={restartingExam} onClick={() => void retryExam()}>
-                  Nowe podejście
-                </Button>
+              {outcome ? (
+                outcome.actions
               ) : isWeak ? (
                 <Button type="primary" size="large" icon={<ReloadOutlined />} loading={generating} onClick={() => void nextTraining()}>
                   Kolejny trening błędów
