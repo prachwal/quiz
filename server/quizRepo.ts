@@ -3,6 +3,7 @@ import { pool, type PoolClient } from './db'
 import { typeDef } from '../src/shared/quiz/engine'
 import type { Answer, GradableQuizQuestion, QuizResult } from '../src/shared/quiz/engine'
 import type { quizInput } from '../src/shared/quiz/schema'
+import type { SnapshotQuestion } from '../src/shared/quiz/questionsSnapshot'
 import type {
   AttemptSummary,
   DifficultyCode,
@@ -315,12 +316,14 @@ export async function saveAttempt(attempt: {
   passed: boolean | null
   answers: Record<string, Answer>
   result: QuizResult
+  questionsSnapshot?: SnapshotQuestion[]
 }): Promise<string> {
   const { result } = attempt
   const inserted = await pool().query<{ id: string }>(
     `INSERT INTO quiz_attempts
-       (quiz_id, quiz_title, user_id, course_id, passed, score, max_score, percent, answers, results)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+       (quiz_id, quiz_title, user_id, course_id, passed, score, max_score, percent, answers, results,
+        questions_snapshot)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
     [
       attempt.quizId,
       attempt.quizTitle,
@@ -332,6 +335,7 @@ export async function saveAttempt(attempt: {
       result.percent,
       JSON.stringify(attempt.answers),
       JSON.stringify(result.results),
+      attempt.questionsSnapshot ? JSON.stringify(attempt.questionsSnapshot) : null,
     ],
   )
   return inserted.rows[0].id

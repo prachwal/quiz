@@ -90,7 +90,7 @@ Po fazie 2 produkt jest nietknięty dla użytkownika, a jądro quizów nie zna k
 | # | Zadanie | Zależność |
 | --- | --- | --- |
 | 3.1 | ✅ **Decyzje D1–D4** z [[MCP-Admin-Tools]] (zrobione: tylko OAuth, migawka pytań A, `class_transfer`, bez e-maila w liście podejść) | przed 3.2 |
-| 3.2 | migracja `quiz_attempts.questions_snapshot` + zapis w `saveAttempt` (w fazie `beforeSave` z 2.1) + częściowe uzupełnienie istniejących wierszy | po 2.1 |
+| 3.2 | 🟡 **kod gotowy, migracja do zastosowania**: migracja `quiz_attempts.questions_snapshot` + częściowe uzupełnienie istniejących wierszy, zapis w `saveAttempt` z handlera `grade` (nie z `beforeSave`: migawka to sprawa jądra quizów). Owner musi jeszcze uruchomić `npm run db:migrate` i sprawdzić `test:mcp` | po 2.1 |
 | 3.3 | **`quiz_stats`** (`itemStats` + `attemptsOfQuiz` + snapshot) | po 3.2; wydanie 1 narzędzi (razem z 3.4) |
 | 3.4 | `user_results`, `user_analysis` (cała historia użytkownika bez klasy — to one odpowiadają na pytanie, od którego zaczął się [[MCP-Admin-Tools]]; read path z `classes.allAttempts` i `analyzeStudent`) | niezależne od 3.2 |
 | 3.5 | `user_list`, `user_get`, `user_search`, `user_roles_set`, `user_block` z zabezpieczeniami przeniesionymi z REST | niezależne |
@@ -139,7 +139,7 @@ Plik musi zostać w repo: Vercel wykrywa funkcje w `api/` przed buildem, więc b
 | --- | --- | --- | --- |
 | R1 | faza 0 | brak | nie |
 | R2 | fazy 1–2 | brak | nie |
-| R3 | 3.2–3.8 | `questions_snapshot` | **tak** (narzędzia admina) |
+| R3 | 3.2–3.8 | `questions_snapshot` (`20261020100000`) | **tak** (narzędzia admina); migracja musi być zastosowana **przed** wdrożeniem R3, bo zapis podejścia bez kolumny się nie powiedzie |
 | R4 | 4.1–4.4, 4.6 (obrazy w UI, bez MCP) | `media`, `media_refs` | nie |
 | R5 | 4.5 (MCP do wysyłania obrazów) | — | **tak** |
 | R6 | 4.7–4.9 (lekcje, sprzątanie) | `irregular_verbs.image_media_id` | **tak** (narzędzia lekcji) |

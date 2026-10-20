@@ -1,6 +1,7 @@
 import type { Request, Response, Router } from 'express'
 import { z } from 'zod'
 import { gradeQuiz } from '../../src/shared/quiz/engine'
+import { buildQuestionsSnapshot } from '../../src/shared/quiz/questionsSnapshot'
 import { resolveGradedIds } from '../../src/shared/quiz/sampling'
 import { DIFFICULTIES, generateInput, gradeInput, quizInput, retryWrongInput } from '../../src/shared/quiz/schema'
 import { SUBJECTS } from '../../src/shared/quiz/types'
@@ -163,10 +164,9 @@ export function registerQuizRoutes(router: Router) {
     if (!gradedIds) throw new HttpError(400, 'Niepoprawny zestaw pytań dla tego quizu')
     const graded = new Set(gradedIds)
     const answers = Object.fromEntries(Object.entries(submitted).filter(([questionId]) => graded.has(questionId)))
-    const result = gradeQuiz(
-      repo.toGradable(quiz).filter((q) => graded.has(q.id)),
-      answers,
-    )
+    const gradedQuestions = quiz.questions.filter((q) => graded.has(q.id))
+    const result = gradeQuiz(repo.toGradable(quiz).filter((q) => graded.has(q.id)), answers)
+    const questionsSnapshot = buildQuestionsSnapshot(gradedQuestions)
     const { attemptId, response } = await gradeRegistry.run(
       { quiz, quizId: id, userId, user: userOf(req), answers, result },
       (outcome) =>
@@ -178,6 +178,7 @@ export function registerQuizRoutes(router: Router) {
           passed: outcome.passed,
           answers,
           result,
+          questionsSnapshot,
         }),
       reportHookError(req, res),
     )

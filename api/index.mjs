@@ -63775,8 +63775,9 @@ async function saveAttempt(attempt) {
   const { result } = attempt;
   const inserted = await pool().query(
     `INSERT INTO quiz_attempts
-       (quiz_id, quiz_title, user_id, course_id, passed, score, max_score, percent, answers, results)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+       (quiz_id, quiz_title, user_id, course_id, passed, score, max_score, percent, answers, results,
+        questions_snapshot)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
     [
       attempt.quizId,
       attempt.quizTitle,
@@ -63787,7 +63788,8 @@ async function saveAttempt(attempt) {
       result.maxScore,
       result.percent,
       JSON.stringify(attempt.answers),
-      JSON.stringify(result.results)
+      JSON.stringify(result.results),
+      attempt.questionsSnapshot ? JSON.stringify(attempt.questionsSnapshot) : null
     ]
   );
   return inserted.rows[0].id;
@@ -76538,6 +76540,11 @@ function registerProgressRoutes(router) {
   });
 }
 
+// src/shared/quiz/questionsSnapshot.ts
+function buildQuestionsSnapshot(questions) {
+  return questions.map((q) => ({ id: q.id, type: q.type, prompt: q.prompt, points: q.points }));
+}
+
 // src/shared/quiz/sampling.ts
 function resolveGradedIds(allIds, requested, sampleSize) {
   if (!sampleSize || sampleSize >= allIds.length || requested === void 0) return [...allIds];
@@ -76702,10 +76709,9 @@ function registerQuizRoutes(router) {
     if (!gradedIds) throw new HttpError(400, "Niepoprawny zestaw pyta\u0144 dla tego quizu");
     const graded = new Set(gradedIds);
     const answers = Object.fromEntries(Object.entries(submitted).filter(([questionId]) => graded.has(questionId)));
-    const result = gradeQuiz(
-      toGradable(quiz).filter((q) => graded.has(q.id)),
-      answers
-    );
+    const gradedQuestions = quiz.questions.filter((q) => graded.has(q.id));
+    const result = gradeQuiz(toGradable(quiz).filter((q) => graded.has(q.id)), answers);
+    const questionsSnapshot = buildQuestionsSnapshot(gradedQuestions);
     const { attemptId, response } = await gradeRegistry.run(
       { quiz, quizId: id, userId, user: userOf(req), answers, result },
       (outcome) => saveAttempt({
@@ -76715,7 +76721,8 @@ function registerQuizRoutes(router) {
         courseId: outcome.courseId,
         passed: outcome.passed,
         answers,
-        result
+        result,
+        questionsSnapshot
       }),
       reportHookError(req, res)
     );
