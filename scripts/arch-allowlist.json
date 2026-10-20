@@ -20,21 +20,9 @@
       "reason": "do naprawy w 5.C"
     },
     {
-      "from": "server/mcp/context.ts",
-      "to": "server/classAccess.ts",
-      "pair": "mcp-platform -> classes",
-      "reason": "do naprawy w 5.C"
-    },
-    {
       "from": "server/mcp/quizTools.ts",
       "to": "server/irregularVerbs.ts",
       "pair": "quizzes -> learning",
-      "reason": "do naprawy w 5.C"
-    },
-    {
-      "from": "server/mcp/tools/shared.ts",
-      "to": "server/classAccess.ts",
-      "pair": "mcp-platform -> classes",
       "reason": "do naprawy w 5.C"
     },
     {

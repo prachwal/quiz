@@ -5,7 +5,7 @@
     { "module": "tests", "match": ["**/*.test.*", "tests/**", "src/test/**"] },
     { "module": "root", "match": ["server/app.ts", "server/mcp/index.ts", "api-src/**", "scripts/**", "src/pages/**", "src/App.tsx", "src/main.tsx", "src/components/AppLayout.tsx"] },
     { "module": "platform", "match": [
-      "server/db.ts", "server/http.ts", "server/auth.ts", "server/devAuth.ts", "server/sentry.ts",
+      "server/db.ts", "server/http.ts", "server/auth.ts", "server/devAuth.ts", "server/sentry.ts", "server/viewer.ts",
       "server/auth0Management.ts", "server/auth0AdminPure.ts", "server/protectedResource.ts",
       "server/apiTokens.ts", "server/routes/tokens.ts", "server/adminRepo.ts", "server/appSettingsRepo.ts"
     ] },
@@ -23,7 +23,7 @@
     { "module": "classes", "match": [
       "server/classes/**", "server/classesRepo.ts", "server/classAccess.ts", "server/routes/classes.ts",
       "server/mcp/classTools.ts", "server/mcp/tools/classes.ts", "server/mcp/tools/students.ts",
-      "server/mcp/tools/assignments.ts", "server/userResults.ts"
+      "server/mcp/tools/assignments.ts", "server/mcp/tools/classGuards.ts", "server/userResults.ts"
     ] },
     { "module": "admin", "match": [
       "server/routes/admin.ts", "server/userAdmin.ts", "server/userAdminPure.ts", "server/systemStats.ts",

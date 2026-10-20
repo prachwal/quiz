@@ -20,7 +20,7 @@ const HARD_RULE_EXCEPTIONS: Exception[] = [{ from: 'server/mcp/tools/media.ts', 
 
 // Dozwolone składy cykli modułów. Nowy cykl albo większy skład pada.
 const EXPECTED_CYCLES = [
-  ['classes', 'learning', 'mcp-platform', 'media', 'progress', 'quizzes'],
+  ['classes', 'learning', 'media', 'progress', 'quizzes'],
   ['f-learning', 'f-progress', 'f-quizzes'],
   ['shared-quizzes', 'shared-types'],
 ]

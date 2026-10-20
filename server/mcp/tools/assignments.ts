@@ -1,12 +1,13 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { analyzeClass } from '../../../src/shared/quiz/classAnalysis'
-import { canReadClasses } from '../../classAccess'
+import { canReadClasses } from '../../viewer'
 import * as classes from '../../classesRepo'
 import * as courses from '../../coursesRepo'
 import { needTeacherOrAdmin, text } from '../context'
 import type { Ctx } from '../context'
-import { audit, classId, confirm, type ClassGuards } from './shared'
+import type { ClassGuards } from './classGuards'
+import { audit, classId, confirm } from './shared'
 
 /** course_list, assignment_create/update_due/delete and the two class reports. */
 export function registerAssignmentTools(server: McpServer, ctx: Ctx, guards: ClassGuards) {
