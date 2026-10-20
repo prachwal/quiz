@@ -3,7 +3,7 @@
   "version": 1,
   "rules": [
     { "module": "tests", "match": ["**/*.test.*", "tests/**", "src/test/**"] },
-    { "module": "root", "match": ["server/app.ts", "api-src/**", "scripts/**", "src/pages/**", "src/App.tsx", "src/main.tsx"] },
+    { "module": "root", "match": ["server/app.ts", "server/mcp/index.ts", "api-src/**", "scripts/**", "src/pages/**", "src/App.tsx", "src/main.tsx", "src/components/AppLayout.tsx"] },
     { "module": "platform", "match": [
       "server/db.ts", "server/http.ts", "server/auth.ts", "server/devAuth.ts", "server/sentry.ts",
       "server/auth0Management.ts", "server/auth0AdminPure.ts", "server/protectedResource.ts",
@@ -29,30 +29,31 @@
       "server/routes/admin.ts", "server/userAdmin.ts", "server/userAdminPure.ts", "server/systemStats.ts",
       "server/mcp/tools/admin.ts", "server/mcp/tools/users.ts", "server/mcp/tools/operations.ts"
     ] },
-    { "module": "mcp-platform", "match": ["server/mcp/index.ts", "server/mcp/context.ts", "server/mcp/tools/shared.ts"] },
+    { "module": "mcp-platform", "match": ["server/mcp/context.ts", "server/mcp/tools/shared.ts"] },
     { "module": "shared-media", "match": ["src/shared/media/**"] },
     { "module": "shared-platform", "match": ["src/shared/quiz/auth0Id.ts", "src/shared/quiz/maskEmail.ts", "src/shared/quiz/scoreBands.ts"] },
     { "module": "shared-quizzes", "match": [
       "src/shared/quiz/engine.ts", "src/shared/quiz/schema.ts", "src/shared/quiz/sampling.ts",
       "src/shared/quiz/itemStats.ts", "src/shared/quiz/quizStats.ts", "src/shared/quiz/questionsSnapshot.ts",
-      "src/shared/quiz/subjectGroups.ts", "src/shared/quiz/userHistory.ts"
+      "src/shared/quiz/subjectGroups.ts"
     ] },
     { "module": "shared-learning", "match": [
       "src/shared/quiz/spaced.ts", "src/shared/quiz/weak.ts", "src/shared/quiz/lessonIntro.ts", "src/shared/quiz/verbImageAudit.ts"
     ] },
     { "module": "shared-progress", "match": ["src/shared/quiz/streaks.ts"] },
-    { "module": "shared-classes", "match": ["src/shared/quiz/classAnalysis.ts", "src/shared/quiz/studentAnalysis.ts", "src/shared/quiz/csv.ts"] },
+    { "module": "shared-classes", "match": ["src/shared/quiz/classAnalysis.ts", "src/shared/quiz/studentAnalysis.ts", "src/shared/quiz/csv.ts", "src/shared/quiz/userHistory.ts"] },
     { "module": "shared-types", "match": ["src/shared/quiz/types.ts"] },
     { "module": "f-media", "match": ["src/features/media/**"] },
     { "module": "f-quizzes", "match": ["src/features/quizzes/**"] },
     { "module": "f-learning", "match": ["src/features/learn/**"] },
     { "module": "f-progress", "match": ["src/features/progress/**"] },
     { "module": "f-classes", "match": ["src/features/classes/**"] },
+    { "module": "f-platform", "match": ["src/features/results/useScoreColors.ts", "src/features/results/Score.tsx"] },
     { "module": "f-results", "match": ["src/features/results/**"] },
     { "module": "f-admin", "match": ["src/features/admin/**"] },
     { "module": "f-platform", "match": [
       "src/features/auth/**", "src/features/settings/**", "src/features/feedback/**", "src/features/audio/**",
-      "src/app/**", "src/components/**"
+      "src/app/**", "src/components/**", "src/vite-env.d.ts"
     ] }
   ],
   "allow": {
@@ -78,7 +79,7 @@
     "f-quizzes": ["f-platform", "f-media", "shared-quizzes", "shared-media", "shared-platform"],
     "f-learning": ["f-platform", "f-media", "f-quizzes", "shared-learning", "shared-quizzes", "shared-media", "shared-platform"],
     "f-progress": ["f-platform", "f-media", "f-quizzes", "f-learning", "shared-progress", "shared-learning", "shared-quizzes", "shared-media", "shared-platform"],
-    "f-classes": ["f-platform", "f-media", "f-quizzes", "f-learning", "f-progress", "shared-classes", "shared-progress", "shared-learning", "shared-quizzes", "shared-media", "shared-platform"],
+    "f-classes": ["f-platform", "f-media", "f-quizzes", "f-learning", "f-progress", "f-results", "shared-classes", "shared-progress", "shared-learning", "shared-quizzes", "shared-media", "shared-platform"],
     "f-results": ["f-platform", "f-media", "f-quizzes", "f-learning", "f-progress", "f-classes", "shared-classes", "shared-progress", "shared-learning", "shared-quizzes", "shared-media", "shared-platform"],
     "f-admin": ["*"]
   },
