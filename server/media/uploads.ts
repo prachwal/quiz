@@ -96,3 +96,12 @@ export const URL_FETCH_LIMIT_REASON = `Limit pobrań z adresu URL wykorzystany (
 /** The gate of `media_upload_from_url` (MEDIA_URL_FETCH). */
 export const URL_FETCH_DISABLED_REASON =
   'Pobieranie obrazów z adresu URL jest wyłączone na tym serwerze (MEDIA_URL_FETCH). Wyślij obraz przez media_upload (małe pliki, base64) albo media_create_upload (PUT na podany adres).'
+
+/**
+ * Same-origin PUT target of the memory driver (dev and tests): the browser cannot PUT to `memory://`, so the upload
+ * goes to the API itself (`PUT /api/media/<id>/content`, see routes.ts). Production (s3) gets the presigned URL.
+ */
+export const memoryContentPath = (mediaId: string): string => `/api/media/${mediaId}/content`
+
+export const uploadTargetUrl = (memory: boolean, mediaId: string, presignedUrl: string): string =>
+  memory ? memoryContentPath(mediaId) : presignedUrl

@@ -1,8 +1,7 @@
-/** Pure constants of the media module (no imports, so tests and the bundle can load them freely). */
+/** Constants of the media module. Content types and the default size limit come from the shared upload contract. */
+import { MEDIA_MAX_BYTES_DEFAULT } from '../../src/shared/media/upload'
 
-/** The only content types the server stores. GIF and SVG are refused (see Media-Storage-Plan D8). */
-export const MEDIA_CONTENT_TYPES = ['image/png', 'image/jpeg', 'image/webp'] as const
-export type MediaContentType = (typeof MEDIA_CONTENT_TYPES)[number]
+export { MEDIA_CONTENT_TYPES, type MediaContentType } from '../../src/shared/media/upload'
 
 /** Who created the file; mirrored by the CHECK constraint in the media migration. */
 export const MEDIA_SOURCES = ['browser', 'mcp-base64', 'mcp-url', 'mcp-presigned', 'script'] as const
@@ -17,7 +16,7 @@ export const MEDIA_DAILY_FILES = 100
 export const MEDIA_DAILY_BYTES = 50 * 1024 * 1024
 
 /** D9: default per-file limit, overridable with MEDIA_MAX_BYTES. */
-export const MEDIA_DEFAULT_MAX_BYTES = 2 * 1024 * 1024
+export const MEDIA_DEFAULT_MAX_BYTES = MEDIA_MAX_BYTES_DEFAULT
 
 /** Presigned URLs: S3 accepts at most seven days. */
 export const MEDIA_PRESIGN_MAX_SECONDS = 7 * 24 * 60 * 60

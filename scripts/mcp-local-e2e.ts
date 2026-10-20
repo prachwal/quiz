@@ -563,6 +563,101 @@ try {
   ]
   check('audit log has exactly the successful changes', JSON.stringify(logged) === JSON.stringify(expected), { logged })
 
+  // ---- browser upload routes (Media-Storage-Plan M6, server side): REST, memory driver ---------
+  // The owner's browser flow: POST /media/uploads -> PUT the bytes to upload.url -> POST /media/:id/complete,
+  // then the id goes into quiz_create. Same storage as the MCP tools; the audit rows are media.upload.
+  const restOrigin = new URL(base).origin // base may end in /api (MCP_E2E_URL): the upload URL carries its own /api
+  const restBearer = {
+    writer: await token(`${ADMIN}-rest-w`, ['write:quizzes']),
+    writer2: await token(`${ADMIN}-rest-w2`, ['write:quizzes']),
+    admin: await token(`${ADMIN}-rest-admin`, ['manage:users', 'write:quizzes']),
+    plain: await token(PLAIN, []),
+  }
+  const send = (method: string, path: string, bearer: string | null, body?: BodyInit, headers: Record<string, string> = {}) =>
+    fetch(`${base}${path}`, { method, headers: { ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}), ...headers }, body })
+  const withJson = async (response: Response) => ({ status: response.status, body: (await response.json().catch(() => null)) as any })
+  const startUpload = (bearer: string, input: object) => send('POST', '/media/uploads', bearer, JSON.stringify(input), { 'content-type': 'application/json' }).then(withJson)
+  const putBytes = (url: string, bearer: string | null, bytes: Buffer, type = 'image/png') =>
+    fetch(`${restOrigin}${url}`, { method: 'PUT', headers: { ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}), 'content-type': type }, body: bytes }).then(withJson)
+  const completeUpload = (bearer: string, id: string) => send('POST', `/media/${id}/complete`, bearer).then(withJson)
+  const uploadTarget = (d: any) => d?.upload as { url: string; method: string; headers: Record<string, string> } | undefined
+  const maxBytes = Number(process.env.MEDIA_MAX_BYTES || 2_097_152)
+
+  // refusals of the start route
+  check('REST upload start without a token -> 401', (await send('POST', '/media/uploads', null, '{}', { 'content-type': 'application/json' })).status === 401)
+  check('REST upload start without write:quizzes -> 403', (await startUpload(restBearer.plain, { contentType: 'image/png', size: 40, sha256: sha(small) })).status === 403)
+  check('REST upload start with GIF -> 400', (await startUpload(restBearer.writer, { contentType: 'image/gif', size: 40, sha256: sha(small) })).status === 400)
+  check('REST upload start with size 0 -> 400', (await startUpload(restBearer.writer, { contentType: 'image/png', size: 0, sha256: sha(small) })).status === 400)
+  check('REST upload start over MEDIA_MAX_BYTES -> 400', (await startUpload(restBearer.writer, { contentType: 'image/png', size: maxBytes + 1, sha256: sha(small) })).status === 400)
+  check('REST upload start with a bad sha256 -> 400', (await startUpload(restBearer.writer, { contentType: 'image/png', size: 40, sha256: 'XYZ' })).status === 400)
+  check('REST upload start with a bracket in alt -> 400', (await startUpload(restBearer.writer, { contentType: 'image/png', size: 40, sha256: sha(small), alt: 'a]b' })).status === 400)
+
+  // the happy path: start -> PUT -> complete -> a quiz that uses the id
+  const restImg = pngBytes(4, 3)
+  const restStarted = await startUpload(restBearer.writer, { contentType: 'image/png', size: restImg.length, sha256: sha(restImg), alt: 'Cztery na trzy' })
+  const restTarget = uploadTarget(restStarted.body)
+  check('REST upload start: pending, same-origin PUT target with headers', restStarted.status === 200 && restStarted.body?.status === 'pending' && restStarted.body?.reused === false && restTarget?.url === `/api/media/${restStarted.body?.mediaId}/content` && restTarget?.method === 'PUT' && Object.keys(restTarget?.headers ?? {}).length > 0, restStarted.body)
+  const restId: string = restStarted.body.mediaId
+  const restKey = async (id: string) => (await media.get(id))?.key ?? ''
+  check('REST upload start wrote nothing yet', (await storage.head(await restKey(restId))) === null)
+  const restPut = await putBytes(restTarget!.url, restBearer.writer, restImg)
+  check('REST PUT content -> ok and the bytes are stored', restPut.status === 200 && restPut.body?.ok === true && (await storage.head(await restKey(restId)))?.size === restImg.length, restPut)
+  const restDone = await completeUpload(restBearer.writer, restId)
+  check('REST complete -> ready with size and pixel dimensions', restDone.status === 200 && restDone.body?.mediaId === restId && restDone.body?.width === 4 && restDone.body?.height === 3 && restDone.body?.size === restImg.length && String(restDone.body?.url).endsWith(`/${restId}.png`), restDone.body)
+  check('REST complete answer has no markdown (alt is not stored)', restDone.body !== null && !('markdown' in restDone.body))
+  const restQuiz = await call(tAdminWrite, 'quiz_create', { quiz: { title: 'MCP E2E rest upload', difficulty: 'easy', questions: [{ type: 'single', prompt: `Co to? ![Cztery na trzy](media:${restId})`, explanation: '', points: 1, options: [{ text: 'Prostokąt', isCorrect: true }, { text: 'Koło', isCorrect: false }] }] } })
+  ok('quiz_create with the id from the browser upload', restQuiz, (d) => d.questions[0].prompt.includes(`media:${restId}`))
+  const shown = await rest(`/quizzes/${restQuiz.data.id}`, { method: 'GET', bearer: restBearer.plain })
+  check('the uploaded image is in the quiz media map', mediaOf(shown.body)?.[restId]?.width === 4 && String(mediaOf(shown.body)?.[restId]?.url).endsWith(`/${restId}.png`), shown.body?.media)
+
+  // the same bytes again: the author's ready copy is reused, nothing to upload
+  const again = await startUpload(restBearer.writer, { contentType: 'image/png', size: restImg.length, sha256: sha(restImg), alt: 'Ponownie' })
+  check('REST upload start of the same bytes -> reused, ready, no PUT target', again.status === 200 && again.body?.reused === true && again.body?.mediaId === restId && again.body?.status === 'ready' && again.body?.upload === undefined && String(again.body?.url).endsWith(`/${restId}.png`), again.body)
+
+  // refusals of the PUT (the row stays pending)
+  const lenDeclared = pngBytes(7, 5) // fresh bytes: the picture above is ready, so its hash would be reused
+  const lenRow = await startUpload(restBearer.writer, { contentType: 'image/png', size: lenDeclared.length, sha256: sha(lenDeclared) })
+  check('REST upload start for fresh bytes asks for a PUT', uploadTarget(lenRow.body) !== undefined, lenRow.body)
+  const lenUrl = uploadTarget(lenRow.body)!.url
+  check('REST PUT with the wrong length -> 400', (await putBytes(lenUrl, restBearer.writer, pngBytes(4, 3, 5))).status === 400)
+  check('REST PUT with a non-image content type -> 400', (await putBytes(lenUrl, restBearer.writer, restImg, 'text/plain')).status === 400)
+  check('REST PUT over MEDIA_MAX_BYTES -> 400', (await putBytes(lenUrl, restBearer.writer, Buffer.alloc(maxBytes + 1, 1))).status === 400)
+  check('REST PUT without a token -> 401', (await putBytes(lenUrl, null, restImg)).status === 401)
+  check('REST PUT by another author -> 404', (await putBytes(lenUrl, restBearer.writer2, restImg)).status === 404)
+  check('REST PUT by a plain viewer -> 403', (await putBytes(lenUrl, restBearer.plain, restImg)).status === 403)
+  check('REST complete by a plain viewer -> 403', (await completeUpload(restBearer.plain, lenRow.body.mediaId)).status === 403)
+  check('REST complete by another author -> 404', (await completeUpload(restBearer.writer2, lenRow.body.mediaId)).status === 404)
+
+  // a mismatch: the declared hash is of one picture, the bytes are another one of the same length
+  const declaredA = pngBytes(8, 8)
+  const bytesB = pngBytes(8, 9)
+  const mismatch = await startUpload(restBearer.writer, { contentType: 'image/png', size: declaredA.length, sha256: sha(declaredA), alt: 'Zły' })
+  const mismatchId: string = mismatch.body.mediaId
+  const mismatchKey = await restKey(mismatchId)
+  check('REST PUT of other bytes of the same size is stored', (await putBytes(uploadTarget(mismatch.body)!.url, restBearer.writer, bytesB)).status === 200)
+  const refused = await completeUpload(restBearer.writer, mismatchId)
+  check('REST complete with mismatching bytes -> 400 with the hash reason', refused.status === 400 && String(refused.body?.error).includes('Skrót'), refused.body)
+  check('REST refused completion removed the row and the object', (await media.get(mismatchId)) === null && (await storage.head(mismatchKey)) === null)
+  check('REST complete of a file that is already ready -> 400', (await completeUpload(restBearer.writer, restId)).status === 400)
+  check('REST PUT for a ready file -> 409', (await putBytes(restTarget!.url, restBearer.writer, restImg)).status === 409)
+
+  // the admin may finish another author's upload
+  const adminUp = pngBytes(2, 2)
+  const adminStarted = await startUpload(restBearer.writer, { contentType: 'image/png', size: adminUp.length, sha256: sha(adminUp), alt: 'Admin' })
+  check('REST PUT by an admin of another author -> ok', (await putBytes(uploadTarget(adminStarted.body)!.url, restBearer.admin, adminUp)).status === 200)
+  check('REST complete by an admin of another author -> ready', (await completeUpload(restBearer.admin, adminStarted.body.mediaId)).status === 200)
+
+  // audit: one row per completion (ready or rejected); the reuse and the refused starts write nothing
+  const uploadAudit = await pool().query<{ outcome: string; source: string; sha: string; actor: string }>(
+    `SELECT details->>'outcome' AS outcome, details->>'source' AS source, details->>'sha256' AS sha, actor_id AS actor
+       FROM admin_audit_log WHERE action = 'media.upload' AND actor_id LIKE $1 ORDER BY created_at, id`,
+    [`%${P}%`],
+  )
+  check('audit: media.upload rows are ready, rejected, rejected, ready in order', JSON.stringify(uploadAudit.rows.map((r) => r.outcome)) === JSON.stringify(['ready', 'rejected', 'rejected', 'ready']), uploadAudit.rows)
+  check('audit: browser uploads record source browser and a 12-character hash prefix', uploadAudit.rows.every((r) => r.source === 'browser' && r.sha.length === 12), uploadAudit.rows)
+  check('audit: the mismatch is attributed to its author', uploadAudit.rows.filter((r) => r.outcome === 'rejected').every((r) => r.actor === `${ADMIN}-rest-w`), uploadAudit.rows)
+  check('the ready file is still ready after the refusals', (await media.get(restId))?.status === 'ready')
+
   // ---- operations: audit trail, feedback, settings and system counts (changes restored afterwards) -----
   denied('audit_list as teacher', await call(tTeacher, 'audit_list', {}), 'admina')
   denied('audit_list bad date', await call(tAdmin, 'audit_list', { from: 'yesterday' }))

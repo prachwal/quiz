@@ -32437,14 +32437,14 @@ var require_serializer = __commonJS({
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.serialize = void 0;
     var buffer_writer_1 = require_buffer_writer();
-    var writer = new buffer_writer_1.Writer();
+    var writer2 = new buffer_writer_1.Writer();
     var startup = (opts) => {
-      writer.addInt16(3).addInt16(0);
+      writer2.addInt16(3).addInt16(0);
       for (const key of Object.keys(opts)) {
-        writer.addCString(key).addCString(opts[key]);
+        writer2.addCString(key).addCString(opts[key]);
       }
-      writer.addCString("client_encoding").addCString("UTF8");
-      const bodyBuffer = writer.addCString("").flush();
+      writer2.addCString("client_encoding").addCString("UTF8");
+      const bodyBuffer = writer2.addCString("").flush();
       const length2 = bodyBuffer.length + 4;
       return new buffer_writer_1.Writer().addInt32(length2).add(bodyBuffer).flush();
     };
@@ -32455,26 +32455,26 @@ var require_serializer = __commonJS({
       return response;
     };
     var password = (password2) => {
-      return writer.addCString(password2).flush(
+      return writer2.addCString(password2).flush(
         112
         /* code.startup */
       );
     };
     var sendSASLInitialResponseMessage = function(mechanism, initialResponse) {
-      writer.addCString(mechanism).addInt32PrefixedString(initialResponse);
-      return writer.flush(
+      writer2.addCString(mechanism).addInt32PrefixedString(initialResponse);
+      return writer2.flush(
         112
         /* code.startup */
       );
     };
     var sendSCRAMClientFinalMessage = function(additionalData) {
-      return writer.addString(additionalData).flush(
+      return writer2.addString(additionalData).flush(
         112
         /* code.startup */
       );
     };
     var query2 = (text2) => {
-      return writer.addCString(text2).flush(
+      return writer2.addCString(text2).flush(
         81
         /* code.query */
       );
@@ -32489,11 +32489,11 @@ var require_serializer = __commonJS({
       }
       const types2 = query3.types || emptyArray;
       const len = types2.length;
-      const buffer = writer.addCString(name).addCString(query3.text).addInt16(len);
+      const buffer = writer2.addCString(name).addCString(query3.text).addInt16(len);
       for (let i = 0; i < len; i++) {
         buffer.addInt32(types2[i]);
       }
-      return writer.flush(
+      return writer2.flush(
         80
         /* code.parse */
       );
@@ -32504,15 +32504,15 @@ var require_serializer = __commonJS({
         const mappedVal = valueMapper ? valueMapper(values[i], i) : values[i];
         let formatByte = 0;
         if (mappedVal == null) {
-          writer.addInt32(-1);
+          writer2.addInt32(-1);
         } else if (mappedVal instanceof Buffer) {
           formatByte = 1;
-          writer.addInt32(mappedVal.length);
-          writer.add(mappedVal);
+          writer2.addInt32(mappedVal.length);
+          writer2.add(mappedVal);
         } else {
-          writer.addInt32PrefixedString(mappedVal);
+          writer2.addInt32PrefixedString(mappedVal);
         }
-        const buf = writer.buffer;
+        const buf = writer2.buffer;
         buf[formatsOffset++] = 0;
         buf[formatsOffset++] = formatByte;
       }
@@ -32523,22 +32523,22 @@ var require_serializer = __commonJS({
       const binary = config2.binary || false;
       const values = config2.values || emptyArray;
       const len = values.length;
-      writer.addCString(portal).addCString(statement);
-      writer.addInt16(len);
-      const formatsOffset = writer.reserveUnsafe(len * 2);
-      writer.addInt16(len);
+      writer2.addCString(portal).addCString(statement);
+      writer2.addInt16(len);
+      const formatsOffset = writer2.reserveUnsafe(len * 2);
+      writer2.addInt16(len);
       try {
         writeValues(values, config2.valueMapper, formatsOffset);
       } catch (err) {
-        writer.clear();
+        writer2.clear();
         throw err;
       }
-      writer.addInt16(1);
-      writer.addInt16(
+      writer2.addInt16(1);
+      writer2.addInt16(
         binary ? 1 : 0
         /* ParamType.STRING */
       );
-      return writer.flush(
+      return writer2.flush(
         66
         /* code.bind */
       );
@@ -32579,11 +32579,11 @@ var require_serializer = __commonJS({
       buffer[len] = 0;
       return buffer;
     };
-    var emptyDescribePortal = writer.addCString("P").flush(
+    var emptyDescribePortal = writer2.addCString("P").flush(
       68
       /* code.describe */
     );
-    var emptyDescribeStatement = writer.addCString("S").flush(
+    var emptyDescribeStatement = writer2.addCString("S").flush(
       68
       /* code.describe */
     );
@@ -32595,7 +32595,7 @@ var require_serializer = __commonJS({
       return cstringMessage(67, text2);
     };
     var copyData = (chunk) => {
-      return writer.add(chunk).flush(
+      return writer2.add(chunk).flush(
         100
         /* code.copyFromChunk */
       );
@@ -42553,7 +42553,7 @@ var require_content_type = __commonJS({
 });
 
 // server/app.ts
-var import_express = __toESM(require_express2(), 1);
+var import_express2 = __toESM(require_express2(), 1);
 import { randomUUID as randomUUID2 } from "node:crypto";
 
 // node_modules/zod/v4/classic/external.js
@@ -63422,12 +63422,22 @@ async function generateIrregularVerbsQuiz(options) {
   return { quiz, difficulty: options.difficulty ?? null };
 }
 
-// server/media/constants.ts
+// src/shared/media/upload.ts
+var MEDIA_MAX_BYTES_DEFAULT = 2 * 1024 * 1024;
 var MEDIA_CONTENT_TYPES = ["image/png", "image/jpeg", "image/webp"];
+var MEDIA_ALT_MAX_LENGTH2 = 200;
+var mediaUploadStartInput = external_exports.object({
+  contentType: external_exports.enum(MEDIA_CONTENT_TYPES),
+  size: external_exports.number().int().min(1),
+  sha256: external_exports.string().regex(/^[0-9a-f]{64}$/, "sha256 must be 64 lowercase hex characters"),
+  alt: external_exports.string().max(MEDIA_ALT_MAX_LENGTH2).optional()
+});
+
+// server/media/constants.ts
 var MEDIA_OWNER_KINDS = ["quiz", "lesson", "verb"];
 var MEDIA_DAILY_FILES = 100;
 var MEDIA_DAILY_BYTES = 50 * 1024 * 1024;
-var MEDIA_DEFAULT_MAX_BYTES = 2 * 1024 * 1024;
+var MEDIA_DEFAULT_MAX_BYTES = MEDIA_MAX_BYTES_DEFAULT;
 var MEDIA_PRESIGN_MAX_SECONDS = 7 * 24 * 60 * 60;
 var MEDIA_CACHE_CONTROL = "public, max-age=31536000, immutable";
 var MEDIA_MEMORY_DEFAULT_BASE_URL = "https://media.test";
@@ -76442,7 +76452,7 @@ async function systemStats() {
 }
 
 // server/mcp/tools/operations.ts
-var AUDIT_ACTIONS = ["roles.update", "user.block", "user.unblock", "feedback.status", "mcp.call", "settings.update"];
+var AUDIT_ACTIONS = ["roles.update", "user.block", "user.unblock", "feedback.status", "mcp.call", "settings.update", "media.upload"];
 var pageSize = external_exports.number().int().min(1).max(200);
 function registerOperationTools(server, ctx) {
   const isAdmin = ctx.viewer.admin;
@@ -76450,7 +76460,7 @@ function registerOperationTools(server, ctx) {
     "audit_list",
     {
       title: "Dziennik audytu (admin)",
-      description: "Wpisy audytu, od najnowszego. Filtry: action (roles.update, user.block, user.unblock, feedback.status, mcp.call, settings.update), actorId (kto), targetId (czego dotyczy\u0142o), from (w\u0142\u0105cznie) i to (wy\u0142\u0105cznie) jako daty ISO. mcp.call ma details.tool. Domy\u015Blnie 50, maks. 200; hasMore m\xF3wi, czy jest nast\u0119pna strona (offset).",
+      description: "Wpisy audytu, od najnowszego. Filtry: action (roles.update, user.block, user.unblock, feedback.status, mcp.call, settings.update, media.upload), actorId (kto), targetId (czego dotyczy\u0142o), from (w\u0142\u0105cznie) i to (wy\u0142\u0105cznie) jako daty ISO. mcp.call ma details.tool. Domy\u015Blnie 50, maks. 200; hasMore m\xF3wi, czy jest nast\u0119pna strona (offset).",
       inputSchema: {
         action: external_exports.enum(AUDIT_ACTIONS).optional(),
         actorId: external_exports.string().trim().min(1).max(200).optional(),
@@ -77015,6 +77025,7 @@ function resolveMediaConfig(env) {
     }
   };
 }
+var isMemoryDriver = (env) => value(env, "MEDIA_DRIVER") === "memory";
 function urlFetchEnabled(env) {
   return value(env, "MEDIA_URL_FETCH") === "true";
 }
@@ -77465,12 +77476,16 @@ function verifyCompletion(input2) {
 var urlFetchAllowed = (fetchesLastHour) => fetchesLastHour < MEDIA_URL_FETCHES_PER_HOUR;
 var URL_FETCH_LIMIT_REASON = `Limit pobra\u0144 z adresu URL wykorzystany (${MEDIA_URL_FETCHES_PER_HOUR} na godzin\u0119). Spr\xF3buj p\xF3\u017Aniej albo wy\u015Blij obraz inaczej.`;
 var URL_FETCH_DISABLED_REASON = "Pobieranie obraz\xF3w z adresu URL jest wy\u0142\u0105czone na tym serwerze (MEDIA_URL_FETCH). Wy\u015Blij obraz przez media_upload (ma\u0142e pliki, base64) albo media_create_upload (PUT na podany adres).";
+var memoryContentPath = (mediaId2) => `/api/media/${mediaId2}/content`;
+var uploadTargetUrl = (memory, mediaId2, presignedUrl) => memory ? memoryContentPath(mediaId2) : presignedUrl;
 
 // server/media/service.ts
 var MediaRequestError = class extends Error {
-  constructor(message) {
+  status;
+  constructor(message, status = 400) {
     super(message);
     this.name = "MediaRequestError";
+    this.status = status;
   }
 };
 function mediaRuntime() {
@@ -77478,7 +77493,7 @@ function mediaRuntime() {
     const config2 = resolveMediaConfig(process.env);
     return { config: config2, storage: getStorage(), now: () => /* @__PURE__ */ new Date() };
   } catch (error62) {
-    throw new MediaRequestError(`Magazyn medi\xF3w nie jest skonfigurowany: ${error62.message}`);
+    throw new MediaRequestError(`Magazyn medi\xF3w nie jest skonfigurowany: ${error62.message}`, 503);
   }
 }
 async function enforceDailyLimits(ownerId, size) {
@@ -77539,13 +77554,13 @@ async function presign(runtime, row) {
   });
   return { uploadUrl: signed.url, headers: signed.headers, expiresInSeconds: MEDIA_PRESIGN_SECONDS };
 }
-async function ownedRow(id, userId, isAdmin) {
+async function ownedMedia(id, userId, isAdmin) {
   const row = await get(id);
-  if (!row || !isAdmin && row.ownerId !== userId) throw new MediaRequestError("Nie znaleziono pliku.");
+  if (!row || !isAdmin && row.ownerId !== userId) throw new MediaRequestError("Nie znaleziono pliku.", 404);
   return row;
 }
 async function completeUpload(runtime, input2) {
-  const row = await ownedRow(input2.id, input2.userId, input2.isAdmin);
+  const row = await ownedMedia(input2.id, input2.userId, input2.isAdmin);
   if (row.status === "ready") throw new MediaRequestError("Plik jest ju\u017C gotowy - nie trzeba go wysy\u0142a\u0107 ponownie.");
   const head = await runtime.storage.head(row.key);
   if (!head) throw new MediaRequestError("Plik nie zosta\u0142 jeszcze wys\u0142any do magazynu. Wy\u015Blij bajty na uploadUrl (PUT) i wywo\u0142aj media_complete ponownie.");
@@ -77566,7 +77581,7 @@ async function completeUpload(runtime, input2) {
   return { kind: "ready", row: ready2 };
 }
 async function deleteMedia(runtime, input2) {
-  const row = await ownedRow(input2.id, input2.userId, input2.isAdmin);
+  const row = await ownedMedia(input2.id, input2.userId, input2.isAdmin);
   const result = await remove(row.id);
   if (result.status === "missing") throw new MediaRequestError("Nie znaleziono pliku.");
   if (result.status === "in-use") return { kind: "in-use", row, references: result.references };
@@ -77574,7 +77589,7 @@ async function deleteMedia(runtime, input2) {
   return { kind: "removed", row };
 }
 async function mediaDetails(input2) {
-  const row = await ownedRow(input2.id, input2.userId, input2.isAdmin);
+  const row = await ownedMedia(input2.id, input2.userId, input2.isAdmin);
   return { row, references: await referencesOf(row.id) };
 }
 var urlFetchesLastHour = (ownerId, now) => countBySourceSince(ownerId, "mcp-url", new Date(now.getTime() - 60 * 60 * 1e3));
@@ -78883,6 +78898,133 @@ function registerClassRoutes(router) {
   });
 }
 
+// server/media/routes.ts
+var import_express = __toESM(require_express2(), 1);
+var writer = requirePermission(WRITE_QUIZZES);
+async function refusing2(work) {
+  try {
+    return await work();
+  } catch (error62) {
+    if (error62 instanceof MediaRequestError) throw new HttpError(error62.status, error62.message);
+    throw error62;
+  }
+}
+function auditUpload(actor, row, outcome, reason) {
+  return writeAudit({
+    actorId: actor,
+    actorLabel: null,
+    action: "media.upload",
+    targetId: row.id,
+    targetLabel: "obraz",
+    details: {
+      mediaId: row.id,
+      size: row.sizeBytes,
+      source: "browser",
+      sha256: row.sha256.slice(0, 12),
+      outcome,
+      ...reason === void 0 ? {} : { reason }
+    }
+  });
+}
+var readyAnswer = (runtime, row, reused) => ({
+  mediaId: row.id,
+  reused,
+  status: "ready",
+  url: urlOf(runtime, row),
+  width: row.width,
+  height: row.height
+});
+var memoryOnly = (_req, _res, next) => {
+  if (isMemoryDriver(process.env)) next();
+  else next(new HttpError(404, "Not found"));
+};
+var rawImage = (req, res, next) => {
+  const { maxBytes } = resolveMediaConfig(process.env);
+  import_express.default.raw({ type: [...MEDIA_CONTENT_TYPES], limit: maxBytes })(req, res, (error62) => {
+    if (!error62) return next();
+    const status = error62.status;
+    if (typeof status === "number" && status < 500) {
+      return next(new HttpError(400, `Nie uda\u0142o si\u0119 odczyta\u0107 bajt\xF3w pliku. Wy\u015Blij PNG, JPEG albo WebP, najwy\u017Cej ${maxBytes} B.`));
+    }
+    return next(error62);
+  });
+};
+function registerMediaRoutes(router) {
+  router.post("/media/uploads", writer, async (req, res) => {
+    const input2 = mediaUploadStartInput.parse(req.body ?? {});
+    if (input2.alt !== void 0) {
+      const alt2 = validateAlt(input2.alt);
+      if (!alt2.ok) throw new HttpError(400, alt2.reason);
+    }
+    const answer = await refusing2(async () => {
+      const runtime = mediaRuntime();
+      const started = await beginUpload(runtime, {
+        ownerId: userOf(req),
+        contentType: input2.contentType,
+        size: input2.size,
+        sha256: input2.sha256,
+        source: "browser"
+      });
+      if (started.kind === "reused") return readyAnswer(runtime, started.row, true);
+      return {
+        mediaId: started.row.id,
+        reused: false,
+        status: "pending",
+        upload: {
+          url: uploadTargetUrl(isMemoryDriver(process.env), started.row.id, started.uploadUrl),
+          method: "PUT",
+          headers: started.headers
+        }
+      };
+    });
+    res.json(answer);
+  });
+  router.put("/media/:id/content", memoryOnly, writer, rawImage, async (req, res) => {
+    const id = idParam(req.params.id);
+    const bytes = req.body;
+    await refusing2(async () => {
+      const runtime = mediaRuntime();
+      const row = await ownedMedia(id, userOf(req), hasPermission(req, MANAGE_USERS));
+      if (row.status !== "pending") throw new MediaRequestError("Ten plik jest ju\u017C wys\u0142any.", 409);
+      if (!Buffer.isBuffer(bytes) || bytes.byteLength === 0) {
+        throw new MediaRequestError("Wy\u015Blij bajty obrazu z nag\u0142\xF3wkiem Content-Type: image/png, image/jpeg albo image/webp.");
+      }
+      if (bytes.byteLength !== row.sizeBytes) {
+        throw new MediaRequestError(`Rozmiar wys\u0142anych bajt\xF3w (${bytes.byteLength} B) nie zgadza si\u0119 z zadeklarowanym (${row.sizeBytes} B).`);
+      }
+      await runtime.storage.put(row.key, new Uint8Array(bytes), { contentType: row.contentType });
+    });
+    res.json({ ok: true });
+  });
+  router.post("/media/:id/complete", writer, async (req, res) => {
+    const id = idParam(req.params.id);
+    const actor = userOf(req);
+    const isAdmin = hasPermission(req, MANAGE_USERS);
+    const before = await refusing2(() => ownedMedia(id, actor, isAdmin));
+    const runtime = await refusing2(async () => mediaRuntime());
+    let completion;
+    try {
+      completion = await refusing2(() => completeUpload(runtime, { id, userId: actor, isAdmin }));
+    } catch (error62) {
+      if (error62 instanceof HttpError) await auditUpload(actor, before, "rejected", error62.message);
+      throw error62;
+    }
+    if (completion.kind === "rejected") {
+      await auditUpload(actor, before, "rejected", completion.reason);
+      throw new HttpError(400, completion.reason);
+    }
+    await auditUpload(actor, completion.row, "ready");
+    const done = {
+      mediaId: completion.row.id,
+      url: urlOf(runtime, completion.row),
+      width: completion.row.width,
+      height: completion.row.height,
+      size: completion.row.sizeBytes
+    };
+    res.json(done);
+  });
+}
+
 // server/media/mediaMap.ts
 function buildMediaMap(rows, baseUrl) {
   const map2 = {};
@@ -79260,7 +79402,7 @@ function registerTokenRoutes(router) {
 function createApp() {
   initSentry();
   registerLearningGradeHooks(gradeRegistry);
-  const app2 = (0, import_express.default)();
+  const app2 = (0, import_express2.default)();
   app2.disable("x-powered-by");
   app2.use((req, res, next) => {
     const requestId = String(req.headers["x-request-id"] ?? req.headers["x-vercel-id"] ?? randomUUID2());
@@ -79273,8 +79415,8 @@ function createApp() {
     res.set("Cache-Control", "no-store");
     next();
   });
-  const jsonDefault = import_express.default.json({ limit: "1mb" });
-  const jsonForMcp = import_express.default.json({ limit: "3mb" });
+  const jsonDefault = import_express2.default.json({ limit: "1mb" });
+  const jsonForMcp = import_express2.default.json({ limit: "3mb" });
   app2.use(((req, res, next) => (/^\/(?:api\/)?mcp(?:[/?]|$)/.test(req.url) ? jsonForMcp : jsonDefault)(req, res, next)));
   app2.use(((req, _res, next) => {
     req.url = req.url.replace(/^\/api(?=\/|\?|$)/, "") || "/";
@@ -79295,13 +79437,14 @@ function createApp() {
   app2.use(authenticate, requireAuthenticated);
   app2.post("/mcp", mcpHandler);
   app2.all("/mcp", mcpNotAllowed);
-  const router = import_express.default.Router();
+  const router = import_express2.default.Router();
   registerQuizRoutes(router);
   registerTokenRoutes(router);
   registerClassRoutes(router);
   registerProgressRoutes(router);
   registerLearningRoutes(router);
   registerAdminRoutes(router);
+  registerMediaRoutes(router);
   app2.use(router);
   app2.use(((_req, res) => {
     res.status(404).json({ error: "Not found" });

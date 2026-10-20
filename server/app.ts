@@ -11,6 +11,7 @@ import { mcpHandler, mcpNotAllowed } from './mcp'
 import { MCP_PATH, METADATA_PATH, protectedResourceMetadata, publicOrigin } from './protectedResource'
 import { registerAdminRoutes } from './routes/admin'
 import { registerClassRoutes } from './routes/classes'
+import { registerMediaRoutes } from './media/routes'
 import { registerLearningRoutes } from './routes/learning'
 import { registerProgressRoutes } from './routes/progress'
 import { registerQuizRoutes } from './routes/quizzes'
@@ -85,6 +86,7 @@ export function createApp() {
   registerProgressRoutes(router)
   registerLearningRoutes(router)
   registerAdminRoutes(router)
+  registerMediaRoutes(router)
   app.use(router)
 
   app.use(((_req, res) => {

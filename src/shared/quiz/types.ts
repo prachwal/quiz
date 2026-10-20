@@ -221,7 +221,7 @@ export interface AuditEntry {
   id: string
   actorId: string
   actorLabel: string | null
-  action: 'roles.update' | 'user.block' | 'user.unblock' | 'feedback.status' | 'mcp.call' | 'settings.update'
+  action: 'roles.update' | 'user.block' | 'user.unblock' | 'feedback.status' | 'mcp.call' | 'settings.update' | 'media.upload'
   targetId: string | null
   targetLabel: string | null
   details: Record<string, unknown>

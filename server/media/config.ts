@@ -124,6 +124,9 @@ export function resolveMediaConfig(env: MediaEnv): MediaConfig {
   }
 }
 
+/** True when MEDIA_DRIVER selects the memory driver (dev and tests). Reads only the environment, never storage. */
+export const isMemoryDriver = (env: MediaEnv): boolean => value(env, 'MEDIA_DRIVER') === 'memory'
+
 /**
  * `MEDIA_URL_FETCH=true` enables `media_upload_from_url` (the server fetches an image from an https address).
  * Off by default: the pinned fetcher is tested with fakes only, and the owner turns it on after checking the

@@ -15,11 +15,13 @@ import * as repo from './repo'
 import type { MediaRef, MediaRow } from './repo'
 import { checkSize, DAILY_LIMIT_REASON, sha256Of, sniffUpload, verifyCompletion } from './uploads'
 
-/** A refusal the caller shows to the user (not a server error). */
+/** A refusal the caller shows to the user (not a server error). `status` is used by the browser routes (MCP ignores it). */
 export class MediaRequestError extends Error {
-  constructor(message: string) {
+  readonly status: number
+  constructor(message: string, status = 400) {
     super(message)
     this.name = 'MediaRequestError'
+    this.status = status
   }
 }
 
@@ -35,7 +37,7 @@ export function mediaRuntime(): MediaRuntime {
     const config = resolveMediaConfig(process.env)
     return { config, storage: getStorage(), now: () => new Date() }
   } catch (error) {
-    throw new MediaRequestError(`Magazyn mediów nie jest skonfigurowany: ${(error as Error).message}`)
+    throw new MediaRequestError(`Magazyn mediów nie jest skonfigurowany: ${(error as Error).message}`, 503)
   }
 }
 
@@ -141,9 +143,9 @@ async function presign(runtime: MediaRuntime, row: MediaRow) {
 }
 
 /** Only the owner or an admin may act on a file; anyone else gets the same answer as for a missing file. */
-async function ownedRow(id: string, userId: string, isAdmin: boolean): Promise<MediaRow> {
+export async function ownedMedia(id: string, userId: string, isAdmin: boolean): Promise<MediaRow> {
   const row = await repo.get(id)
-  if (!row || (!isAdmin && row.ownerId !== userId)) throw new MediaRequestError('Nie znaleziono pliku.')
+  if (!row || (!isAdmin && row.ownerId !== userId)) throw new MediaRequestError('Nie znaleziono pliku.', 404)
   return row
 }
 
@@ -157,7 +159,7 @@ export async function completeUpload(
   runtime: MediaRuntime,
   input: { id: string; userId: string; isAdmin: boolean },
 ): Promise<Completion> {
-  const row = await ownedRow(input.id, input.userId, input.isAdmin)
+  const row = await ownedMedia(input.id, input.userId, input.isAdmin)
   if (row.status === 'ready') throw new MediaRequestError('Plik jest już gotowy - nie trzeba go wysyłać ponownie.')
 
   const head = await runtime.storage.head(row.key)
@@ -187,7 +189,7 @@ export type DeleteResult =
 
 /** Removes an unused file (object and row). A referenced file is returned with its references, untouched. */
 export async function deleteMedia(runtime: MediaRuntime, input: { id: string; userId: string; isAdmin: boolean }): Promise<DeleteResult> {
-  const row = await ownedRow(input.id, input.userId, input.isAdmin)
+  const row = await ownedMedia(input.id, input.userId, input.isAdmin)
   const result = await repo.remove(row.id)
   if (result.status === 'missing') throw new MediaRequestError('Nie znaleziono pliku.')
   if (result.status === 'in-use') return { kind: 'in-use', row, references: result.references }
@@ -197,7 +199,7 @@ export async function deleteMedia(runtime: MediaRuntime, input: { id: string; us
 
 /** `media_get`: the file with its references (owner or admin only). */
 export async function mediaDetails(input: { id: string; userId: string; isAdmin: boolean }): Promise<{ row: MediaRow; references: MediaRef[] }> {
-  const row = await ownedRow(input.id, input.userId, input.isAdmin)
+  const row = await ownedMedia(input.id, input.userId, input.isAdmin)
   return { row, references: await repo.referencesOf(row.id) }
 }
 
