@@ -4,6 +4,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import { createServer } from 'node:http'
+import { createHash, randomUUID } from 'node:crypto'
 import type { AddressInfo } from 'node:net'
 import { createApiToken } from '../server/apiTokens'
 import { createApp } from '../server/app'
@@ -11,6 +12,7 @@ import { pool } from '../server/db'
 import * as repo from '../server/quizRepo'
 import * as adminRepo from '../server/adminRepo'
 import * as appSettings from '../server/appSettingsRepo'
+import * as media from '../server/media/repo'
 
 type Result = { err: boolean; data: any }
 let passed = 0
@@ -65,6 +67,10 @@ async function cleanup() {
   const db = pool()
   await db.query('DELETE FROM classes WHERE owner_id LIKE $1', [`%${P}%`])
   await db.query('DELETE FROM quiz_attempts WHERE user_id LIKE $1', [`%${P}%`])
+  // media references first: media_refs has no foreign key to quizzes, and media rows are RESTRICTed while referenced
+  await db.query(`DELETE FROM media_refs WHERE owner_kind = 'quiz' AND owner_id IN (SELECT id::text FROM quizzes WHERE title LIKE 'MCP E2E%')`)
+  await db.query('DELETE FROM media_refs WHERE media_id IN (SELECT id FROM media WHERE owner_id LIKE $1)', [`%${P}%`])
+  await db.query('DELETE FROM media WHERE owner_id LIKE $1', [`%${P}%`])
   await db.query("DELETE FROM quizzes WHERE title LIKE 'MCP E2E%'")
   await db.query('DELETE FROM user_profiles WHERE user_id LIKE $1', [`%${P}%`])
   await db.query('DELETE FROM api_tokens WHERE user_id LIKE $1', [`%${P}%`])
@@ -143,6 +149,47 @@ try {
   denied('quiz_delete without write', await call(tPlain, 'quiz_delete', { id: doomed, confirm: true }), 'write:quizzes')
   ok('quiz_delete', await call(tAdminWrite, 'quiz_delete', { id: doomed, confirm: true }), (d) => d.ok === true)
   denied('quiz_delete twice', await call(tAdminWrite, 'quiz_delete', { id: doomed, confirm: true }), 'Nie znaleziono')
+
+  // ---- images in quiz text (Media-Storage-Plan M2): references, refusals, cleanup ---------
+  const mediaRow = async (id: string, status: 'ready' | 'pending') => {
+    await media.createPending({ id, key: `media/2026/${id}.png`, contentType: 'image/png', sizeBytes: 1200, sha256: createHash('sha256').update(id).digest('hex'), source: 'script', ownerId: `admin|${P}-media` })
+    if (status === 'ready') await media.markReady(id, { width: 800, height: 450 })
+  }
+  const readyId = randomUUID()
+  const pendingId = randomUUID()
+  await mediaRow(readyId, 'ready')
+  await mediaRow(pendingId, 'pending')
+  const img = (alt: string, id: string) => `![${alt}](media:${id})`
+  const withImage = (prompt: string, explanation: string, optionText: string) => ({
+    title: 'MCP E2E media',
+    difficulty: 'easy',
+    questions: [
+      { type: 'single', prompt, explanation, points: 1, options: [{ text: optionText, isCorrect: true }, { text: '5', isCorrect: false }] },
+    ],
+  })
+  const refsOf = async (quizId: string) =>
+    (await pool().query<{ id: string }>(`SELECT media_id::text AS id FROM media_refs WHERE owner_kind = 'quiz' AND owner_id = $1`, [quizId])).rows.map((r) => r.id)
+
+  const imageQuiz = withImage(`Co pokazuje ${img('Mapa Polski', readyId)}?`, `Patrz ${img('Schemat', readyId)}.`, img('Kot', readyId))
+  const imageCreated = await call(tAdminWrite, 'quiz_create', { quiz: imageQuiz })
+  ok('quiz_create with a ready image in prompt, explanation and option', imageCreated, (d) => d.questions[0].prompt === imageQuiz.questions[0].prompt)
+  const imageQuizId: string = imageCreated.data.id
+  ok('quiz_get returns the image syntax unchanged', await call(tAdminWrite, 'quiz_get', { id: imageQuizId, withAnswers: true }), (d) =>
+    d.questions[0].prompt === imageQuiz.questions[0].prompt && d.questions[0].explanation === imageQuiz.questions[0].explanation && d.questions[0].options[0].text === imageQuiz.questions[0].options[0].text)
+  check('media_refs: one reference for the quiz', JSON.stringify(await refsOf(imageQuizId)) === JSON.stringify([readyId]), await refsOf(imageQuizId))
+  denied('quiz_create with an unknown media id', await call(tAdminWrite, 'quiz_create', { quiz: withImage(`P ${img('x', randomUUID())}`, '', 'a') }), 'nieistniejące')
+  denied('quiz_create with a pending media id', await call(tAdminWrite, 'quiz_create', { quiz: withImage(`P ${img('x', pendingId)}`, '', 'a') }), 'jeszcze niewysłane')
+  denied('quiz_create with an external https image', await call(tAdminWrite, 'quiz_create', { quiz: withImage(`P ![x](https://example.com/a.png)`, '', 'a') }), 'media_upload')
+  denied('quiz_create with an image in a text option', await call(tAdminWrite, 'quiz_create', { quiz: { title: 'MCP E2E media text', questions: [{ type: 'text', prompt: 'P', options: [{ text: img('x', readyId), isCorrect: true }] }] } }), 'odpowiedziach tekstowych')
+  denied('quiz_create with an empty alt', await call(tAdminWrite, 'quiz_create', { quiz: withImage(`P ${img('', readyId)}`, '', 'a') }), 'wymaga opisu')
+  check('refused quizzes left no references', (await pool().query("SELECT COUNT(*)::int AS n FROM media_refs WHERE owner_id IN (SELECT id::text FROM quizzes WHERE title LIKE 'MCP E2E media%' AND id <> $1)", [imageQuizId])).rows[0].n === 0)
+
+  ok('quiz_update removing the image clears the reference', await call(tAdminWrite, 'quiz_update', { id: imageQuizId, quiz: withImage('Co pokazuje?', 'Patrz.', 'Kot') }), (d) => d.questions[0].prompt === 'Co pokazuje?')
+  check('media_refs cleared by quiz_update', (await refsOf(imageQuizId)).length === 0, await refsOf(imageQuizId))
+  ok('quiz_update adding the image back', await call(tAdminWrite, 'quiz_update', { id: imageQuizId, quiz: imageQuiz }))
+  check('media_refs restored by quiz_update', JSON.stringify(await refsOf(imageQuizId)) === JSON.stringify([readyId]))
+  ok('quiz_delete', await call(tAdminWrite, 'quiz_delete', { id: imageQuizId, confirm: true }), (d) => d.ok === true)
+  check('media_refs cleared by quiz_delete', (await refsOf(imageQuizId)).length === 0, await refsOf(imageQuizId))
 
   // ---- classes ---------------------------------------------------------------------------
   const cls = await call(tTeacher, 'class_create', { name: 'MCP E2E klasa' })
@@ -311,7 +358,7 @@ try {
   )
   const logged = audit.rows.map((r) => r.tool)
   const expected = [
-    'quiz_create', 'quiz_update', 'quiz_create', 'quiz_delete', 'class_create', 'class_update', 'class_regenerate_code',
+    'quiz_create', 'quiz_update', 'quiz_create', 'quiz_delete', 'quiz_create', 'quiz_update', 'quiz_update', 'quiz_delete', 'class_create', 'class_update', 'class_regenerate_code',
     'student_add', 'student_add', 'assignment_create', 'assignment_create', 'assignment_update_due', 'assignment_update_due',
     'student_remove', 'assignment_delete', 'class_archive',
   ]

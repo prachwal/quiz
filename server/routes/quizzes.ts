@@ -10,6 +10,7 @@ import { gradeRegistry } from '../gradeRegistry'
 import { HttpError, notFound, parseId, userOf } from '../http'
 import { buildVerbQuiz, generateIrregularVerbsQuiz, listVerbs, randomSample } from '../irregularVerbs'
 import * as repo from '../quizRepo'
+import { MediaRefError } from '../media/repo'
 import * as reviews from '../reviewsRepo'
 import { reportServerError } from '../sentry'
 
@@ -38,6 +39,16 @@ const reportHookError = (req: Request, res: Response) => async (error: unknown, 
   await reportServerError(error, { requestId, userId, method: req.method, path: req.path }).catch(() => undefined)
 }
 
+/** Images that do not exist or are not uploaded yet are a client error with the list of the bad ids. */
+async function withMediaRefs<T>(work: () => Promise<T>): Promise<T> {
+  try {
+    return await work()
+  } catch (error) {
+    if (error instanceof MediaRefError) throw new HttpError(400, error.message)
+    throw error
+  }
+}
+
 const listQuery = z.object({
   difficulty: z.enum(DIFFICULTIES).optional(),
   subject: z.enum([...SUBJECTS, 'none']).optional(),
@@ -53,7 +64,7 @@ export function registerQuizRoutes(router: Router) {
   router.post('/quizzes', requirePermission(WRITE_QUIZZES), async (req, res) => {
     const input = quizInput.parse(req.body)
     const userId = userOf(req)
-    const id = await repo.createQuiz(input, { kind: 'manual', difficulty: input.difficulty, ownerId: userId })
+    const id = await withMediaRefs(() => repo.createQuiz(input, { kind: 'manual', difficulty: input.difficulty, ownerId: userId }))
     res.status(201).json(await repo.getQuiz(id, true, true))
   })
 
@@ -136,7 +147,7 @@ export function registerQuizRoutes(router: Router) {
   router.put('/quizzes/:id', requirePermission(WRITE_QUIZZES), async (req, res) => {
     const id = parseId(req.params.id)
     const input = quizInput.parse(req.body)
-    if (!(await repo.replaceQuiz(id, input))) throw notFound()
+    if (!(await withMediaRefs(() => repo.replaceQuiz(id, input)))) throw notFound()
     res.json(await repo.getQuiz(id, true, true))
   })
 

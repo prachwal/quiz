@@ -4,6 +4,7 @@ import quizFileSchema from '../../data/quiz.schema.json' with { type: 'json' }
 import { DIFFICULTIES, POPULARITIES, quizInput } from '../../src/shared/quiz/schema'
 import { SUBJECTS } from '../../src/shared/quiz/types'
 import { listVerbs } from '../irregularVerbs'
+import { MediaRefError } from '../media/repo'
 import * as repo from '../quizRepo'
 import { audit, failure, needQuizWrite, text } from './context'
 import type { Ctx } from './context'
@@ -81,7 +82,13 @@ export function registerQuizTools(server: McpServer, ctx: Ctx) {
     },
     async ({ quiz }) => {
       if (!ctx.canWriteQuizzes) return needQuizWrite()
-      const id = await repo.createQuiz(quiz, { kind: 'manual', difficulty: quiz.difficulty, ownerId: ctx.userId })
+      let id: string
+      try {
+        id = await repo.createQuiz(quiz, { kind: 'manual', difficulty: quiz.difficulty, ownerId: ctx.userId })
+      } catch (error) {
+        if (error instanceof MediaRefError) return failure(error.message)
+        throw error
+      }
       await audit(ctx, 'quiz_create', { id, label: quiz.title }, { questions: quiz.questions.length })
       return text(await repo.getQuiz(id, true, true))
     },
@@ -98,7 +105,14 @@ export function registerQuizTools(server: McpServer, ctx: Ctx) {
     },
     async ({ id, quiz }) => {
       if (!ctx.canWriteQuizzes) return needQuizWrite()
-      if (!(await repo.replaceQuiz(id, quiz))) return failure('Nie znaleziono quizu.')
+      let replaced: boolean
+      try {
+        replaced = await repo.replaceQuiz(id, quiz)
+      } catch (error) {
+        if (error instanceof MediaRefError) return failure(error.message)
+        throw error
+      }
+      if (!replaced) return failure('Nie znaleziono quizu.')
       await audit(ctx, 'quiz_update', { id, label: quiz.title }, { questions: quiz.questions.length })
       return text(await repo.getQuiz(id, true, true))
     },

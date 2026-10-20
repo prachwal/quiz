@@ -8,6 +8,14 @@
  * questions of one quiz, so old quizzes keep working without a data migration.
  */
 
+import {
+  countImages,
+  extractMediaIds,
+  hasImageSyntax,
+  imageSyntaxErrors,
+  parseRichText,
+} from '../media/richText'
+
 export const QUESTION_TYPES = ['single', 'multiple', 'truefalse', 'text', 'numeric', 'ordering', 'matching', 'cloze'] as const
 export type QuestionType = (typeof QUESTION_TYPES)[number]
 
@@ -20,6 +28,7 @@ export interface DraftQuestion {
   type: QuestionType
   /** Present when the definition needs to cross-check the config (cloze markers). */
   prompt?: string
+  explanation?: string
   options: DraftOption[]
   /** Per-type payload for types that do not use `options`. */
   config?: unknown
@@ -210,15 +219,36 @@ export const CLOZE_MARKER = new RegExp(String.raw`\{\{(${CLOZE_NUMBER})\}\}`)
 /** The same marker without a capture group, for `split`/`replace`. */
 const CLOZE_MARKER_PLAIN = String.raw`\{\{${CLOZE_NUMBER}\}\}`
 
+/** The text parts of a prompt: images are taken out, so a marker-like text inside an alt is never a gap. */
+const textSegments = (text: string): string[] =>
+  parseRichText(text).flatMap((part) => (part.type === 'text' ? [part.text] : []))
+
 /** Marker numbers in the prompt, in the order they appear (duplicates kept). */
 export const clozeMarkers = (prompt: string): number[] =>
-  [...prompt.matchAll(new RegExp(CLOZE_MARKER_PLAIN, 'g'))].map((match) => Number(match[0].slice(2, -2)))
+  textSegments(prompt).flatMap((segment) =>
+    [...segment.matchAll(new RegExp(CLOZE_MARKER_PLAIN, 'g'))].map((match) => Number(match[0].slice(2, -2))),
+  )
 
 /**
  * Splits the prompt into alternating text and marker parts (text at even indexes), keeping each
- * marker whole. Non-canonical markers stay in the text part.
+ * marker whole. Non-canonical markers stay in the text part. An image stays inside the text part
+ * around it, so markers next to an image still split correctly.
  */
-export const clozeParts = (prompt: string): string[] => prompt.split(new RegExp(`(${CLOZE_MARKER_PLAIN})`, 'g'))
+export const clozeParts = (prompt: string): string[] => {
+  const parts: string[] = ['']
+  for (const part of parseRichText(prompt)) {
+    if (part.type === 'image') {
+      parts[parts.length - 1] += `![${part.alt}](media:${part.mediaId})`
+      continue
+    }
+    // split() with a capture group alternates text / marker / text...; a marker and the text after it
+    // are appended as one pair, so the text slot stays at even indexes
+    const pieces = part.text.split(new RegExp(`(${CLOZE_MARKER_PLAIN})`, 'g'))
+    parts[parts.length - 1] += pieces[0]
+    for (let i = 1; i < pieces.length; i += 2) parts.push(pieces[i], pieces[i + 1])
+  }
+  return parts
+}
 
 const clozeConfig = (config: unknown): ClozeConfig | null => {
   if (!config || typeof config !== 'object') return null
@@ -694,8 +724,111 @@ export const isAnswered = (answer: Answer | undefined): boolean =>
       Object.values(answer?.gaps ?? {}).some((value) => value.trim()),
   )
 
-/** Question prompt without cloze markers (for text-only views: attempt lists, analysis). */
-export const promptText = (prompt: string): string => prompt.replace(new RegExp(CLOZE_MARKER_PLAIN, 'g'), '___')
+/**
+ * Question prompt for text-only views (attempt lists, analysis): cloze markers become `___`, an image
+ * becomes `[obraz: opis]` - never its address.
+ */
+export const promptText = (prompt: string): string =>
+  parseRichText(prompt)
+    .map((part) =>
+      part.type === 'image'
+        ? part.alt
+          ? `[obraz: ${part.alt}]`
+          : '[obraz]'
+        : part.text.replace(new RegExp(CLOZE_MARKER_PLAIN, 'g'), '___'),
+    )
+    .join('')
+
+/** Types whose `options.text` may hold images: the answer is picked by id, its text is only shown. */
+export const IMAGE_OPTION_TYPES: readonly QuestionType[] = ['single', 'multiple', 'truefalse']
+
+/** Every image reference a view of a question can contain (prompt, explanation, option texts). */
+export const questionImageIds = (question: {
+  prompt?: string
+  explanation?: string
+  options: { text: string }[]
+}): string[] => [
+  ...new Set(
+    [question.prompt ?? '', question.explanation ?? '', ...question.options.map((option) => option.text)].flatMap(
+      extractMediaIds,
+    ),
+  ),
+]
+
+/** Image ids of a quiz view (prompts, the options that the view carries, explanations when it carries them). */
+export const quizImageIds = (quiz: {
+  questions: { prompt?: string; explanation?: string; options: { text: string }[] }[]
+}): string[] => [...new Set(quiz.questions.flatMap(questionImageIds))]
+
+/**
+ * Image ids a grading response may show: the explanations of the graded questions and the option texts
+ * that are either correct or were chosen by the player (those are the only option texts the result
+ * repeats). Free text typed by the player is never scanned.
+ */
+export const gradedImageIds = (
+  questions: { id: string; explanation?: string; options: { id: string; text: string; isCorrect?: boolean }[] }[],
+  answers: Record<string, Answer | undefined>,
+): string[] => {
+  const ids = questions.flatMap((question) => {
+    const chosen = new Set(answers[question.id]?.optionIds ?? [])
+    const shown = question.options.filter((option) => option.isCorrect || chosen.has(option.id))
+    return [question.explanation ?? '', ...shown.map((option) => option.text)].flatMap(extractMediaIds)
+  })
+  return [...new Set(ids)]
+}
+
+/** Where images may appear, and the syntax rules, for one question. Polish messages; empty = allowed. */
+export function imageFieldErrors(question: DraftQuestion): { path: (string | number)[]; message: string }[] {
+  const errors: { path: (string | number)[]; message: string }[] = []
+  const add = (path: (string | number)[], messages: string[]) => messages.forEach((message) => errors.push({ path, message }))
+  if (question.prompt !== undefined) add(['prompt'], imageSyntaxErrors(question.prompt))
+  // the explanation is shown after grading, so images are allowed there for every type
+  if (question.explanation !== undefined) add(['explanation'], imageSyntaxErrors(question.explanation))
+
+  const def = questionTypeDefs[question.type]
+  if (def.usesOptions) {
+    question.options.forEach((option, index) => {
+      const path = ['options', index, 'text']
+      if (IMAGE_OPTION_TYPES.includes(question.type)) {
+        add(path, imageSyntaxErrors(option.text))
+      } else if (hasImageSyntax(option.text)) {
+        add(path, [
+          'Obrazów nie można używać w odpowiedziach tekstowych: akceptowana odpowiedź jest porównywana jako tekst.',
+        ])
+      }
+    })
+  } else if (question.config !== undefined && question.config !== null) {
+    // config payloads (pairs, ordering items, cloze gaps, numeric answer) are compared as text, never shown as images
+    const offending = stringsIn(question.config).some(hasImageSyntax)
+    if (offending) {
+      errors.push({
+        path: ['config'],
+        message: 'Obrazów nie można używać w elementach tego typu pytania (pary, elementy, luki, odpowiedź liczbowa). Obraz możesz umieścić w treści pytania albo w wyjaśnieniu.',
+      })
+    }
+  }
+  return errors
+}
+
+const stringsIn = (value: unknown): string[] => {
+  if (typeof value === 'string') return [value]
+  if (Array.isArray(value)) return value.flatMap(stringsIn)
+  if (value && typeof value === 'object') return Object.values(value).flatMap(stringsIn)
+  return []
+}
+
+/** Images in a whole quiz (prompts, explanations, option texts) - the per-quiz limit counts these. */
+export const quizImageCount = (
+  questions: { prompt?: string; explanation?: string; options: { text: string }[] }[],
+): number =>
+  questions.reduce(
+    (sum, question) =>
+      sum +
+      countImages(question.prompt ?? '') +
+      countImages(question.explanation ?? '') +
+      question.options.reduce((inner, option) => inner + countImages(option.text), 0),
+    0,
+  )
 
 export function gradeQuiz(
   questions: GradableQuizQuestion[],

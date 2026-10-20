@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { clozeParts, gradedImageIds, imageFieldErrors, quizImageCount, quizImageIds } from '../src/shared/quiz/engine.ts'
 import {
   clozeMarkers,
   gradeQuiz,
@@ -568,3 +569,84 @@ test('cloze gap that is only punctuation or blank scores 0', () => {
   assert.equal(gradeQuiz(q, { c1: { gaps: { 1: 'went' } } }).percent, 0)
   assert.equal(gradeQuiz(q, {}).percent, 0)
 })
+
+// ---- images in question text (Media-Storage-Plan M2) -----------------------------------------------
+
+const MID = '6f1c2a4e-9b3d-4e8f-8a7b-1c2d3e4f5a6b'
+const MID2 = '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d'
+
+test('promptText replaces an image with its description, never with the address', () => {
+  assert.equal(promptText(`Co na ![Mapa](media:${MID}) widać?`), 'Co na [obraz: Mapa] widać?')
+  assert.equal(promptText(`![](media:${MID})`), '[obraz]')
+  assert.equal(promptText(`![Kot](media:${MID})`).includes('media:'), false)
+})
+
+test('promptText handles cloze markers and images together, and a marker inside an alt is text', () => {
+  assert.equal(promptText(`![Kot](media:${MID}) He {{1}} home.`), '[obraz: Kot] He ___ home.')
+  assert.equal(promptText(`![{{1}} kot](media:${MID}) He {{2}} home.`), '[obraz: {{1}} kot] He ___ home.')
+})
+
+test('clozeMarkers ignores a marker-like text inside an alt, but counts markers around images', () => {
+  assert.deepEqual(clozeMarkers(`![{{1}} tekst](media:${MID}) He {{1}} home.`), [1])
+  assert.deepEqual(clozeMarkers(`![{{2}}](media:${MID}){{1}} and {{2}}`), [1, 2])
+  assert.deepEqual(clozeMarkers(`![Kot](media:${MID})`), [])
+})
+
+test('clozeParts keeps images inside text parts so markers around them still split', () => {
+  assert.deepEqual(clozeParts(`![{{1}}](media:${MID}) He {{1}} home.`), [`![{{1}}](media:${MID}) He `, '{{1}}', ' home.'])
+  assert.deepEqual(clozeParts(`a ![Kot](media:${MID}){{1}}![Pies](media:${MID2}) b`), [
+    `a ![Kot](media:${MID})`,
+    '{{1}}',
+    `![Pies](media:${MID2}) b`,
+  ])
+  // no images: exactly the old split
+  assert.deepEqual(clozeParts('He {{1}} to {{2}}.'), ['He ', '{{1}}', ' to ', '{{2}}', '.'])
+})
+
+test('imageFieldErrors: images are allowed in prompt, explanation and choice options only', () => {
+  const choice = { type: 'single' as const, prompt: `![Kot](media:${MID})`, explanation: `![Pies](media:${MID2})`, options: [{ text: `![A](media:${MID})`, isCorrect: true }, { text: 'b', isCorrect: false }] }
+  assert.deepEqual(imageFieldErrors(choice), [])
+  for (const type of ['multiple', 'truefalse'] as const) {
+    assert.deepEqual(imageFieldErrors({ ...choice, type, options: [{ text: `![A](media:${MID})`, isCorrect: true }, { text: 'b', isCorrect: false }] }), [])
+  }
+  const textOption = { type: 'text' as const, prompt: 'P', options: [{ text: `![A](media:${MID})`, isCorrect: true }] }
+  const errors = imageFieldErrors(textOption)
+  assert.equal(errors.length, 1)
+  assert.deepEqual(errors[0].path, ['options', 0, 'text'])
+  assert.match(errors[0].message, /odpowiedziach tekstowych/)
+  // a text option with a bracket but no image is fine
+  assert.deepEqual(imageFieldErrors({ type: 'text', prompt: 'P', options: [{ text: 'wow![x', isCorrect: true }] }), [])
+
+  for (const config of [
+    { type: 'matching', config: { pairs: [{ id: '1', rightId: 'r1', left: `![k](media:${MID})`, right: 'cat' }] } },
+    { type: 'ordering', config: { items: [{ id: 'a', text: `![k](media:${MID})` }] } },
+    { type: 'cloze', prompt: 'He {{1}}.', config: { gaps: [{ answers: [`![k](media:${MID})`] }] } },
+    { type: 'numeric', config: { answer: 1 } },
+  ] as const) {
+    const problems = imageFieldErrors({ options: [], ...config } as never)
+    if (config.type === 'numeric') assert.deepEqual(problems, [])
+    else assert.deepEqual(problems.map((p) => p.path), [['config']], config.type)
+  }
+  // a cloze prompt may hold an image; only its gap answers may not
+  assert.deepEqual(imageFieldErrors({ type: 'cloze', prompt: `![k](media:${MID}) He {{1}}.`, options: [], config: { gaps: [{ answers: ['went'] }] } }), [])
+})
+
+test('imageFieldErrors reports the syntax problems of each field with its path', () => {
+  const problems = imageFieldErrors({ type: 'single', prompt: '![](media:' + MID + ')', explanation: '![x](https://a.pl/b.png)', options: [{ text: 'a', isCorrect: true }] })
+  assert.deepEqual(problems.map((p) => p.path), [['prompt'], ['explanation']])
+})
+
+test('image ids of a question view and of a grading response come from the content only', () => {
+  const question = { prompt: `![a](media:${MID})`, explanation: `![b](media:${MID2})`, options: [{ id: 'o1', text: `![c](media:${MID})`, isCorrect: true }, { id: 'o2', text: `![d](media:${MID2})`, isCorrect: false }] }
+  assert.deepEqual(quizImageIds({ questions: [question] }).sort(), [MID, MID2].sort())
+  // a player-view question carries no explanation: its ids come from prompt and options only
+  assert.deepEqual(quizImageIds({ questions: [{ prompt: `![a](media:${MID})`, options: [] }] }), [MID])
+  // grading: explanations of graded questions, correct options and the chosen ones; never a typed text
+  const graded = gradedImageIds([{ id: 'q1', ...question }], { q1: { optionIds: ['o2'] } })
+  assert.deepEqual(graded.sort(), [MID, MID2].sort())
+  assert.deepEqual(gradedImageIds([{ id: 'q1', ...question }], { q1: { text: `![x](media:${MID2})` } }).sort(), [MID, MID2].sort())
+  assert.deepEqual(gradedImageIds([{ id: 'q1', ...question, explanation: '' }], { q1: { optionIds: [] } }), [MID])
+  assert.deepEqual(gradedImageIds([{ id: 'q1', explanation: 'brak', options: [{ id: 'o', text: 'x', isCorrect: true }] }], {}), [])
+  assert.equal(quizImageCount([question, question]), 8)
+})
+

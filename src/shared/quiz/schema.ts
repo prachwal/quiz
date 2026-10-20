@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { AUTH0_ID_PATTERN } from './auth0Id'
-import { QUESTION_TYPES, questionTypes } from './engine'
+import { QUESTION_TYPES, imageFieldErrors, questionTypes, quizImageCount } from './engine'
+import { MEDIA_MAX_REFERENCES_PER_QUIZ } from '../media/richText'
 import { SUBJECTS } from './types'
 
 export const optionInput = z.object({
@@ -37,6 +38,8 @@ export const questionInput = z
         ctx.addIssue({ code: 'custom', message: 'Konfiguracja jest zbyt duża', path: ['config'] })
       }
     }
+    // images: where they are allowed, the `![opis](media:<uuid>)` syntax, alt text (D5), at most 3 per field
+    for (const issue of imageFieldErrors(question)) ctx.addIssue({ code: 'custom', message: issue.message, path: issue.path })
     const error = def.validate(question)
     if (error) ctx.addIssue({ code: 'custom', message: error, path: [def.usesOptions ? 'options' : 'config'] })
   })
@@ -48,7 +51,7 @@ export const QUIZ_VARIANTS = ['mixed', 'typing', 'choice', 'translation'] as con
 /** How many questions are drawn from the whole pool on each play (null = all). */
 export const SAMPLE_SIZES = [10, 20, 30] as const
 
-export const quizInput = z.object({
+const quizInputShape = z.object({
   difficulty: z.enum(DIFFICULTIES).nullish(),
   /** School subject used to group quizzes; null = unassigned. */
   subject: z.enum(SUBJECTS).nullish(),
@@ -61,6 +64,17 @@ export const quizInput = z.object({
   title: z.string().trim().min(1, 'Tytuł jest wymagany').max(200),
   description: z.string().trim().max(2000).default(''),
   questions: z.array(questionInput).min(1, 'Dodaj co najmniej jedno pytanie').max(100),
+})
+
+/** The per-quiz limit on image references (the existence of the files is checked on save, see server/media). */
+export const quizInput = quizInputShape.superRefine((quiz, ctx) => {
+  if (quizImageCount(quiz.questions) > MEDIA_MAX_REFERENCES_PER_QUIZ) {
+    ctx.addIssue({
+      code: 'custom',
+      message: `Quiz może mieć najwyżej ${MEDIA_MAX_REFERENCES_PER_QUIZ} obrazów w treści`,
+      path: ['questions'],
+    })
+  }
 })
 
 export const answerInput = z.object({

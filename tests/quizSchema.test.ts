@@ -109,6 +109,20 @@ const cases: [string, object, boolean][] = [
   ['sample size 20', { ...quiz({ type: 'text', options: [option('a', true)] }), sampleSize: 20, shuffleQuestions: null }, true],
   ['bad difficulty', { ...quiz({ type: 'text', options: [option('a', true)] }), difficulty: 'impossible' }, false],
   ['zero points', quiz({ type: 'text', points: 0, options: [option('a', true)] }), false],
+  // images (Media-Storage-Plan D2/D5): the syntax and the empty-alt rule must agree in both validators
+  ['plain text with a bracket is not an image', quiz({ type: 'single', prompt: 'wow![x', explanation: 'ok ![x] (y)', options: [option('a', true), option('b', false)] }), true],
+  ['valid image in the prompt', quiz({ type: 'single', prompt: 'Co na mapie? ![Mapa Polski](media:6f1c2a4e-9b3d-4e8f-8a7b-1c2d3e4f5a6b)', options: [option('a', true), option('b', false)] }), true],
+  ['valid image in an option', quiz({ type: 'single', prompt: 'Który?', options: [option('![Kot](media:6f1c2a4e-9b3d-4e8f-8a7b-1c2d3e4f5a6b)', true), option('b', false)] }), true],
+  ['valid image in the explanation', quiz({ type: 'single', prompt: 'Który?', explanation: 'Patrz ![Schemat](media:6f1c2a4e-9b3d-4e8f-8a7b-1c2d3e4f5a6b)', options: [option('a', true), option('b', false)] }), true],
+  ['empty alt in the prompt', quiz({ type: 'single', prompt: '![](media:6f1c2a4e-9b3d-4e8f-8a7b-1c2d3e4f5a6b)', options: [option('a', true), option('b', false)] }), false],
+  ['empty alt in the explanation', quiz({ type: 'single', prompt: 'P', explanation: '![](media:6f1c2a4e-9b3d-4e8f-8a7b-1c2d3e4f5a6b)', options: [option('a', true), option('b', false)] }), false],
+  ['empty alt in an option', quiz({ type: 'single', prompt: 'P', options: [option('![](media:6f1c2a4e-9b3d-4e8f-8a7b-1c2d3e4f5a6b)', true), option('b', false)] }), false],
+  ['https image in the prompt', quiz({ type: 'single', prompt: '![x](https://example.com/a.png)', options: [option('a', true), option('b', false)] }), false],
+  ['uppercase uuid in the prompt', quiz({ type: 'single', prompt: '![x](media:6F1C2A4E-9B3D-4E8F-8A7B-1C2D3E4F5A6B)', options: [option('a', true), option('b', false)] }), false],
+  ['trailing space after the uuid', quiz({ type: 'single', prompt: '![x](media:6f1c2a4e-9b3d-4e8f-8a7b-1c2d3e4f5a6b )', options: [option('a', true), option('b', false)] }), false],
+  ['alt of 200 characters', quiz({ type: 'single', prompt: '![aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa](media:6f1c2a4e-9b3d-4e8f-8a7b-1c2d3e4f5a6b)', options: [option('a', true), option('b', false)] }), true],
+  ['alt of 201 characters', quiz({ type: 'single', prompt: '![aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa](media:6f1c2a4e-9b3d-4e8f-8a7b-1c2d3e4f5a6b)', options: [option('a', true), option('b', false)] }), false],
+  ['cloze with an image next to a marker', quiz({ type: 'cloze', prompt: '![Kot](media:6f1c2a4e-9b3d-4e8f-8a7b-1c2d3e4f5a6b) He {{1}} home.', options: [], config: { gaps: [{ answers: ['went'] }] } }), true],
 ]
 
 for (const [name, doc, expected] of cases) {
@@ -117,3 +131,36 @@ for (const [name, doc, expected] of cases) {
     assert.equal(quizInput.safeParse(doc).success, expected)
   })
 }
+
+// ---- images: what the JSON Schema cannot express (Media-Storage-Plan D5) ---------------------------
+
+const IMAGE_ID = '6f1c2a4e-9b3d-4e8f-8a7b-1c2d3e4f5a6b'
+
+test('the per-field and per-quiz image limits agree between zod and JSON Schema for the syntax they can see', () => {
+  const four = `![a](media:${IMAGE_ID}) ![b](media:${IMAGE_ID}) ![c](media:${IMAGE_ID}) ![d](media:${IMAGE_ID})`
+  // the count of images per field is zod-only (the JSON Schema has no regex count), so the field limit is asserted here
+  assert.equal(quizInput.safeParse(quiz({ type: 'single', prompt: four, options: [option('a', true), option('b', false)] })).success, false)
+  assert.equal(validate(quiz({ type: 'single', prompt: four, options: [option('a', true), option('b', false)] })), true)
+  const many = Array.from({ length: 34 }, () => quiz({ type: 'single', prompt: `![a](media:${IMAGE_ID}) ![b](media:${IMAGE_ID}) ![c](media:${IMAGE_ID})`, options: [option('a', true), option('b', false)] }).questions[0])
+  const tooMany = { title: 'T', questions: many }
+  assert.equal(quizInput.safeParse(tooMany).success, false)
+  assert.match(JSON.stringify(quizInput.safeParse(tooMany).error?.issues ?? []), /100 obrazów/)
+})
+
+test('KNOWN PARITY GAP: JSON Schema accepts documents that the server refuses for images', () => {
+  // (1) where images are allowed: the JSON Schema only checks the syntax of prompt, explanation and option texts
+  const imageInText = quiz({ type: 'text', options: [option(`![x](media:${IMAGE_ID})`, true)] })
+  assert.equal(validate(imageInText), true)
+  assert.equal(quizInput.safeParse(imageInText).success, false)
+  const imageInMatching = quiz({
+    type: 'matching',
+    options: [],
+    config: { pairs: [{ id: '1', rightId: 'r1', left: `![x](media:${IMAGE_ID})`, right: 'cat' }, { id: '2', rightId: 'r2', left: 'pies', right: 'dog' }] },
+  })
+  assert.equal(validate(imageInMatching), true)
+  assert.equal(quizInput.safeParse(imageInMatching).success, false)
+  // (2) existence and state of the file: neither validator knows the database, syncRefs checks it on save
+  const unknownFile = quiz({ type: 'single', prompt: 'P', options: [option('a', true), option('b', false)], explanation: `![x](media:${IMAGE_ID})` })
+  assert.equal(validate(unknownFile), true)
+  assert.equal(quizInput.safeParse(unknownFile).success, true)
+})

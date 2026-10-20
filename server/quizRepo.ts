@@ -1,9 +1,10 @@
 import type { z } from 'zod'
 import { pool, type PoolClient } from './db'
-import { typeDef } from '../src/shared/quiz/engine'
+import { quizImageIds, typeDef } from '../src/shared/quiz/engine'
 import type { Answer, GradableQuizQuestion, QuizResult } from '../src/shared/quiz/engine'
 import type { quizInput } from '../src/shared/quiz/schema'
 import type { SnapshotQuestion } from '../src/shared/quiz/questionsSnapshot'
+import { syncRefs } from './media/repo'
 import type {
   AttemptSummary,
   DifficultyCode,
@@ -262,6 +263,9 @@ export async function createQuiz(
     )
     const id = created.rows[0].id
     await insertQuestions(client, id, input.questions)
+    // a new quiz has no references yet, so a quiz without images skips the sync entirely
+    const mediaIds = quizImageIds(input)
+    if (mediaIds.length > 0) await syncRefs('quiz', id, mediaIds, client)
     return id
   })
 }
@@ -290,13 +294,19 @@ export async function replaceQuiz(id: string, input: ParsedQuiz): Promise<boolea
     if (updated.rowCount === 0) return false
     await client.query('DELETE FROM questions WHERE quiz_id = $1', [id])
     await insertQuestions(client, id, input.questions)
+    // always runs: a quiz that lost its last image must drop its reference (an empty list clears them)
+    await syncRefs('quiz', id, quizImageIds(input), client)
     return true
   })
 }
 
+/** Deletes the quiz and its media references in one transaction (media_refs has no foreign key to quizzes). */
 export async function deleteQuiz(id: string): Promise<boolean> {
-  const result = await pool().query('DELETE FROM quizzes WHERE id = $1', [id])
-  return (result.rowCount ?? 0) > 0
+  return inTransaction(async (client) => {
+    await client.query(`DELETE FROM media_refs WHERE owner_kind = 'quiz' AND owner_id = $1`, [id])
+    const result = await client.query('DELETE FROM quizzes WHERE id = $1', [id])
+    return (result.rowCount ?? 0) > 0
+  })
 }
 
 /** Author of a quiz (null for anonymous/legacy quizzes). Course exams belong to the user who started them. */

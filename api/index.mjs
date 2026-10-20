@@ -62728,6 +62728,60 @@ var userOf = (req) => currentUserId(req);
 var notFound = () => new HttpError(404, "Quiz not found");
 var courseNotFound = () => new HttpError(404, "Course not found");
 
+// src/shared/media/richText.ts
+var MEDIA_ALT_MAX_LENGTH = 200;
+var MEDIA_MAX_IMAGES_PER_FIELD = 3;
+var MEDIA_MAX_REFERENCES_PER_QUIZ = 100;
+var VALID_IMAGE = /!\[([^\]\n]{0,200})\]\(media:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\)/g;
+var IMAGE_SHAPE = /!\[([^\]\n]*)\]\(([^)\n]*)\)/g;
+var UUID_TARGET = /^media:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+var EXTERNAL_TARGET = /^https?:\/\//i;
+function parseRichText(text2) {
+  const parts = [];
+  let last = 0;
+  for (const match of text2.matchAll(VALID_IMAGE)) {
+    const index = match.index ?? 0;
+    if (index > last) parts.push({ type: "text", text: text2.slice(last, index) });
+    parts.push({ type: "image", alt: match[1], mediaId: match[2] });
+    last = index + match[0].length;
+  }
+  if (last < text2.length) parts.push({ type: "text", text: text2.slice(last) });
+  return parts;
+}
+function extractMediaIds(text2) {
+  return [...new Set([...text2.matchAll(VALID_IMAGE)].map((match) => match[2]))];
+}
+function countImages(text2) {
+  return [...text2.matchAll(VALID_IMAGE)].length;
+}
+function hasImageSyntax(text2) {
+  return [...text2.matchAll(IMAGE_SHAPE)].length > 0;
+}
+function imageSyntaxErrors(text2) {
+  const problems = /* @__PURE__ */ new Set();
+  let validCount = 0;
+  for (const match of text2.matchAll(IMAGE_SHAPE)) {
+    const alt = match[1];
+    const target = match[2];
+    if (UUID_TARGET.test(target)) {
+      validCount += 1;
+      if (alt === "") problems.add(EMPTY_ALT);
+      else if (alt.length > MEDIA_ALT_MAX_LENGTH) problems.add(LONG_ALT);
+    } else if (EXTERNAL_TARGET.test(target)) {
+      problems.add(EXTERNAL);
+    } else {
+      problems.add(MALFORMED);
+    }
+  }
+  if (validCount > MEDIA_MAX_IMAGES_PER_FIELD) problems.add(TOO_MANY);
+  return [...problems];
+}
+var EXTERNAL = "Obrazu z zewn\u0119trznego adresu nie mo\u017Cna u\u017Cy\u0107 w tre\u015Bci. Najpierw wy\u015Blij obraz do magazynu medi\xF3w (narz\u0119dzie MCP media_upload_from_url albo media_upload), a w tre\u015B\u0107 wstaw zapis ![opis](media:<id>).";
+var MALFORMED = "Niepoprawny zapis obrazu. Jedyna dozwolona posta\u0107 to ![opis](media:<uuid>) w jednym wierszu, z uuid ma\u0142ymi literami. Obraz najpierw wy\u015Blij do magazynu (media_upload_from_url albo media_upload) i u\u017Cyj zwr\xF3conego identyfikatora.";
+var EMPTY_ALT = "Obraz wymaga opisu: wpisz tekst w nawiasach kwadratowych, np. ![Mapa Polski](media:<id>).";
+var LONG_ALT = `Opis obrazu mo\u017Ce mie\u0107 najwy\u017Cej ${MEDIA_ALT_MAX_LENGTH} znak\xF3w.`;
+var TOO_MANY = `W jednym polu mo\u017Ce by\u0107 najwy\u017Cej ${MEDIA_MAX_IMAGES_PER_FIELD} obrazy.`;
+
 // src/shared/quiz/engine.ts
 var QUESTION_TYPES = ["single", "multiple", "truefalse", "text", "numeric", "ordering", "matching", "cloze"];
 var countCorrect = (options) => options.filter((o) => o.isCorrect).length;
@@ -62769,7 +62823,10 @@ var CLOZE_MAX_ANSWER_LENGTH = 200;
 var CLOZE_NUMBER = String.raw`[1-9]\d*`;
 var CLOZE_MARKER = new RegExp(String.raw`\{\{(${CLOZE_NUMBER})\}\}`);
 var CLOZE_MARKER_PLAIN = String.raw`\{\{${CLOZE_NUMBER}\}\}`;
-var clozeMarkers = (prompt) => [...prompt.matchAll(new RegExp(CLOZE_MARKER_PLAIN, "g"))].map((match) => Number(match[0].slice(2, -2)));
+var textSegments = (text2) => parseRichText(text2).flatMap((part) => part.type === "text" ? [part.text] : []);
+var clozeMarkers = (prompt) => textSegments(prompt).flatMap(
+  (segment) => [...segment.matchAll(new RegExp(CLOZE_MARKER_PLAIN, "g"))].map((match) => Number(match[0].slice(2, -2)))
+);
 var clozeConfig = (config2) => {
   if (!config2 || typeof config2 !== "object") return null;
   const { gaps } = config2;
@@ -63128,7 +63185,56 @@ var typeDef = (type) => questionTypeDefs[type];
 var isAnswered = (answer) => Boolean(
   answer?.optionIds?.length || answer?.text?.trim() || answer?.order?.length || Object.keys(answer?.pairs ?? {}).length || Object.values(answer?.gaps ?? {}).some((value) => value.trim())
 );
-var promptText = (prompt) => prompt.replace(new RegExp(CLOZE_MARKER_PLAIN, "g"), "___");
+var promptText = (prompt) => parseRichText(prompt).map(
+  (part) => part.type === "image" ? part.alt ? `[obraz: ${part.alt}]` : "[obraz]" : part.text.replace(new RegExp(CLOZE_MARKER_PLAIN, "g"), "___")
+).join("");
+var IMAGE_OPTION_TYPES = ["single", "multiple", "truefalse"];
+var questionImageIds = (question) => [
+  ...new Set(
+    [question.prompt ?? "", question.explanation ?? "", ...question.options.map((option) => option.text)].flatMap(
+      extractMediaIds
+    )
+  )
+];
+var quizImageIds = (quiz) => [...new Set(quiz.questions.flatMap(questionImageIds))];
+function imageFieldErrors(question) {
+  const errors = [];
+  const add = (path, messages) => messages.forEach((message) => errors.push({ path, message }));
+  if (question.prompt !== void 0) add(["prompt"], imageSyntaxErrors(question.prompt));
+  if (question.explanation !== void 0) add(["explanation"], imageSyntaxErrors(question.explanation));
+  const def = questionTypeDefs[question.type];
+  if (def.usesOptions) {
+    question.options.forEach((option, index) => {
+      const path = ["options", index, "text"];
+      if (IMAGE_OPTION_TYPES.includes(question.type)) {
+        add(path, imageSyntaxErrors(option.text));
+      } else if (hasImageSyntax(option.text)) {
+        add(path, [
+          "Obraz\xF3w nie mo\u017Cna u\u017Cywa\u0107 w odpowiedziach tekstowych: akceptowana odpowied\u017A jest por\xF3wnywana jako tekst."
+        ]);
+      }
+    });
+  } else if (question.config !== void 0 && question.config !== null) {
+    const offending = stringsIn(question.config).some(hasImageSyntax);
+    if (offending) {
+      errors.push({
+        path: ["config"],
+        message: "Obraz\xF3w nie mo\u017Cna u\u017Cywa\u0107 w elementach tego typu pytania (pary, elementy, luki, odpowied\u017A liczbowa). Obraz mo\u017Cesz umie\u015Bci\u0107 w tre\u015Bci pytania albo w wyja\u015Bnieniu."
+      });
+    }
+  }
+  return errors;
+}
+var stringsIn = (value) => {
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) return value.flatMap(stringsIn);
+  if (value && typeof value === "object") return Object.values(value).flatMap(stringsIn);
+  return [];
+};
+var quizImageCount = (questions) => questions.reduce(
+  (sum, question) => sum + countImages(question.prompt ?? "") + countImages(question.explanation ?? "") + question.options.reduce((inner, option) => inner + countImages(option.text), 0),
+  0
+);
 function gradeQuiz(questions, answers) {
   const results = questions.map((question) => {
     const def = typeDef(question.type);
@@ -63554,6 +63660,73 @@ async function syncIdentity(userId, identity) {
   );
 }
 
+// server/media/constants.ts
+var MEDIA_OWNER_KINDS = ["quiz", "lesson", "verb"];
+var MEDIA_DAILY_BYTES = 50 * 1024 * 1024;
+var MEDIA_DEFAULT_MAX_BYTES = 2 * 1024 * 1024;
+var MEDIA_PRESIGN_MAX_SECONDS = 7 * 24 * 60 * 60;
+
+// server/media/repo.ts
+var MediaRefError = class extends Error {
+  code = "MEDIA_REF";
+  problems;
+  constructor(problems) {
+    const parts = [];
+    if (problems.malformed.length) parts.push(`nieprawid\u0142owe identyfikatory: ${problems.malformed.join(", ")}`);
+    if (problems.missing.length) parts.push(`nieistniej\u0105ce pliki: ${problems.missing.join(", ")}`);
+    if (problems.notReady.length) parts.push(`pliki jeszcze niewys\u0142ane: ${problems.notReady.join(", ")}`);
+    super(`Obrazy nie mog\u0105 by\u0107 u\u017Cyte: ${parts.join("; ")}.`);
+    this.name = "MediaRefError";
+    this.problems = problems;
+  }
+};
+var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+function isMediaId(value) {
+  return UUID.test(value);
+}
+async function syncRefs(ownerKind, ownerId, mediaIds, client) {
+  if (!MEDIA_OWNER_KINDS.includes(ownerKind)) throw new Error(`syncRefs: unknown owner kind ${ownerKind}`);
+  if (ownerId === "") throw new Error("syncRefs: ownerId is required");
+  const ids = [...new Set(mediaIds)];
+  const malformed = ids.filter((id) => !isMediaId(id));
+  const checkable = ids.filter(isMediaId);
+  const run = async (db) => {
+    const { rows } = checkable.length ? await db.query(
+      `SELECT id::text AS id, status FROM media WHERE id = ANY($1::uuid[]) FOR SHARE`,
+      [checkable]
+    ) : { rows: [] };
+    const found = new Map(rows.map((row) => [row.id, row.status]));
+    const missing = checkable.filter((id) => !found.has(id));
+    const notReady = checkable.filter((id) => found.get(id) === "pending");
+    if (malformed.length || missing.length || notReady.length) {
+      throw new MediaRefError({ malformed, missing, notReady });
+    }
+    await db.query(`DELETE FROM media_refs WHERE owner_kind = $1::text AND owner_id = $2::text`, [ownerKind, ownerId]);
+    if (checkable.length) {
+      await db.query(
+        `INSERT INTO media_refs (media_id, owner_kind, owner_id)
+         SELECT u.id, $1::text, $2::text FROM unnest($3::uuid[]) AS u(id)`,
+        [ownerKind, ownerId, checkable]
+      );
+    }
+  };
+  if (client) {
+    await run(client);
+    return;
+  }
+  const own2 = await pool().connect();
+  try {
+    await own2.query("BEGIN");
+    await run(own2);
+    await own2.query("COMMIT");
+  } catch (error62) {
+    await own2.query("ROLLBACK");
+    throw error62;
+  } finally {
+    own2.release();
+  }
+}
+
 // server/quizRepo.ts
 async function listQuizzes(filter = {}, canEdit = false, userId = null) {
   const values = [userId];
@@ -63731,6 +63904,8 @@ async function createQuiz(input2, meta3) {
     );
     const id = created.rows[0].id;
     await insertQuestions(client, id, input2.questions);
+    const mediaIds = quizImageIds(input2);
+    if (mediaIds.length > 0) await syncRefs("quiz", id, mediaIds, client);
     return id;
   });
 }
@@ -63757,12 +63932,16 @@ async function replaceQuiz(id, input2) {
     if (updated.rowCount === 0) return false;
     await client.query("DELETE FROM questions WHERE quiz_id = $1", [id]);
     await insertQuestions(client, id, input2.questions);
+    await syncRefs("quiz", id, quizImageIds(input2), client);
     return true;
   });
 }
 async function deleteQuiz(id) {
-  const result = await pool().query("DELETE FROM quizzes WHERE id = $1", [id]);
-  return (result.rowCount ?? 0) > 0;
+  return inTransaction(async (client) => {
+    await client.query(`DELETE FROM media_refs WHERE owner_kind = 'quiz' AND owner_id = $1`, [id]);
+    const result = await client.query("DELETE FROM quizzes WHERE id = $1", [id]);
+    return (result.rowCount ?? 0) > 0;
+  });
 }
 async function getOwnerId(id) {
   const { rows } = await pool().query(
@@ -75053,13 +75232,14 @@ var questionInput = external_exports.object({
       ctx.addIssue({ code: "custom", message: "Konfiguracja jest zbyt du\u017Ca", path: ["config"] });
     }
   }
+  for (const issue2 of imageFieldErrors(question)) ctx.addIssue({ code: "custom", message: issue2.message, path: issue2.path });
   const error62 = def.validate(question);
   if (error62) ctx.addIssue({ code: "custom", message: error62, path: [def.usesOptions ? "options" : "config"] });
 });
 var DIFFICULTIES = ["easy", "medium", "hard"];
 var POPULARITIES = ["core", "common", "rare"];
 var QUIZ_VARIANTS = ["mixed", "typing", "choice", "translation"];
-var quizInput = external_exports.object({
+var quizInputShape = external_exports.object({
   difficulty: external_exports.enum(DIFFICULTIES).nullish(),
   /** School subject used to group quizzes; null = unassigned. */
   subject: external_exports.enum(SUBJECTS).nullish(),
@@ -75070,6 +75250,15 @@ var quizInput = external_exports.object({
   title: external_exports.string().trim().min(1, "Tytu\u0142 jest wymagany").max(200),
   description: external_exports.string().trim().max(2e3).default(""),
   questions: external_exports.array(questionInput).min(1, "Dodaj co najmniej jedno pytanie").max(100)
+});
+var quizInput = quizInputShape.superRefine((quiz, ctx) => {
+  if (quizImageCount(quiz.questions) > MEDIA_MAX_REFERENCES_PER_QUIZ) {
+    ctx.addIssue({
+      code: "custom",
+      message: `Quiz mo\u017Ce mie\u0107 najwy\u017Cej ${MEDIA_MAX_REFERENCES_PER_QUIZ} obraz\xF3w w tre\u015Bci`,
+      path: ["questions"]
+    });
+  }
 });
 var answerInput = external_exports.object({
   optionIds: external_exports.array(external_exports.string()).max(20).optional(),
@@ -76516,7 +76705,7 @@ var quiz_schema_default = {
       additionalProperties: false,
       required: ["text", "isCorrect"],
       properties: {
-        text: { type: "string", minLength: 1, maxLength: 500 },
+        text: { type: "string", minLength: 1, maxLength: 500, pattern: "^(?![\\s\\S]*!\\[\\]\\(media:)(?![\\s\\S]*!\\[[^\\]\\n]{201,}\\]\\()(?![\\s\\S]*!\\[[^\\]\\n]*\\]\\((?!media:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\))[^)\\n]*\\))[\\s\\S]*$", description: "Tre\u015B\u0107 opcji; w single/multiple/truefalse mo\u017Ce zawiera\u0107 obraz w zapisie ![opis](media:<uuid>) (opis 1\u2013200 znak\xF3w, obraz najpierw wys\u0142any do magazynu; zewn\u0119trzne adresy https s\u0105 odrzucane). W typie text obrazy s\u0105 niedozwolone. Zgodno\u015Bci z zasadami \u201Egdzie wolno\u201D nie sprawdza ten schemat." },
         isCorrect: { type: "boolean" }
       }
     },
@@ -76529,8 +76718,8 @@ var quiz_schema_default = {
           enum: ["single", "multiple", "truefalse", "text", "numeric", "ordering", "matching", "cloze"],
           description: "single: jedna poprawna; multiple: co najmniej jedna; truefalse: dwie opcje, jedna poprawna; text: opcje to akceptowane odpowiedzi; numeric: wynik liczbowy w config (odpowied\u017A + tolerancja); ordering: elementy w poprawnej kolejno\u015Bci w config (gracz je uk\u0142ada); matching: pary w config (lewa \u2192 prawa); cloze: tre\u015B\u0107 ze znacznikami {{1}}\u2026{{n}} i lukami w config."
         },
-        prompt: { type: "string", minLength: 1, maxLength: 2e3 },
-        explanation: { type: "string", maxLength: 2e3, default: "" },
+        prompt: { type: "string", minLength: 1, maxLength: 2e3, pattern: "^(?![\\s\\S]*!\\[\\]\\(media:)(?![\\s\\S]*!\\[[^\\]\\n]{201,}\\]\\()(?![\\s\\S]*!\\[[^\\]\\n]*\\]\\((?!media:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\))[^)\\n]*\\))[\\s\\S]*$", description: "Tre\u015B\u0107 pytania. Obraz wstawia si\u0119 zapisem ![opis](media:<uuid>) w jednym wierszu; obraz najpierw trzeba wys\u0142a\u0107 do magazynu (MCP media_upload / media_upload_from_url), zewn\u0119trzne adresy https s\u0105 odrzucane, opis (alt) jest wymagany." },
+        explanation: { type: "string", maxLength: 2e3, default: "", pattern: "^(?![\\s\\S]*!\\[\\]\\(media:)(?![\\s\\S]*!\\[[^\\]\\n]{201,}\\]\\()(?![\\s\\S]*!\\[[^\\]\\n]*\\]\\((?!media:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\))[^)\\n]*\\))[\\s\\S]*$", description: "Wyja\u015Bnienie po ocenie. Obraz w zapisie ![opis](media:<uuid>), tak jak w tre\u015Bci pytania (wys\u0142any wcze\u015Bniej do magazynu, z opisem; zewn\u0119trzne adresy s\u0105 odrzucone)." },
         points: { type: "integer", minimum: 1, maximum: 100, default: 1 },
         options: { type: "array", maxItems: 20, default: [], items: { $ref: "#/$defs/option" } },
         config: {
@@ -76793,7 +76982,13 @@ function registerQuizTools(server, ctx) {
     },
     async ({ quiz }) => {
       if (!ctx.canWriteQuizzes) return needQuizWrite();
-      const id = await createQuiz(quiz, { kind: "manual", difficulty: quiz.difficulty, ownerId: ctx.userId });
+      let id;
+      try {
+        id = await createQuiz(quiz, { kind: "manual", difficulty: quiz.difficulty, ownerId: ctx.userId });
+      } catch (error62) {
+        if (error62 instanceof MediaRefError) return failure2(error62.message);
+        throw error62;
+      }
       await audit(ctx, "quiz_create", { id, label: quiz.title }, { questions: quiz.questions.length });
       return text(await getQuiz(id, true, true));
     }
@@ -76808,7 +77003,14 @@ function registerQuizTools(server, ctx) {
     },
     async ({ id, quiz }) => {
       if (!ctx.canWriteQuizzes) return needQuizWrite();
-      if (!await replaceQuiz(id, quiz)) return failure2("Nie znaleziono quizu.");
+      let replaced;
+      try {
+        replaced = await replaceQuiz(id, quiz);
+      } catch (error62) {
+        if (error62 instanceof MediaRefError) return failure2(error62.message);
+        throw error62;
+      }
+      if (!replaced) return failure2("Nie znaleziono quizu.");
       await audit(ctx, "quiz_update", { id, label: quiz.title }, { questions: quiz.questions.length });
       return text(await getQuiz(id, true, true));
     }
@@ -77265,6 +77467,14 @@ var reportHookError = (req, res) => async (error62, hookIndex) => {
   );
   await reportServerError(error62, { requestId, userId, method: req.method, path: req.path }).catch(() => void 0);
 };
+async function withMediaRefs(work) {
+  try {
+    return await work();
+  } catch (error62) {
+    if (error62 instanceof MediaRefError) throw new HttpError(400, error62.message);
+    throw error62;
+  }
+}
 var listQuery = external_exports.object({
   difficulty: external_exports.enum(DIFFICULTIES).optional(),
   subject: external_exports.enum([...SUBJECTS, "none"]).optional(),
@@ -77278,7 +77488,7 @@ function registerQuizRoutes(router) {
   router.post("/quizzes", requirePermission(WRITE_QUIZZES), async (req, res) => {
     const input2 = quizInput.parse(req.body);
     const userId = userOf(req);
-    const id = await createQuiz(input2, { kind: "manual", difficulty: input2.difficulty, ownerId: userId });
+    const id = await withMediaRefs(() => createQuiz(input2, { kind: "manual", difficulty: input2.difficulty, ownerId: userId }));
     res.status(201).json(await getQuiz(id, true, true));
   });
   router.post("/quizzes/generate/irregular-verbs", async (req, res) => {
@@ -77351,7 +77561,7 @@ function registerQuizRoutes(router) {
   router.put("/quizzes/:id", requirePermission(WRITE_QUIZZES), async (req, res) => {
     const id = parseId(req.params.id);
     const input2 = quizInput.parse(req.body);
-    if (!await replaceQuiz(id, input2)) throw notFound();
+    if (!await withMediaRefs(() => replaceQuiz(id, input2))) throw notFound();
     res.json(await getQuiz(id, true, true));
   });
   router.delete("/quizzes/:id", requirePermission(WRITE_QUIZZES), async (req, res) => {
