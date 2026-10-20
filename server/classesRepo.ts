@@ -43,4 +43,6 @@ export {
   totalLessonsCompleted,
   classesOfMember,
   searchUsers,
+  lastActiveDayOf,
+  countAttempts,
 } from './classes/results'

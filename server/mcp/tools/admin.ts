@@ -3,6 +3,11 @@ import { z } from 'zod'
 import { auth0UserId } from '../../../src/shared/quiz/schema'
 import * as attempts from '../../attemptsRepo'
 import { quizStats } from '../../../src/shared/quiz/quizStats'
+import { analyzeStudent } from '../../../src/shared/quiz/studentAnalysis'
+import { attemptRows, historyAnalysisInput } from '../../../src/shared/quiz/userHistory'
+import * as classes from '../../classesRepo'
+import * as reviews from '../../reviewsRepo'
+import { adminStudentResults, weakVerbDetails } from '../../userResults'
 import { failure, needAdmin, text } from '../context'
 import type { Ctx } from '../context'
 
@@ -69,6 +74,74 @@ export function registerAdminTools(server: McpServer, ctx: Ctx) {
           limit,
         }),
       )
+    },
+  )
+
+  server.registerTool(
+    'user_results',
+    {
+      title: 'Wyniki użytkownika (admin)',
+      description:
+        'Wszystkie podejścia jednego użytkownika, także spoza klas i bez ograniczenia do zadań: profil z pełnym e-mailem, classes (aktywne klasy), lessonsCompleted, lastActiveDay, weakVerbs (liczba czasowników słabych), total i hasMore oraz attempts od najnowszego (id, quizId, quizTitle, percent, score, maxScore, passed, source, createdAt; source jest null dla usuniętego quizu). includeAnswers=true dodaje do każdego podejścia questions z odpowiedzią na każde pytanie (może być bardzo długie - w razie wątpliwości zostaw false). Zwraca najwyżej limit podejść (domyślnie 50, maks. 200). Id użytkownika (Auth0) z attempt_list albo student_search. Pytania usunięte przy edycji quizu mają prompt i type null.',
+      inputSchema: {
+        userId: auth0UserId,
+        limit: z.number().int().min(1).max(200).default(50),
+        includeAnswers: z.boolean().default(false),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ userId, limit, includeAnswers }) => {
+      if (!admin) return needAdmin()
+      const results = await adminStudentResults(userId, limit)
+      if (!results) return failure('Nie znaleziono użytkownika.')
+      const [lastActiveDay, total, weakCount] = await Promise.all([
+        classes.lastActiveDayOf(userId),
+        classes.countAttempts(userId),
+        reviews.weakVerbCount(userId),
+      ])
+      const types = includeAnswers
+        ? await attempts.questionTypesOf(results.attempts.flatMap((a) => a.questions.map((q) => q.questionId)))
+        : new Map<string, string>()
+      return text({
+        userId,
+        name: results.name,
+        email: results.email,
+        classes: results.classes,
+        lessonsCompleted: results.lessonsCompleted,
+        lastActiveDay,
+        weakVerbs: weakCount,
+        total,
+        hasMore: total > results.attempts.length,
+        attempts: attemptRows(results.attempts, includeAnswers, types),
+      })
+    },
+  )
+
+  server.registerTool(
+    'user_analysis',
+    {
+      title: 'Analiza użytkownika (admin)',
+      description:
+        'Gotowa analiza jednego użytkownika po jego całej historii (najnowsze 200 podejść, także spoza klas): średnia, najlepszy i ostatni wynik, trend, pytania najczęściej błędne, dni bez aktywności, wyniki per quiz i ostrzeżenia. Sekcja assignments jest pusta (brak zadań poza klasami). Osobno weakVerbCount (wszystkie słabe czasowniki) i weakVerbs (8 najsłabszych, z formami i znaczeniami). Analiza liczy się z podejść, więc przy quizach z losowaniem pytań liczby per pytanie są mniejsze niż liczba podejść. Na tej podstawie napisz wnioski.',
+      inputSchema: { userId: auth0UserId },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ userId }) => {
+      if (!admin) return needAdmin()
+      const results = await adminStudentResults(userId, 200)
+      if (!results) return failure('Nie znaleziono użytkownika.')
+      const [lastActiveDay, weakCount, weakVerbs] = await Promise.all([
+        classes.lastActiveDayOf(userId),
+        reviews.weakVerbCount(userId),
+        weakVerbDetails(userId, 8),
+      ])
+      return text({
+        user: { userId, name: results.name, email: results.email },
+        lessonsCompleted: results.lessonsCompleted,
+        weakVerbCount: weakCount,
+        weakVerbs,
+        analysis: analyzeStudent(historyAnalysisInput(results.attempts, lastActiveDay)),
+      })
     },
   )
 

@@ -126,11 +126,7 @@ export async function getAttempt(id: string): Promise<AttemptDetail | null> {
 
   const questionsOf = await questionDetails([row as AttemptRow])
   const questionIds = ((row as AttemptRow).results ?? []).map((r) => r.questionId)
-  const types = new Map<string, string>()
-  if (questionIds.length > 0) {
-    const t = await pool().query<{ id: string; type: string }>('SELECT id, type FROM questions WHERE id = ANY($1::uuid[])', [questionIds])
-    for (const r of t.rows) types.set(r.id, r.type)
-  }
+  const types = await questionTypesOf(questionIds)
 
   return {
     id: row.id,
@@ -183,4 +179,13 @@ export async function quizForStats(quizId: string): Promise<{ title: string; sam
     sampleSize: quiz.rows[0].sample_size,
     questions: questions.rows.map((q) => ({ id: q.id, type: q.type, prompt: q.prompt, points: q.points })),
   }
+}
+
+/** Question type by id (questions edited away are simply missing from the map). */
+export async function questionTypesOf(questionIds: string[]): Promise<Map<string, string>> {
+  const types = new Map<string, string>()
+  if (questionIds.length === 0) return types
+  const { rows } = await pool().query<{ id: string; type: string }>('SELECT id, type FROM questions WHERE id = ANY($1::uuid[])', [questionIds])
+  for (const r of rows) types.set(r.id, r.type)
+  return types
 }

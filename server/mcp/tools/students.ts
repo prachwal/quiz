@@ -5,8 +5,7 @@ import { maskEmail } from '../../../src/shared/quiz/maskEmail'
 import { addMemberInput } from '../../../src/shared/quiz/schema'
 import { canReadClasses, readableClass, resolveStudent, visibleClasses } from '../../classAccess'
 import * as classes from '../../classesRepo'
-import { listVerbs } from '../../irregularVerbs'
-import * as reviews from '../../reviewsRepo'
+import { weakVerbDetails } from '../../userResults'
 import { classNotFound, needTeacherOrAdmin, text } from '../context'
 import type { Ctx } from '../context'
 import { audit, classId, confirm, studentId, type ClassGuards } from './shared'
@@ -111,22 +110,7 @@ export function registerStudentTools(server: McpServer, ctx: Ctx, guards: ClassG
       reading(id, async (cls) => {
         const results = await classes.studentResults(cls.id, userId)
         if (!results) throw new Error('Nie znaleziono ucznia w tej klasie')
-        const weak = await reviews.weakVerbs(userId, 8)
-        const verbs = weak.length ? await listVerbs({ ids: weak.map((w) => w.verbId) }) : []
-        const weakVerbs = weak.flatMap((w) => {
-          const verb = verbs.find((x) => x.id === w.verbId)
-          return verb
-            ? [
-                {
-                  verb: verb.base,
-                  forms: [verb.base, verb.pastSimple[0], verb.pastParticiple[0]].join(' – '),
-                  meanings: verb.meanings,
-                  accuracyPercent: Math.round(w.accuracy * 100),
-                  attempts: w.attempts,
-                },
-              ]
-            : []
-        })
+        const weakVerbs = await weakVerbDetails(userId, 8)
         return {
           student: { userId, name: results.name, email: results.email, joinedAt: results.joinedAt },
           lessonsCompleted: results.lessonsCompleted,

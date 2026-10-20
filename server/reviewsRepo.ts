@@ -116,4 +116,7 @@ export async function weakVerbs(userId: string, limit: number): Promise<WeakVerb
 
 export const hasWeakVerbs = async (userId: string) => (await weakVerbs(userId, 1)).length > 0
 
+/** How many verbs are weak in total (`weakVerbs` returns only the weakest few). */
+export const weakVerbCount = async (userId: string) => (await weakVerbs(userId, Number.POSITIVE_INFINITY)).length
+
 export { isWeak }

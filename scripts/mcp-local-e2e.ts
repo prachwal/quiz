@@ -92,8 +92,8 @@ try {
   const getOk = await fetch(`${base}/mcp`, { headers: { Authorization: `Bearer ${await token(PLAIN, [])}` } })
   check('GET /mcp -> 405', getOk.status === 405, getOk.status)
   const names = (await tPlain.listTools()).tools.map((t) => t.name).sort()
-  check('28 tools listed', names.length === 28, names.length)
-  for (const required of ['quiz_create', 'class_create', 'student_search', 'student_add', 'class_analyze', 'assignment_create', 'attempt_list', 'attempt_get', 'quiz_stats'])
+  check('30 tools listed', names.length === 30, names.length)
+  for (const required of ['quiz_create', 'class_create', 'student_search', 'student_add', 'class_analyze', 'assignment_create', 'attempt_list', 'attempt_get', 'quiz_stats', 'user_results', 'user_analysis'])
     check(`tool ${required} exists`, names.includes(required))
 
   // ---- quizzes ---------------------------------------------------------------------------
@@ -249,6 +249,18 @@ try {
   denied('quiz_stats unknown quiz', await call(tAdmin, 'quiz_stats', { quizId: '00000000-0000-4000-8000-000000000000' }), 'Nie znaleziono quizu')
   denied('quiz_stats as teacher', await call(tTeacher, 'quiz_stats', { quizId }), 'admina')
   denied('quiz_stats as plain', await call(tPlain, 'quiz_stats', { quizId }), 'admina')
+
+  // ---- a user's whole history (no class needed) -----------------------------------------------
+  ok('user_results', await call(tAdmin, 'user_results', { userId: STUDENT }), (d) => d.name === 'Ala Uczennica' && d.email === 'ala.uczennica@szkola.pl' && d.total >= 2 && d.hasMore === false && d.attempts.length === d.total && d.attempts.every((a: any) => !('questions' in a)) && d.classes.some((c: any) => c.id === classId))
+  ok('user_results (limit)', await call(tAdmin, 'user_results', { userId: STUDENT, limit: 1 }), (d) => d.attempts.length === 1 && d.hasMore === true && d.total >= 2)
+  ok('user_results (includeAnswers)', await call(tAdmin, 'user_results', { userId: STUDENT, limit: 2, includeAnswers: true }), (d) => d.attempts.length === 2 && d.attempts.every((a: any) => a.questions.length === 4 && a.questions.some((q: any) => q.type === 'text' && q.prompt === 'P1')))
+  denied('user_results unknown user', await call(tAdmin, 'user_results', { userId: `discord|${P}-nobody` }), 'Nie znaleziono użytkownika')
+  denied('user_results as teacher', await call(tTeacher, 'user_results', { userId: STUDENT }), 'admina')
+  denied('user_results as plain', await call(tPlain, 'user_results', { userId: STUDENT }), 'admina')
+  ok('user_analysis', await call(tAdmin, 'user_analysis', { userId: STUDENT }), (d) => d.user.email === 'ala.uczennica@szkola.pl' && d.analysis.attempts.count >= 2 && d.analysis.hardestQuestions.length > 0 && typeof d.weakVerbCount === 'number' && Array.isArray(d.weakVerbs))
+  denied('user_analysis unknown user', await call(tAdmin, 'user_analysis', { userId: `discord|${P}-nobody` }), 'Nie znaleziono użytkownika')
+  denied('user_analysis as teacher', await call(tTeacher, 'user_analysis', { userId: STUDENT }), 'admina')
+  denied('user_analysis as plain', await call(tPlain, 'user_analysis', { userId: STUDENT }), 'admina')
 
   // ---- removals and archiving --------------------------------------------------------------
   denied('student_remove without confirm', await call(tTeacher, 'student_remove', { classId, userId: STUDENT2, confirm: false }))

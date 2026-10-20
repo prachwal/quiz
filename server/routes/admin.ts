@@ -14,9 +14,7 @@ import * as auth0 from '../auth0Management'
 import { MANAGE_USERS, requirePermission } from '../auth'
 import * as classes from '../classesRepo'
 import { HttpError, idParam, userOf } from '../http'
-import { listVerbs } from '../irregularVerbs'
-import * as progress from '../progressRepo'
-import * as reviews from '../reviewsRepo'
+import { adminStudentResults } from '../userResults'
 
 /**
  * Feedback (any signed-in user writes it) and the admin panel: feedback triage, users and roles, any
@@ -114,36 +112,9 @@ export function registerAdminRoutes(router: Router) {
 
   router.get('/admin/students/:userId/results', adminOnly, async (req, res) => {
     const userId = auth0UserId.parse(String(req.params.userId))
-    const profile = await classes.profileOf(userId)
-    const attempts = await classes.allAttempts(userId)
-    if (!profile && attempts.length === 0) throw new HttpError(404, 'Nie znaleziono ucznia')
-    const [memberOf, summary, lessonsCompleted, weakStats] = await Promise.all([
-      classes.classesOfMember(userId),
-      progress.getSummary(userId),
-      classes.totalLessonsCompleted(userId),
-      reviews.weakVerbs(userId, 10),
-    ])
-    const verbs = weakStats.length ? await listVerbs({ ids: weakStats.map((s) => s.verbId) }) : []
-    const byId = new Map(verbs.map((v) => [v.id, v]))
-    const percents = attempts.map((x) => x.percent)
-    res.json({
-      userId,
-      name: profile?.name ?? null,
-      email: profile?.email ?? null,
-      classes: memberOf,
-      progress: summary,
-      lessonsCompleted,
-      weakVerbs: weakStats.flatMap((s) => {
-        const verb = byId.get(s.verbId)
-        return verb ? [{ verb, attempts: s.attempts, correct: s.correct, accuracy: s.accuracy, lastWrongAt: s.lastWrongAt }] : []
-      }),
-      totals: {
-        attempts: attempts.length,
-        averagePercent: percents.length ? Math.round(percents.reduce((x, y) => x + y, 0) / percents.length) : null,
-        passedExams: attempts.filter((x) => x.courseId && x.passed).length,
-      },
-      attempts,
-    })
+    const results = await adminStudentResults(userId, 200)
+    if (!results) throw new HttpError(404, 'Nie znaleziono ucznia')
+    res.json(results)
   })
 
   // ---- global app settings: everybody reads (score colours), admins change ----------------

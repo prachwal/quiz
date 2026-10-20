@@ -82,10 +82,7 @@ export async function studentResults(classId: string, userId: string): Promise<S
   const assignments = await listAssignments(classId)
   const facts = (await loadFacts([userId])).get(userId)!
 
-  const activity = await pool().query<{ last_day: string | null }>(
-    `SELECT to_char(MAX(day), 'YYYY-MM-DD') AS last_day FROM daily_activity WHERE user_id = $1`,
-    [userId],
-  )
+  const lastActiveDay = await lastActiveDayOf(userId)
   const reviews = await pool().query<{ attempts: number; correct: number; box: number }>(
     'SELECT attempts, correct, box FROM verb_reviews WHERE user_id = $1 AND attempts >= 1',
     [userId],
@@ -114,7 +111,7 @@ export async function studentResults(classId: string, userId: string): Promise<S
     email: member.email,
     joinedAt: member.joinedAt,
     lessonsCompleted: [...facts.lessonsByCourse.values()].reduce((a, b) => a + b, 0),
-    lastActiveDay: activity.rows[0]?.last_day ?? null,
+    lastActiveDay,
     weakVerbs,
     assignments: assignments.map((a) => {
       const j = judge(a, facts)
@@ -180,6 +177,21 @@ export async function allAttempts(userId: string, limit = 200): Promise<AdminStu
     createdAt: a.created_at.toISOString(),
     questions: questionsOf(a),
   }))
+}
+
+/** Last day with recorded activity (YYYY-MM-DD), null without any. */
+export async function lastActiveDayOf(userId: string): Promise<string | null> {
+  const { rows } = await pool().query<{ last_day: string | null }>(
+    `SELECT to_char(MAX(day), 'YYYY-MM-DD') AS last_day FROM daily_activity WHERE user_id = $1`,
+    [userId],
+  )
+  return rows[0]?.last_day ?? null
+}
+
+/** Every saved attempt of a user, without loading them. */
+export async function countAttempts(userId: string): Promise<number> {
+  const { rows } = await pool().query<{ n: number }>('SELECT COUNT(*)::int AS n FROM quiz_attempts WHERE user_id = $1', [userId])
+  return rows[0]?.n ?? 0
 }
 
 export async function totalLessonsCompleted(userId: string): Promise<number> {

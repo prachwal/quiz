@@ -63946,6 +63946,7 @@ async function weakVerbs(userId, limit) {
   }));
   return rankWeak(stats, limit).map((s) => ({ ...s, accuracy: accuracyOf(s) }));
 }
+var weakVerbCount = async (userId) => (await weakVerbs(userId, Number.POSITIVE_INFINITY)).length;
 
 // server/learningGradeHooks.ts
 var coursePass = async ({ quiz, result }) => {
@@ -74809,10 +74810,7 @@ async function studentResults(classId2, userId) {
   if (!member) return null;
   const assignments = await listAssignments(classId2);
   const facts = (await loadFacts([userId])).get(userId);
-  const activity = await pool().query(
-    `SELECT to_char(MAX(day), 'YYYY-MM-DD') AS last_day FROM daily_activity WHERE user_id = $1`,
-    [userId]
-  );
+  const lastActiveDay = await lastActiveDayOf(userId);
   const reviews = await pool().query(
     "SELECT attempts, correct, box FROM verb_reviews WHERE user_id = $1 AND attempts >= 1",
     [userId]
@@ -74820,7 +74818,7 @@ async function studentResults(classId2, userId) {
   const weakVerbs2 = reviews.rows.filter((r) => isWeak({ ...r, lastWrongAt: null })).length;
   const quizIds = assignments.flatMap((a) => a.quizId ? [a.quizId] : []);
   const courseIds = assignments.flatMap((a) => a.courseId ? [a.courseId] : []);
-  const attemptRows = await pool().query(
+  const attemptRows2 = await pool().query(
     `SELECT id, quiz_id, course_id, score::float AS score, max_score::float AS max_score, percent, passed,
             created_at, answers, results
      FROM quiz_attempts
@@ -74828,7 +74826,7 @@ async function studentResults(classId2, userId) {
      ORDER BY created_at DESC LIMIT 50`,
     [userId, quizIds, courseIds]
   );
-  const questionsOf = await questionDetails(attemptRows.rows);
+  const questionsOf = await questionDetails(attemptRows2.rows);
   const assignmentOf = (a) => assignments.find((x) => x.quizId && x.quizId === a.quiz_id || x.courseId && x.courseId === a.course_id);
   return {
     userId,
@@ -74836,7 +74834,7 @@ async function studentResults(classId2, userId) {
     email: member.email,
     joinedAt: member.joinedAt,
     lessonsCompleted: [...facts.lessonsByCourse.values()].reduce((a, b) => a + b, 0),
-    lastActiveDay: activity.rows[0]?.last_day ?? null,
+    lastActiveDay,
     weakVerbs: weakVerbs2,
     assignments: assignments.map((a) => {
       const j = judge(a, facts);
@@ -74850,7 +74848,7 @@ async function studentResults(classId2, userId) {
         bestPercent: j.best
       };
     }),
-    attempts: attemptRows.rows.flatMap((a) => {
+    attempts: attemptRows2.rows.flatMap((a) => {
       const assignment = assignmentOf(a);
       if (!assignment) return [];
       return [
@@ -74893,6 +74891,17 @@ async function allAttempts(userId, limit = 200) {
     createdAt: a.created_at.toISOString(),
     questions: questionsOf(a)
   }));
+}
+async function lastActiveDayOf(userId) {
+  const { rows } = await pool().query(
+    `SELECT to_char(MAX(day), 'YYYY-MM-DD') AS last_day FROM daily_activity WHERE user_id = $1`,
+    [userId]
+  );
+  return rows[0]?.last_day ?? null;
+}
+async function countAttempts(userId) {
+  const { rows } = await pool().query("SELECT COUNT(*)::int AS n FROM quiz_attempts WHERE user_id = $1", [userId]);
+  return rows[0]?.n ?? 0;
 }
 async function totalLessonsCompleted(userId) {
   const { rows } = await pool().query("SELECT COUNT(*)::int AS n FROM lesson_progress WHERE user_id = $1", [userId]);
@@ -75198,11 +75207,7 @@ async function getAttempt(id) {
   if (!row) return null;
   const questionsOf = await questionDetails([row]);
   const questionIds = (row.results ?? []).map((r) => r.questionId);
-  const types2 = /* @__PURE__ */ new Map();
-  if (questionIds.length > 0) {
-    const t = await pool().query("SELECT id, type FROM questions WHERE id = ANY($1::uuid[])", [questionIds]);
-    for (const r of t.rows) types2.set(r.id, r.type);
-  }
+  const types2 = await questionTypesOf(questionIds);
   return {
     id: row.id,
     quizId: row.quiz_id,
@@ -75244,6 +75249,13 @@ async function quizForStats(quizId) {
     sampleSize: quiz.rows[0].sample_size,
     questions: questions.rows.map((q) => ({ id: q.id, type: q.type, prompt: q.prompt, points: q.points }))
   };
+}
+async function questionTypesOf(questionIds) {
+  const types2 = /* @__PURE__ */ new Map();
+  if (questionIds.length === 0) return types2;
+  const { rows } = await pool().query("SELECT id, type FROM questions WHERE id = ANY($1::uuid[])", [questionIds]);
+  for (const r of rows) types2.set(r.id, r.type);
+  return types2;
 }
 
 // src/shared/quiz/itemStats.ts
@@ -75348,6 +75360,173 @@ function quizStats(input2) {
   };
 }
 
+// src/shared/quiz/studentAnalysis.ts
+var DAY = 24 * 60 * 60 * 1e3;
+var round = (n) => Math.round(n);
+var mean2 = (xs) => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
+function trendOf(percentsOldestFirst) {
+  if (percentsOldestFirst.length < 4) return "insufficient_data";
+  const recent = percentsOldestFirst.slice(-3);
+  const earlier = percentsOldestFirst.slice(0, -3);
+  const delta = (mean2(recent) ?? 0) - (mean2(earlier) ?? 0);
+  return delta >= 5 ? "improving" : delta <= -5 ? "declining" : "stable";
+}
+function analyzeStudent(input2, now = /* @__PURE__ */ new Date()) {
+  const attempts = [...input2.attempts].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const percents = attempts.map((a) => a.percent);
+  const overdue = input2.assignments.filter((a) => a.status !== "done" && a.dueAt !== null && new Date(a.dueAt).getTime() < now.getTime()).map((a) => a.title);
+  const count = (status) => input2.assignments.filter((a) => a.status === status).length;
+  const lastActive = input2.lastActiveDay ?? (attempts.length ? attempts[attempts.length - 1].createdAt.slice(0, 10) : null);
+  const daysSinceActive = lastActive ? Math.max(0, Math.floor((now.getTime() - (/* @__PURE__ */ new Date(`${lastActive}T00:00:00Z`)).getTime()) / DAY)) : null;
+  const byAssignment = /* @__PURE__ */ new Map();
+  for (const a of attempts) byAssignment.set(a.title, [...byAssignment.get(a.title) ?? [], a]);
+  const perAssignment = [...byAssignment.entries()].map(([title, list]) => ({
+    title,
+    attempts: list.length,
+    bestPercent: Math.max(...list.map((a) => a.percent)),
+    latestPercent: list[list.length - 1].percent
+  }));
+  const questions = /* @__PURE__ */ new Map();
+  for (const attempt of attempts) {
+    for (const q of attempt.questions) {
+      const key = q.prompt ?? q.questionId;
+      const entry = questions.get(key) ?? { prompt: q.prompt ?? "Pytanie usuni\u0119te z quizu", missed: 0, seen: 0, correctAnswers: [] };
+      entry.seen += 1;
+      if (!q.correct) {
+        entry.missed += 1;
+        entry.correctAnswers = q.correctAnswers.slice(0, 3);
+      }
+      questions.set(key, entry);
+    }
+  }
+  const hardestQuestions = [...questions.values()].filter((q) => q.missed > 0).sort((a, b) => b.missed - a.missed || b.missed / b.seen - a.missed / a.seen).slice(0, 5);
+  const trend = trendOf(percents);
+  const average = mean2(percents);
+  const flags = [];
+  if (overdue.length) flags.push(`Zadania po terminie: ${overdue.join(", ")}`);
+  if (daysSinceActive === null) flags.push("Ucze\u0144 nie ma jeszcze \u017Cadnej aktywno\u015Bci");
+  else if (daysSinceActive >= 7) flags.push(`Brak aktywno\u015Bci od ${daysSinceActive} dni`);
+  if (trend === "declining") flags.push("Wyniki w ostatnich podej\u015Bciach spadaj\u0105");
+  if (average !== null && average < 50) flags.push(`Niska \u015Brednia (${round(average)}%)`);
+  if (input2.assignments.length > 0 && count("todo") === input2.assignments.length) flags.push("\u017Badne zadanie nie zosta\u0142o rozpocz\u0119te");
+  return {
+    attempts: {
+      count: attempts.length,
+      averagePercent: average === null ? null : round(average),
+      bestPercent: percents.length ? Math.max(...percents) : null,
+      latestPercent: percents.length ? percents[percents.length - 1] : null,
+      trend
+    },
+    assignments: {
+      total: input2.assignments.length,
+      done: count("done"),
+      inProgress: count("in_progress"),
+      todo: count("todo"),
+      overdue
+    },
+    daysSinceActive,
+    perAssignment,
+    hardestQuestions,
+    flags
+  };
+}
+
+// src/shared/quiz/userHistory.ts
+function attemptRows(attempts, includeAnswers, types2) {
+  return attempts.map((a) => {
+    const row = {
+      id: a.id,
+      quizId: a.quizId,
+      quizTitle: a.title,
+      courseId: a.courseId,
+      source: a.source,
+      score: a.score,
+      maxScore: a.maxScore,
+      percent: a.percent,
+      passed: a.passed,
+      createdAt: a.createdAt
+    };
+    if (includeAnswers) {
+      row.questions = a.questions.map((q) => ({
+        questionId: q.questionId,
+        prompt: q.prompt,
+        type: types2.get(q.questionId) ?? null,
+        points: q.points,
+        correct: q.correct,
+        earned: q.earned,
+        answer: q.answer,
+        correctAnswers: q.correctAnswers
+      }));
+    }
+    return row;
+  });
+}
+function historyAnalysisInput(attempts, lastActiveDay) {
+  const mapped = attempts.map((a) => ({
+    assignmentId: a.quizId ?? a.courseId ?? a.id,
+    title: a.title,
+    percent: a.percent,
+    createdAt: a.createdAt,
+    questions: a.questions.map((q) => ({
+      questionId: q.questionId,
+      prompt: q.prompt,
+      correct: q.correct,
+      correctAnswers: q.correctAnswers
+    }))
+  }));
+  return { lastActiveDay, assignments: [], attempts: mapped };
+}
+
+// server/userResults.ts
+async function adminStudentResults(userId, attemptLimit) {
+  const profile = await profileOf(userId);
+  const attempts = await allAttempts(userId, attemptLimit);
+  if (!profile && attempts.length === 0) return null;
+  const [memberOf, summary2, lessonsCompleted, weakStats] = await Promise.all([
+    classesOfMember(userId),
+    getSummary(userId),
+    totalLessonsCompleted(userId),
+    weakVerbs(userId, 10)
+  ]);
+  const verbs = weakStats.length ? await listVerbs({ ids: weakStats.map((s) => s.verbId) }) : [];
+  const byId = new Map(verbs.map((v) => [v.id, v]));
+  const percents = attempts.map((x) => x.percent);
+  return {
+    userId,
+    name: profile?.name ?? null,
+    email: profile?.email ?? null,
+    classes: memberOf,
+    progress: summary2,
+    lessonsCompleted,
+    weakVerbs: weakStats.flatMap((s) => {
+      const verb = byId.get(s.verbId);
+      return verb ? [{ verb, attempts: s.attempts, correct: s.correct, accuracy: s.accuracy, lastWrongAt: s.lastWrongAt }] : [];
+    }),
+    totals: {
+      attempts: attempts.length,
+      averagePercent: percents.length ? Math.round(percents.reduce((x, y) => x + y, 0) / percents.length) : null,
+      passedExams: attempts.filter((x) => x.courseId && x.passed).length
+    },
+    attempts
+  };
+}
+async function weakVerbDetails(userId, limit) {
+  const weak = await weakVerbs(userId, limit);
+  const verbs = weak.length ? await listVerbs({ ids: weak.map((w) => w.verbId) }) : [];
+  return weak.flatMap((w) => {
+    const verb = verbs.find((x) => x.id === w.verbId);
+    return verb ? [
+      {
+        verb: verb.base,
+        forms: [verb.base, verb.pastSimple[0], verb.pastParticiple[0]].join(" \u2013 "),
+        meanings: verb.meanings,
+        accuracyPercent: Math.round(w.accuracy * 100),
+        attempts: w.attempts
+      }
+    ] : [];
+  });
+}
+
 // server/mcp/tools/admin.ts
 var isoDate = external_exports.string().refine((s) => !Number.isNaN(Date.parse(s)), "Data w formacie ISO, np. 2026-10-19 albo 2026-10-19T12:00:00Z").describe("Data ISO, np. 2026-10-19");
 var percent2 = external_exports.number().min(0).max(100);
@@ -75404,6 +75583,68 @@ function registerAdminTools(server, ctx) {
     }
   );
   server.registerTool(
+    "user_results",
+    {
+      title: "Wyniki u\u017Cytkownika (admin)",
+      description: "Wszystkie podej\u015Bcia jednego u\u017Cytkownika, tak\u017Ce spoza klas i bez ograniczenia do zada\u0144: profil z pe\u0142nym e-mailem, classes (aktywne klasy), lessonsCompleted, lastActiveDay, weakVerbs (liczba czasownik\xF3w s\u0142abych), total i hasMore oraz attempts od najnowszego (id, quizId, quizTitle, percent, score, maxScore, passed, source, createdAt; source jest null dla usuni\u0119tego quizu). includeAnswers=true dodaje do ka\u017Cdego podej\u015Bcia questions z odpowiedzi\u0105 na ka\u017Cde pytanie (mo\u017Ce by\u0107 bardzo d\u0142ugie - w razie w\u0105tpliwo\u015Bci zostaw false). Zwraca najwy\u017Cej limit podej\u015B\u0107 (domy\u015Blnie 50, maks. 200). Id u\u017Cytkownika (Auth0) z attempt_list albo student_search. Pytania usuni\u0119te przy edycji quizu maj\u0105 prompt i type null.",
+      inputSchema: {
+        userId: auth0UserId,
+        limit: external_exports.number().int().min(1).max(200).default(50),
+        includeAnswers: external_exports.boolean().default(false)
+      },
+      annotations: { readOnlyHint: true }
+    },
+    async ({ userId, limit, includeAnswers }) => {
+      if (!admin) return needAdmin();
+      const results = await adminStudentResults(userId, limit);
+      if (!results) return failure2("Nie znaleziono u\u017Cytkownika.");
+      const [lastActiveDay, total, weakCount] = await Promise.all([
+        lastActiveDayOf(userId),
+        countAttempts(userId),
+        weakVerbCount(userId)
+      ]);
+      const types2 = includeAnswers ? await questionTypesOf(results.attempts.flatMap((a) => a.questions.map((q) => q.questionId))) : /* @__PURE__ */ new Map();
+      return text({
+        userId,
+        name: results.name,
+        email: results.email,
+        classes: results.classes,
+        lessonsCompleted: results.lessonsCompleted,
+        lastActiveDay,
+        weakVerbs: weakCount,
+        total,
+        hasMore: total > results.attempts.length,
+        attempts: attemptRows(results.attempts, includeAnswers, types2)
+      });
+    }
+  );
+  server.registerTool(
+    "user_analysis",
+    {
+      title: "Analiza u\u017Cytkownika (admin)",
+      description: "Gotowa analiza jednego u\u017Cytkownika po jego ca\u0142ej historii (najnowsze 200 podej\u015B\u0107, tak\u017Ce spoza klas): \u015Brednia, najlepszy i ostatni wynik, trend, pytania najcz\u0119\u015Bciej b\u0142\u0119dne, dni bez aktywno\u015Bci, wyniki per quiz i ostrze\u017Cenia. Sekcja assignments jest pusta (brak zada\u0144 poza klasami). Osobno weakVerbCount (wszystkie s\u0142abe czasowniki) i weakVerbs (8 najs\u0142abszych, z formami i znaczeniami). Analiza liczy si\u0119 z podej\u015B\u0107, wi\u0119c przy quizach z losowaniem pyta\u0144 liczby per pytanie s\u0105 mniejsze ni\u017C liczba podej\u015B\u0107. Na tej podstawie napisz wnioski.",
+      inputSchema: { userId: auth0UserId },
+      annotations: { readOnlyHint: true }
+    },
+    async ({ userId }) => {
+      if (!admin) return needAdmin();
+      const results = await adminStudentResults(userId, 200);
+      if (!results) return failure2("Nie znaleziono u\u017Cytkownika.");
+      const [lastActiveDay, weakCount, weakVerbs2] = await Promise.all([
+        lastActiveDayOf(userId),
+        weakVerbCount(userId),
+        weakVerbDetails(userId, 8)
+      ]);
+      return text({
+        user: { userId, name: results.name, email: results.email },
+        lessonsCompleted: results.lessonsCompleted,
+        weakVerbCount: weakCount,
+        weakVerbs: weakVerbs2,
+        analysis: analyzeStudent(historyAnalysisInput(results.attempts, lastActiveDay))
+      });
+    }
+  );
+  server.registerTool(
     "attempt_get",
     {
       title: "Podej\u015Bcie z odpowiedziami (admin)",
@@ -75420,7 +75661,7 @@ function registerAdminTools(server, ctx) {
 }
 
 // src/shared/quiz/classAnalysis.ts
-var DAY = 24 * 60 * 60 * 1e3;
+var DAY2 = 24 * 60 * 60 * 1e3;
 var INACTIVE_DAYS = 7;
 var LOW_PERCENT = 50;
 function analyzeClass(report, now = /* @__PURE__ */ new Date()) {
@@ -75444,7 +75685,7 @@ function analyzeClass(report, now = /* @__PURE__ */ new Date()) {
   const needsAttention = [];
   for (const row of report.rows) {
     const reasons = [];
-    const days = row.lastActiveDay ? Math.max(0, Math.floor((now.getTime() - (/* @__PURE__ */ new Date(`${row.lastActiveDay}T00:00:00Z`)).getTime()) / DAY)) : null;
+    const days = row.lastActiveDay ? Math.max(0, Math.floor((now.getTime() - (/* @__PURE__ */ new Date(`${row.lastActiveDay}T00:00:00Z`)).getTime()) / DAY2)) : null;
     if (days === null) {
       reasons.push("brak jakiejkolwiek aktywno\u015Bci");
       inactive7Days += 1;
@@ -75668,77 +75909,6 @@ function registerClassCrudTools(server, ctx, guards) {
   );
 }
 
-// src/shared/quiz/studentAnalysis.ts
-var DAY2 = 24 * 60 * 60 * 1e3;
-var round = (n) => Math.round(n);
-var mean2 = (xs) => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
-function trendOf(percentsOldestFirst) {
-  if (percentsOldestFirst.length < 4) return "insufficient_data";
-  const recent = percentsOldestFirst.slice(-3);
-  const earlier = percentsOldestFirst.slice(0, -3);
-  const delta = (mean2(recent) ?? 0) - (mean2(earlier) ?? 0);
-  return delta >= 5 ? "improving" : delta <= -5 ? "declining" : "stable";
-}
-function analyzeStudent(input2, now = /* @__PURE__ */ new Date()) {
-  const attempts = [...input2.attempts].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  const percents = attempts.map((a) => a.percent);
-  const overdue = input2.assignments.filter((a) => a.status !== "done" && a.dueAt !== null && new Date(a.dueAt).getTime() < now.getTime()).map((a) => a.title);
-  const count = (status) => input2.assignments.filter((a) => a.status === status).length;
-  const lastActive = input2.lastActiveDay ?? (attempts.length ? attempts[attempts.length - 1].createdAt.slice(0, 10) : null);
-  const daysSinceActive = lastActive ? Math.max(0, Math.floor((now.getTime() - (/* @__PURE__ */ new Date(`${lastActive}T00:00:00Z`)).getTime()) / DAY2)) : null;
-  const byAssignment = /* @__PURE__ */ new Map();
-  for (const a of attempts) byAssignment.set(a.title, [...byAssignment.get(a.title) ?? [], a]);
-  const perAssignment = [...byAssignment.entries()].map(([title, list]) => ({
-    title,
-    attempts: list.length,
-    bestPercent: Math.max(...list.map((a) => a.percent)),
-    latestPercent: list[list.length - 1].percent
-  }));
-  const questions = /* @__PURE__ */ new Map();
-  for (const attempt of attempts) {
-    for (const q of attempt.questions) {
-      const key = q.prompt ?? q.questionId;
-      const entry = questions.get(key) ?? { prompt: q.prompt ?? "Pytanie usuni\u0119te z quizu", missed: 0, seen: 0, correctAnswers: [] };
-      entry.seen += 1;
-      if (!q.correct) {
-        entry.missed += 1;
-        entry.correctAnswers = q.correctAnswers.slice(0, 3);
-      }
-      questions.set(key, entry);
-    }
-  }
-  const hardestQuestions = [...questions.values()].filter((q) => q.missed > 0).sort((a, b) => b.missed - a.missed || b.missed / b.seen - a.missed / a.seen).slice(0, 5);
-  const trend = trendOf(percents);
-  const average = mean2(percents);
-  const flags = [];
-  if (overdue.length) flags.push(`Zadania po terminie: ${overdue.join(", ")}`);
-  if (daysSinceActive === null) flags.push("Ucze\u0144 nie ma jeszcze \u017Cadnej aktywno\u015Bci");
-  else if (daysSinceActive >= 7) flags.push(`Brak aktywno\u015Bci od ${daysSinceActive} dni`);
-  if (trend === "declining") flags.push("Wyniki w ostatnich podej\u015Bciach spadaj\u0105");
-  if (average !== null && average < 50) flags.push(`Niska \u015Brednia (${round(average)}%)`);
-  if (input2.assignments.length > 0 && count("todo") === input2.assignments.length) flags.push("\u017Badne zadanie nie zosta\u0142o rozpocz\u0119te");
-  return {
-    attempts: {
-      count: attempts.length,
-      averagePercent: average === null ? null : round(average),
-      bestPercent: percents.length ? Math.max(...percents) : null,
-      latestPercent: percents.length ? percents[percents.length - 1] : null,
-      trend
-    },
-    assignments: {
-      total: input2.assignments.length,
-      done: count("done"),
-      inProgress: count("in_progress"),
-      todo: count("todo"),
-      overdue
-    },
-    daysSinceActive,
-    perAssignment,
-    hardestQuestions,
-    flags
-  };
-}
-
 // src/shared/quiz/maskEmail.ts
 function maskEmail(email3) {
   if (!email3) return null;
@@ -75836,20 +76006,7 @@ function registerStudentTools(server, ctx, guards) {
     ({ classId: id, userId }) => reading(id, async (cls) => {
       const results = await studentResults(cls.id, userId);
       if (!results) throw new Error("Nie znaleziono ucznia w tej klasie");
-      const weak = await weakVerbs(userId, 8);
-      const verbs = weak.length ? await listVerbs({ ids: weak.map((w) => w.verbId) }) : [];
-      const weakVerbs2 = weak.flatMap((w) => {
-        const verb = verbs.find((x) => x.id === w.verbId);
-        return verb ? [
-          {
-            verb: verb.base,
-            forms: [verb.base, verb.pastSimple[0], verb.pastParticiple[0]].join(" \u2013 "),
-            meanings: verb.meanings,
-            accuracyPercent: Math.round(w.accuracy * 100),
-            attempts: w.attempts
-          }
-        ] : [];
-      });
+      const weakVerbs2 = await weakVerbDetails(userId, 8);
       return {
         student: { userId, name: results.name, email: results.email, joinedAt: results.joinedAt },
         lessonsCompleted: results.lessonsCompleted,
@@ -76371,36 +76528,9 @@ function registerAdminRoutes(router) {
   });
   router.get("/admin/students/:userId/results", adminOnly, async (req, res) => {
     const userId = auth0UserId.parse(String(req.params.userId));
-    const profile = await profileOf(userId);
-    const attempts = await allAttempts(userId);
-    if (!profile && attempts.length === 0) throw new HttpError(404, "Nie znaleziono ucznia");
-    const [memberOf, summary2, lessonsCompleted, weakStats] = await Promise.all([
-      classesOfMember(userId),
-      getSummary(userId),
-      totalLessonsCompleted(userId),
-      weakVerbs(userId, 10)
-    ]);
-    const verbs = weakStats.length ? await listVerbs({ ids: weakStats.map((s) => s.verbId) }) : [];
-    const byId = new Map(verbs.map((v) => [v.id, v]));
-    const percents = attempts.map((x) => x.percent);
-    res.json({
-      userId,
-      name: profile?.name ?? null,
-      email: profile?.email ?? null,
-      classes: memberOf,
-      progress: summary2,
-      lessonsCompleted,
-      weakVerbs: weakStats.flatMap((s) => {
-        const verb = byId.get(s.verbId);
-        return verb ? [{ verb, attempts: s.attempts, correct: s.correct, accuracy: s.accuracy, lastWrongAt: s.lastWrongAt }] : [];
-      }),
-      totals: {
-        attempts: attempts.length,
-        averagePercent: percents.length ? Math.round(percents.reduce((x, y) => x + y, 0) / percents.length) : null,
-        passedExams: attempts.filter((x) => x.courseId && x.passed).length
-      },
-      attempts
-    });
+    const results = await adminStudentResults(userId, 200);
+    if (!results) throw new HttpError(404, "Nie znaleziono ucznia");
+    res.json(results);
   });
   router.get("/settings/app", async (_req, res) => {
     res.json(await getAppSettings());
