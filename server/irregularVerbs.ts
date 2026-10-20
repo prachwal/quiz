@@ -58,6 +58,14 @@ export async function listVerbs(filter: VerbFilter = {}): Promise<IrregularVerb[
   return rows.map(toVerb)
 }
 
+/** Every verb of the catalog with its image, whatever its CEFR level (the illustration script needs all of them). */
+export async function allVerbImageRefs(): Promise<{ id: number; base: string; imageMediaId: string | null }[]> {
+  const { rows } = await pool().query<{ id: number; base: string; image_media_id: string | null }>(
+    'SELECT id, base, image_media_id FROM irregular_verbs ORDER BY base',
+  )
+  return rows.map((row) => ({ id: row.id, base: row.base, imageMediaId: row.image_media_id }))
+}
+
 export interface VerbImageChange {
   before: string | null
   after: string | null

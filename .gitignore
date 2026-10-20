@@ -34,6 +34,8 @@ dist-ssr
 *.tmp.mjs
 # bundle of scripts/media-smoke.ts written by `npm run media:smoke`
 .media-smoke.mjs
+# bundle of scripts/upload-verb-images.ts written by `npm run media:verb-images`
+.upload-verb-images.mjs
 
 # compiled tests
 .test-build

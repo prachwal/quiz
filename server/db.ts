@@ -42,3 +42,10 @@ export const pool = (): Pool => {
   }
   return externalPool as unknown as Pool
 }
+
+/** Ends the pool so that a script can exit cleanly. The serverless function never calls it. */
+export async function closePool(): Promise<void> {
+  const current = externalPool
+  externalPool = null
+  await current?.end()
+}
