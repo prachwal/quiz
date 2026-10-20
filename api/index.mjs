@@ -62298,6 +62298,8 @@ var esm_default = import_lib.default;
 var QUESTION_TYPES = ["single", "multiple", "truefalse", "text", "numeric", "ordering", "matching", "cloze"];
 var countCorrect = (options) => options.filter((o) => o.isCorrect).length;
 var ORDERING_MAX_ITEMS = 50;
+var CONFIG_ID_MAX_LENGTH = 64;
+var idTooLong = (id) => [...id].length > CONFIG_ID_MAX_LENGTH;
 var orderingConfig = (config2) => {
   if (!config2 || typeof config2 !== "object") return null;
   const { items } = config2;
@@ -62522,6 +62524,9 @@ var questionTypeDefs = {
       const config2 = orderingConfig(q.config);
       if (!config2) return "Dodaj co najmniej dwa elementy do uporz\u0105dkowania";
       if (config2.items.some((item) => !item.text.trim())) return "Uzupe\u0142nij tre\u015B\u0107 wszystkich element\xF3w";
+      if (config2.items.some((item) => idTooLong(item.id))) {
+        return `Identyfikator elementu jest za d\u0142ugi (maks. ${CONFIG_ID_MAX_LENGTH} znaki)`;
+      }
       if (new Set(config2.items.map((item) => item.id)).size !== config2.items.length) {
         return "Elementy musz\u0105 mie\u0107 unikalne identyfikatory";
       }
@@ -62575,6 +62580,9 @@ var questionTypeDefs = {
       if (!config2) return "Dodaj co najmniej dwie pary";
       if (config2.pairs.some((pair) => !pair.left.trim() || !pair.right.trim())) {
         return "Uzupe\u0142nij obie strony ka\u017Cdej pary";
+      }
+      if (config2.pairs.some((pair) => idTooLong(pair.id) || idTooLong(pair.rightId))) {
+        return `Identyfikator pary jest za d\u0142ugi (maks. ${CONFIG_ID_MAX_LENGTH} znaki)`;
       }
       if (new Set(config2.pairs.map((pair) => pair.id)).size !== config2.pairs.length) {
         return "Pary musz\u0105 mie\u0107 unikalne identyfikatory";

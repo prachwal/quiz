@@ -459,3 +459,37 @@ test('clozeMarkers extracts the marker numbers in order', () => {
   assert.deepEqual(clozeMarkers('a {{2}} b {{1}}'), [2, 1])
   assert.deepEqual(clozeMarkers('brak'), [])
 })
+
+// ---- config id length (checked on save, not when grading old data) ------------------------
+
+test('ordering and matching accept ids up to 64 characters and reject 65', () => {
+  const ordering = questionTypes.ordering
+  const orderingWith = (id: string) => ({ type: 'ordering' as const, options: [], config: { items: [{ id, text: 'A' }, { id: 'b', text: 'B' }] } })
+  assert.equal(ordering.validate(orderingWith('x'.repeat(64))), null)
+  assert.ok(ordering.validate(orderingWith('x'.repeat(65))))
+
+  const matching = questionTypes.matching
+  const pairWith = (id: string, rightId: string) => ({
+    type: 'matching' as const,
+    options: [],
+    config: { pairs: [{ id, rightId, left: 'kot', right: 'cat' }, { id: 'p2', rightId: 'r2', left: 'pies', right: 'dog' }] },
+  })
+  assert.equal(matching.validate(pairWith('p'.repeat(64), 'r1')), null)
+  assert.ok(matching.validate(pairWith('p'.repeat(65), 'r1')))
+  assert.equal(matching.validate(pairWith('p1', 'r'.repeat(64))), null)
+  assert.ok(matching.validate(pairWith('p1', 'r'.repeat(65))))
+})
+
+test('ordering and matching still grade old data with ids longer than 64 characters', () => {
+  const longId = 'x'.repeat(100)
+  const ordering = gradeQuiz(
+    [{ id: 'o1', type: 'ordering', points: 1, explanation: '', options: [], config: { items: [{ id: longId, text: 'A' }, { id: 'b', text: 'B' }] } }],
+    { o1: { order: [longId, 'b'] } },
+  )
+  assert.equal(ordering.percent, 100)
+  const matching = gradeQuiz(
+    [{ id: 'm1', type: 'matching', points: 1, explanation: '', options: [], config: { pairs: [{ id: longId, rightId: longId, left: 'kot', right: 'cat' }, { id: 'p2', rightId: 'r2', left: 'pies', right: 'dog' }] } }],
+    { m1: { pairs: { [longId]: longId, p2: 'r2' } } },
+  )
+  assert.equal(matching.percent, 100)
+})

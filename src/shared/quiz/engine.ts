@@ -114,6 +114,11 @@ export interface OrderingConfig {
 
 const ORDERING_MAX_ITEMS = 50
 
+/** Limit for config ids (ordering items, matching pairs); mirrors data/quiz.schema.json. Checked on save only. */
+const CONFIG_ID_MAX_LENGTH = 64
+/** Code points, the way JSON Schema counts maxLength. */
+const idTooLong = (id: string) => [...id].length > CONFIG_ID_MAX_LENGTH
+
 const orderingConfig = (config: unknown): OrderingConfig | null => {
   if (!config || typeof config !== 'object') return null
   const { items } = config as Partial<OrderingConfig>
@@ -476,6 +481,9 @@ export const questionTypeDefs = {
       const config = orderingConfig(q.config)
       if (!config) return 'Dodaj co najmniej dwa elementy do uporządkowania'
       if (config.items.some((item) => !item.text.trim())) return 'Uzupełnij treść wszystkich elementów'
+      if (config.items.some((item) => idTooLong(item.id))) {
+        return `Identyfikator elementu jest za długi (maks. ${CONFIG_ID_MAX_LENGTH} znaki)`
+      }
       if (new Set(config.items.map((item) => item.id)).size !== config.items.length) {
         return 'Elementy muszą mieć unikalne identyfikatory'
       }
@@ -530,6 +538,9 @@ export const questionTypeDefs = {
       if (!config) return 'Dodaj co najmniej dwie pary'
       if (config.pairs.some((pair) => !pair.left.trim() || !pair.right.trim())) {
         return 'Uzupełnij obie strony każdej pary'
+      }
+      if (config.pairs.some((pair) => idTooLong(pair.id) || idTooLong(pair.rightId))) {
+        return `Identyfikator pary jest za długi (maks. ${CONFIG_ID_MAX_LENGTH} znaki)`
       }
       if (new Set(config.pairs.map((pair) => pair.id)).size !== config.pairs.length) {
         return 'Pary muszą mieć unikalne identyfikatory'
