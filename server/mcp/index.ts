@@ -9,6 +9,7 @@ import { registerMediaTools } from './tools/media'
 import { registerClassTools } from './classTools'
 import { registerLessonTools } from './lessonTools'
 import { registerQuizTools } from './quizTools'
+import { quizTitles } from '../quizRepo'
 
 /**
  * Model Context Protocol endpoint (`POST /api/mcp`, Streamable HTTP, stateless, JSON responses).
@@ -35,7 +36,8 @@ function buildServer(req: Request) {
   registerAdminTools(server, ctx)
   registerUserTools(server, ctx)
   registerOperationTools(server, ctx)
-  registerMediaTools(server, ctx)
+  // media gets the quiz titles from here, so the media tools never import the quiz module
+  registerMediaTools(server, ctx, { ownerLabels: async (kind, ids) => (kind === 'quiz' ? quizTitles(ids) : new Map()) })
   return server
 }
 
