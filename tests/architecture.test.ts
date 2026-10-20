@@ -17,10 +17,7 @@ type Exception = { from: string; to: string }
 const HARD_RULE_EXCEPTIONS: Exception[] = []
 
 // Dozwolone składy cykli modułów. Nowy cykl albo większy skład pada.
-const EXPECTED_CYCLES = [
-  ['learning', 'progress', 'quizzes'],
-  ['shared-quizzes', 'shared-types'],
-]
+const EXPECTED_CYCLES = [['shared-quizzes', 'shared-types']]
 
 const ROOT = process.cwd()
 const audit = auditRepo(ROOT)

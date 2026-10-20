@@ -18,6 +18,7 @@ import { registerLearningRoutes } from './routes/learning'
 import { registerProgressHooks } from './progressHooks'
 import { registerProgressRoutes } from './routes/progress'
 import { registerQuizRoutes } from './routes/quizzes'
+import { registerVerbQuizRoutes } from './routes/verbQuizzes'
 import { registerTokenRoutes } from './routes/tokens'
 import { initSentry, reportServerError } from './sentry'
 
@@ -89,6 +90,7 @@ export function createApp() {
 
   const router = express.Router()
   registerQuizRoutes(router)
+  registerVerbQuizRoutes(router)
   registerTokenRoutes(router)
   registerClassRoutes(router)
   registerProgressRoutes(router)

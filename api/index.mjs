@@ -78120,6 +78120,46 @@ function registerLessonTools(server, ctx) {
       return detail ? text(lessonView(detail)) : failure2("Nie znaleziono lekcji.");
     }
   );
+  server.registerTool(
+    "verbs_list",
+    {
+      title: "Katalog czasownik\xF3w nieregularnych",
+      description: "Czasowniki nieregularne (formy, znaczenia, przyk\u0142ady) - materia\u0142 do tworzenia quiz\xF3w. Maksymalnie 100 wynik\xF3w.",
+      inputSchema: {
+        difficulty: external_exports.enum(DIFFICULTIES).optional(),
+        popularity: external_exports.enum(POPULARITIES).optional(),
+        pattern: external_exports.enum(["AAA", "ABA", "ABB", "ABC"]).optional(),
+        limit: external_exports.number().int().min(1).max(100).default(50)
+      },
+      annotations: { readOnlyHint: true }
+    },
+    async ({ limit, ...filter }) => text((await listVerbs(filter)).slice(0, limit))
+  );
+  server.registerTool(
+    "verb_set_image",
+    {
+      title: "Ilustracja czasownika",
+      description: "Ustawia ilustracj\u0119 czasownika nieregularnego (verbId z verbs_list; mediaId z media_upload albo media_upload_from_url). Plik musi by\u0107 gotowy (nie w stanie pending). mediaId=null usuwa ilustracj\u0119. Ilustracja pokazuje si\u0119 na slajdzie lekcji i w katalogu czasownik\xF3w. Zmiana trafia do audytu (poprzednie i nowe id pliku). Wymaga write:quizzes.",
+      inputSchema: {
+        verbId: external_exports.number().int().positive().describe("Id czasownika z verbs_list"),
+        mediaId: external_exports.string().uuid().nullable().describe("Id gotowego pliku albo null, aby usun\u0105\u0107 ilustracj\u0119")
+      },
+      annotations: { idempotentHint: true }
+    },
+    async ({ verbId, mediaId: mediaId2 }) => {
+      if (!ctx.canWriteQuizzes) return needQuizWrite();
+      let change;
+      try {
+        change = await setVerbImage(verbId, mediaId2);
+      } catch (error62) {
+        if (error62 instanceof MediaRefError) return failure2(error62.message);
+        throw error62;
+      }
+      if (!change) return failure2("Nie znaleziono czasownika.");
+      await audit(ctx, "verb_set_image", { id: String(verbId) }, { verbId, mediaBefore: change.before, mediaAfter: change.after });
+      return text({ verbId, imageMediaId: change.after });
+    }
+  );
 }
 function lessonView(lesson) {
   return {
@@ -78721,46 +78761,6 @@ function registerQuizTools(server, ctx) {
       annotations: { readOnlyHint: true }
     },
     async () => text(quiz_schema_default)
-  );
-  server.registerTool(
-    "verbs_list",
-    {
-      title: "Katalog czasownik\xF3w nieregularnych",
-      description: "Czasowniki nieregularne (formy, znaczenia, przyk\u0142ady) - materia\u0142 do tworzenia quiz\xF3w. Maksymalnie 100 wynik\xF3w.",
-      inputSchema: {
-        difficulty: external_exports.enum(DIFFICULTIES).optional(),
-        popularity: external_exports.enum(POPULARITIES).optional(),
-        pattern: external_exports.enum(["AAA", "ABA", "ABB", "ABC"]).optional(),
-        limit: external_exports.number().int().min(1).max(100).default(50)
-      },
-      annotations: { readOnlyHint: true }
-    },
-    async ({ limit, ...filter }) => text((await listVerbs(filter)).slice(0, limit))
-  );
-  server.registerTool(
-    "verb_set_image",
-    {
-      title: "Ilustracja czasownika",
-      description: "Ustawia ilustracj\u0119 czasownika nieregularnego (verbId z verbs_list; mediaId z media_upload albo media_upload_from_url). Plik musi by\u0107 gotowy (nie w stanie pending). mediaId=null usuwa ilustracj\u0119. Ilustracja pokazuje si\u0119 na slajdzie lekcji i w katalogu czasownik\xF3w. Zmiana trafia do audytu (poprzednie i nowe id pliku). Wymaga write:quizzes.",
-      inputSchema: {
-        verbId: external_exports.number().int().positive().describe("Id czasownika z verbs_list"),
-        mediaId: external_exports.string().uuid().nullable().describe("Id gotowego pliku albo null, aby usun\u0105\u0107 ilustracj\u0119")
-      },
-      annotations: { idempotentHint: true }
-    },
-    async ({ verbId, mediaId: mediaId2 }) => {
-      if (!ctx.canWriteQuizzes) return needQuizWrite();
-      let change;
-      try {
-        change = await setVerbImage(verbId, mediaId2);
-      } catch (error62) {
-        if (error62 instanceof MediaRefError) return failure2(error62.message);
-        throw error62;
-      }
-      if (!change) return failure2("Nie znaleziono czasownika.");
-      await audit(ctx, "verb_set_image", { id: String(verbId) }, { verbId, mediaBefore: change.before, mediaAfter: change.after });
-      return text({ verbId, imageMediaId: change.after });
-    }
   );
   server.registerTool(
     "quiz_create",
@@ -79567,60 +79567,6 @@ function registerQuizRoutes(router) {
     const id = await withMediaRefs(() => createQuiz(input2, { kind: "manual", difficulty: input2.difficulty, ownerId: userId }));
     res.status(201).json(await getQuiz(id, true, true));
   });
-  router.post("/quizzes/generate/irregular-verbs", async (req, res) => {
-    const options = generateInput.parse(req.body ?? {});
-    if (options.onlyWeak) {
-      const weak = await weakVerbs(userOf(req), options.count);
-      if (weak.length === 0) {
-        throw new HttpError(409, "Brak danych o s\u0142abych czasownikach - rozwi\u0105\u017C kilka quiz\xF3w, a pojawi\u0105 si\u0119 tutaj");
-      }
-      const pool2 = await listVerbs();
-      const weakIds = new Set(weak.map((w) => w.verbId));
-      const chosen = [
-        ...pool2.filter((v) => weakIds.has(v.id)),
-        ...randomSample(
-          pool2.filter((v) => !weakIds.has(v.id)),
-          Math.max(0, options.count - weak.length)
-        )
-      ];
-      const quiz2 = buildVerbQuiz(
-        chosen,
-        pool2,
-        options.variant,
-        "Trening b\u0142\u0119d\xF3w",
-        `${weak.length} s\u0142abych czasownik\xF3w${chosen.length > weak.length ? ` i ${chosen.length - weak.length} uzupe\u0142niaj\u0105cych` : ""}.`
-      );
-      const id2 = await createQuiz(quiz2, { kind: "generated", source: "weak", ownerId: userOf(req) });
-      res.status(201).json(await getQuiz(id2, false));
-      return;
-    }
-    const { quiz, difficulty } = await generateIrregularVerbsQuiz(options);
-    if (quiz.questions.length === 0) throw new HttpError(422, "Brak czasownik\xF3w dla wybranych kryteri\xF3w");
-    const id = await createQuiz(quiz, {
-      kind: "generated",
-      source: "irregular-verbs",
-      difficulty,
-      ownerId: currentUserId(req)
-    });
-    res.status(201).json(await getQuiz(id, false));
-  });
-  router.post("/quizzes/:id/retry-wrong", async (req, res) => {
-    const id = parseId(req.params.id);
-    const { questionIds } = retryWrongInput.parse(req.body);
-    const verbOf = await getQuestionVerbs(id);
-    const verbIds = [...new Set(questionIds.flatMap((q) => verbOf.has(q) ? [verbOf.get(q)] : []))];
-    if (verbIds.length === 0) throw new HttpError(409, "Brak czasownik\xF3w do powt\xF3rzenia w tych pytaniach");
-    const [pool2, verbs] = await Promise.all([listVerbs(), listVerbs({ ids: verbIds })]);
-    const quiz = buildVerbQuiz(
-      verbs,
-      pool2,
-      "mixed",
-      "Powt\xF3rz b\u0142\u0119dne",
-      `${verbs.length} czasownik\xF3w, w kt\xF3rych pomyli\u0142e\u015B si\u0119 w poprzednim quizie.`
-    );
-    const newId = await createQuiz(quiz, { kind: "generated", source: "weak", ownerId: userOf(req) });
-    res.status(201).json(await getQuiz(newId, false));
-  });
   router.get("/attempts", async (req, res) => {
     res.json(await listAttempts(userOf(req)));
   });
@@ -79680,6 +79626,64 @@ function registerQuizRoutes(router) {
     );
     const media = await resolveMedia(gradedImageIds(gradedQuestions, answers));
     res.json(withMedia({ ...result, attemptId, ...response }, media));
+  });
+}
+
+// server/routes/verbQuizzes.ts
+function registerVerbQuizRoutes(router) {
+  router.post("/quizzes/generate/irregular-verbs", async (req, res) => {
+    const options = generateInput.parse(req.body ?? {});
+    if (options.onlyWeak) {
+      const weak = await weakVerbs(userOf(req), options.count);
+      if (weak.length === 0) {
+        throw new HttpError(409, "Brak danych o s\u0142abych czasownikach - rozwi\u0105\u017C kilka quiz\xF3w, a pojawi\u0105 si\u0119 tutaj");
+      }
+      const pool2 = await listVerbs();
+      const weakIds = new Set(weak.map((w) => w.verbId));
+      const chosen = [
+        ...pool2.filter((v) => weakIds.has(v.id)),
+        ...randomSample(
+          pool2.filter((v) => !weakIds.has(v.id)),
+          Math.max(0, options.count - weak.length)
+        )
+      ];
+      const quiz2 = buildVerbQuiz(
+        chosen,
+        pool2,
+        options.variant,
+        "Trening b\u0142\u0119d\xF3w",
+        `${weak.length} s\u0142abych czasownik\xF3w${chosen.length > weak.length ? ` i ${chosen.length - weak.length} uzupe\u0142niaj\u0105cych` : ""}.`
+      );
+      const id2 = await createQuiz(quiz2, { kind: "generated", source: "weak", ownerId: userOf(req) });
+      res.status(201).json(await getQuiz(id2, false));
+      return;
+    }
+    const { quiz, difficulty } = await generateIrregularVerbsQuiz(options);
+    if (quiz.questions.length === 0) throw new HttpError(422, "Brak czasownik\xF3w dla wybranych kryteri\xF3w");
+    const id = await createQuiz(quiz, {
+      kind: "generated",
+      source: "irregular-verbs",
+      difficulty,
+      ownerId: currentUserId(req)
+    });
+    res.status(201).json(await getQuiz(id, false));
+  });
+  router.post("/quizzes/:id/retry-wrong", async (req, res) => {
+    const id = parseId(req.params.id);
+    const { questionIds } = retryWrongInput.parse(req.body);
+    const verbOf = await getQuestionVerbs(id);
+    const verbIds = [...new Set(questionIds.flatMap((q) => verbOf.has(q) ? [verbOf.get(q)] : []))];
+    if (verbIds.length === 0) throw new HttpError(409, "Brak czasownik\xF3w do powt\xF3rzenia w tych pytaniach");
+    const [pool2, verbs] = await Promise.all([listVerbs(), listVerbs({ ids: verbIds })]);
+    const quiz = buildVerbQuiz(
+      verbs,
+      pool2,
+      "mixed",
+      "Powt\xF3rz b\u0142\u0119dne",
+      `${verbs.length} czasownik\xF3w, w kt\xF3rych pomyli\u0142e\u015B si\u0119 w poprzednim quizie.`
+    );
+    const newId = await createQuiz(quiz, { kind: "generated", source: "weak", ownerId: userOf(req) });
+    res.status(201).json(await getQuiz(newId, false));
   });
 }
 
@@ -79757,6 +79761,7 @@ function createApp() {
   app2.all("/mcp", mcpNotAllowed);
   const router = import_express2.default.Router();
   registerQuizRoutes(router);
+  registerVerbQuizRoutes(router);
   registerTokenRoutes(router);
   registerClassRoutes(router);
   registerProgressRoutes(router);

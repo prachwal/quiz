@@ -19,7 +19,7 @@
       "server/verbMedia.ts", "server/verbQuizBuilder.ts", "server/learningGradeHooks.ts", "server/lessonHooks.ts", "server/lessonRegistry.ts",
       "server/routes/learning.ts", "server/mcp/lessonTools.ts"
     ] },
-    { "module": "progress", "match": ["server/progressRepo.ts", "server/reviewsRepo.ts", "server/progressHooks.ts", "server/routes/progress.ts"] },
+    { "module": "progress", "match": ["server/progressRepo.ts", "server/reviewsRepo.ts", "server/progressHooks.ts", "server/routes/progress.ts", "server/routes/verbQuizzes.ts"] },
     { "module": "classes", "match": [
       "server/classes/**", "server/classesRepo.ts", "server/classAccess.ts", "server/routes/classes.ts",
       "server/mcp/classTools.ts", "server/mcp/tools/classes.ts", "server/mcp/tools/students.ts",

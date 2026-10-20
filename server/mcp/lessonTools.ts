@@ -2,7 +2,9 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { extractMediaIds } from '../../src/shared/media/richText'
 import { LESSON_TITLE_MAX_LENGTH, validateLessonIntro } from '../../src/shared/quiz/lessonIntro'
+import { DIFFICULTIES, POPULARITIES } from '../../src/shared/quiz/schema'
 import * as courses from '../coursesRepo'
+import { listVerbs, setVerbImage } from '../irregularVerbs'
 import { MediaRefError } from '../media/repo'
 import { audit, failure, needQuizWrite, text } from './context'
 import type { Ctx } from './context'
@@ -10,7 +12,7 @@ import type { Ctx } from './context'
 const courseId = z.string().uuid().describe('Id kursu (course_list albo GET /api/courses)')
 const lessonId = z.string().uuid().describe('Id lekcji (course_list, GET /api/courses/:id)')
 
-/** lesson_get and lesson_update: the intro and title of a lesson; reading and changing need write:quizzes. */
+/** lesson_get and lesson_update: the intro and title of a lesson; verbs_list and verb_set_image: the verb catalog and its illustrations. Reading and changing need write:quizzes (verbs_list is open). */
 export function registerLessonTools(server: McpServer, ctx: Ctx) {
   server.registerTool(
     'lesson_get',
@@ -66,6 +68,49 @@ export function registerLessonTools(server: McpServer, ctx: Ctx) {
 
       const detail = await courses.getLesson(course, lesson, null)
       return detail ? text(lessonView(detail)) : failure('Nie znaleziono lekcji.')
+    },
+  )
+
+  server.registerTool(
+    'verbs_list',
+    {
+      title: 'Katalog czasowników nieregularnych',
+      description: 'Czasowniki nieregularne (formy, znaczenia, przykłady) - materiał do tworzenia quizów. Maksymalnie 100 wyników.',
+      inputSchema: {
+        difficulty: z.enum(DIFFICULTIES).optional(),
+        popularity: z.enum(POPULARITIES).optional(),
+        pattern: z.enum(['AAA', 'ABA', 'ABB', 'ABC']).optional(),
+        limit: z.number().int().min(1).max(100).default(50),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ limit, ...filter }) => text((await listVerbs(filter)).slice(0, limit)),
+  )
+
+  server.registerTool(
+    'verb_set_image',
+    {
+      title: 'Ilustracja czasownika',
+      description:
+        'Ustawia ilustrację czasownika nieregularnego (verbId z verbs_list; mediaId z media_upload albo media_upload_from_url). Plik musi być gotowy (nie w stanie pending). mediaId=null usuwa ilustrację. Ilustracja pokazuje się na slajdzie lekcji i w katalogu czasowników. Zmiana trafia do audytu (poprzednie i nowe id pliku). Wymaga write:quizzes.',
+      inputSchema: {
+        verbId: z.number().int().positive().describe('Id czasownika z verbs_list'),
+        mediaId: z.string().uuid().nullable().describe('Id gotowego pliku albo null, aby usunąć ilustrację'),
+      },
+      annotations: { idempotentHint: true },
+    },
+    async ({ verbId, mediaId }) => {
+      if (!ctx.canWriteQuizzes) return needQuizWrite()
+      let change: Awaited<ReturnType<typeof setVerbImage>>
+      try {
+        change = await setVerbImage(verbId, mediaId)
+      } catch (error) {
+        if (error instanceof MediaRefError) return failure(error.message)
+        throw error
+      }
+      if (!change) return failure('Nie znaleziono czasownika.')
+      await audit(ctx, 'verb_set_image', { id: String(verbId) }, { verbId, mediaBefore: change.before, mediaAfter: change.after })
+      return text({ verbId, imageMediaId: change.after })
     },
   )
 }
