@@ -65,4 +65,26 @@ describe('ResultView', () => {
     // shared buttons stay for every result
     expect(screen.getByRole('link', { name: /Wszystkie quizy/ })).toBeInTheDocument()
   })
+  it('renders the footer slot under the hero when given', () => {
+    renderResult({ footer: <div>Stopka testowa</div> })
+    expect(screen.getByText('Stopka testowa')).toBeInTheDocument()
+  })
+  it('renders nothing extra without a footer', () => {
+    renderResult()
+    expect(screen.queryByText('Stopka testowa')).not.toBeInTheDocument()
+  })
+  it('a review quiz shows the review action slot instead of the restart button', () => {
+    renderResult({ quiz: { ...quiz, source: 'review' }, reviewAction: <Button>Akcja powtórki</Button> })
+    expect(screen.getByRole('button', { name: /Akcja powtórki/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Zagraj ponownie/ })).not.toBeInTheDocument()
+  })
+  it('a review quiz without the review action slot falls back to the restart button', () => {
+    renderResult({ quiz: { ...quiz, source: 'review' } })
+    expect(screen.getByRole('button', { name: /Zagraj ponownie/ })).toBeInTheDocument()
+  })
+  it('the review action slot is ignored for other quizzes', () => {
+    renderResult({ reviewAction: <Button>Akcja powtórki</Button> })
+    expect(screen.queryByRole('button', { name: /Akcja powtórki/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Zagraj ponownie/ })).toBeInTheDocument()
+  })
 })

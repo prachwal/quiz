@@ -92,30 +92,6 @@
       "reason": "do naprawy w 5.C"
     },
     {
-      "from": "src/features/learn/VerbSlide.tsx",
-      "to": "src/features/progress/WeakMark.tsx",
-      "pair": "f-learning -> f-progress",
-      "reason": "do naprawy w 5.C"
-    },
-    {
-      "from": "src/features/learn/VerbTable.tsx",
-      "to": "src/features/progress/WeakMark.tsx",
-      "pair": "f-learning -> f-progress",
-      "reason": "do naprawy w 5.C"
-    },
-    {
-      "from": "src/features/quizzes/ResultView.tsx",
-      "to": "src/features/progress/ProgressLine.tsx",
-      "pair": "f-quizzes -> f-progress",
-      "reason": "do naprawy w 5.C"
-    },
-    {
-      "from": "src/features/quizzes/ResultView.tsx",
-      "to": "src/features/progress/api.ts",
-      "pair": "f-quizzes -> f-progress",
-      "reason": "do naprawy w 5.C"
-    },
-    {
       "from": "src/shared/quiz/types.ts",
       "to": "src/shared/media/types.ts",
       "pair": "shared-types -> shared-media",

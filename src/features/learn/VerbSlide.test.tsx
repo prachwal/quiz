@@ -39,4 +39,30 @@ describe('VerbSlide', () => {
     expect(screen.getByText('go')).toBeInTheDocument()
     expect(screen.getByText('iść')).toBeInTheDocument()
   })
+  it('renders the badge supplied through renderBadge with the verb id', () => {
+    const store = configureStore({ reducer: { [api.reducerPath]: api.reducer, settings: settingsReducer, feedbackUi: feedbackReducer }, middleware: (g) => g().concat(api.middleware) })
+    render(
+      <Provider store={store}>
+        <ConfigProvider>
+          <MemoryRouter>
+            <VerbSlide verb={verb as any} index={0} total={3} renderBadge={(id) => <span>odznaka {id}</span>} />
+          </MemoryRouter>
+        </ConfigProvider>
+      </Provider>,
+    )
+    expect(screen.getByText('odznaka 1')).toBeInTheDocument()
+  })
+  it('renders no badge without renderBadge', () => {
+    const store = configureStore({ reducer: { [api.reducerPath]: api.reducer, settings: settingsReducer, feedbackUi: feedbackReducer }, middleware: (g) => g().concat(api.middleware) })
+    render(
+      <Provider store={store}>
+        <ConfigProvider>
+          <MemoryRouter>
+            <VerbSlide verb={verb as any} index={0} total={3} />
+          </MemoryRouter>
+        </ConfigProvider>
+      </Provider>,
+    )
+    expect(screen.queryByText(/odznaka/)).not.toBeInTheDocument()
+  })
 })

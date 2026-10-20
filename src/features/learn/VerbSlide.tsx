@@ -1,7 +1,7 @@
 import { Card, Flex, Progress, Tag, Typography, theme } from 'antd'
+import type { ReactNode } from 'react'
 import { DifficultyTag, PopularityTag } from '../../components/GroupTags'
 import SpeakButton from '../audio/SpeakButton'
-import WeakMark from '../progress/WeakMark'
 import { MediaImage } from '../media/MediaImage'
 import { verbSpeechParts } from '../audio/speech'
 import type { IrregularVerb } from '../../shared/quiz/types'
@@ -51,10 +51,13 @@ export default function VerbSlide({
   verb,
   index,
   total,
+  renderBadge,
 }: {
   verb: IrregularVerb
   index: number
   total: number
+  /** Optional extra tag next to the group tags, supplied by the route (e.g. the weak-verb mark). */
+  renderBadge?: (verbId: number) => ReactNode
 }) {
   const { token } = theme.useToken()
   return (
@@ -72,7 +75,7 @@ export default function VerbSlide({
             <PopularityTag value={verb.popularity} />
             <Tag title={PATTERN_HINTS[verb.pattern]}>{verb.pattern}</Tag>
             <Tag>{verb.cefrLevel}</Tag>
-            <WeakMark verbId={verb.id} />
+            {renderBadge?.(verb.id)}
           </Flex>
           <Typography.Text style={{ fontSize: 15, fontWeight: 600, color: token.colorTextSecondary }}>
             <span style={{ color: token.colorPrimary }}>{index + 1}</span> / {total}

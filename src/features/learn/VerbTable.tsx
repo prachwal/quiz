@@ -1,10 +1,10 @@
 import { Flex, Table, Tag, Typography } from 'antd'
 import type { TableColumnsType } from 'antd'
+import type { ReactNode } from 'react'
 import { PHONE_QUERY, useMediaQuery } from '../../app/useMediaQuery'
 import { DifficultyTag, PopularityTag } from '../../components/GroupTags'
 import type { IrregularVerb } from '../../shared/quiz/types'
 import SpeakButton from '../audio/SpeakButton'
-import WeakMark from '../progress/WeakMark'
 import { MediaImage } from '../media/MediaImage'
 import { verbSpeechParts } from '../audio/speech'
 import { PATTERN_HINTS, formsText } from './format'
@@ -27,7 +27,10 @@ const pictureColumn: TableColumnsType<IrregularVerb>[number] = {
   render: (_v, verb) => <VerbThumb verb={verb} />,
 }
 
-const verbColumns: TableColumnsType<IrregularVerb> = [
+/** Optional extra tag per verb, supplied by the route (e.g. the weak-verb mark). */
+type BadgeSlot = (verbId: number) => ReactNode
+
+const verbColumns = (renderBadge?: BadgeSlot): TableColumnsType<IrregularVerb> => [
   {
     title: 'Bezokolicznik',
     dataIndex: 'base',
@@ -53,7 +56,7 @@ const verbColumns: TableColumnsType<IrregularVerb> = [
         <DifficultyTag value={verb.difficulty} />
         <PopularityTag value={verb.popularity} />
         <Tag title={PATTERN_HINTS[verb.pattern]}>{verb.pattern}</Tag>
-        <WeakMark verbId={verb.id} />
+        {renderBadge?.(verb.id)}
       </Flex>
     ),
   },
@@ -73,7 +76,7 @@ function PhoneForm({ label, value }: { label: string; value: string }) {
 }
 
 /** Phones: each verb as a readable card row (forms side by side, example always visible). */
-const phoneColumns: TableColumnsType<IrregularVerb> = [
+const phoneColumns = (renderBadge?: BadgeSlot): TableColumnsType<IrregularVerb> => [
   {
     key: 'verb',
     render: (_v, verb) => (
@@ -100,7 +103,7 @@ const phoneColumns: TableColumnsType<IrregularVerb> = [
           <Tag>
             {verb.pattern} · {PATTERN_HINTS[verb.pattern].toLowerCase()}
           </Tag>
-          <WeakMark verbId={verb.id} />
+          {renderBadge?.(verb.id)}
         </Flex>
         <Flex vertical>
           <Typography.Text lang="en" italic style={{ fontSize: 15 }}>
@@ -120,19 +123,23 @@ export default function VerbTable({
   verbs,
   loading,
   pageSize,
+  renderBadge,
 }: {
   verbs: IrregularVerb[] | undefined
   loading?: boolean
   pageSize?: number
+  /** Optional extra tag per verb, supplied by the route (e.g. the weak-verb mark). */
+  renderBadge?: BadgeSlot
 }) {
   const phone = useMediaQuery(PHONE_QUERY)
-  const columns = verbs?.some((verb) => verb.imageMediaId) ? [verbColumns[0], pictureColumn, ...verbColumns.slice(1)] : verbColumns
+  const groupColumns = verbColumns(renderBadge)
+  const columns = verbs?.some((verb) => verb.imageMediaId) ? [groupColumns[0], pictureColumn, ...groupColumns.slice(1)] : groupColumns
   if (phone) {
     return (
       <Table<IrregularVerb>
         rowKey="id"
         loading={loading}
-        columns={phoneColumns}
+        columns={phoneColumns(renderBadge)}
         showHeader={false}
         className="card-rows card-rows-flush"
         dataSource={verbs}

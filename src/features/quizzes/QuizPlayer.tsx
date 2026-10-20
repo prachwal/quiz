@@ -1,6 +1,6 @@
 import { ArrowLeftOutlined, ArrowRightOutlined, CheckOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Flex, Progress, Skeleton, Tag, Typography, theme } from 'antd'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { errorMessage } from '../../app/api'
 import { useGetQuizQuery, useGradeQuizMutation } from './api'
 import { DifficultyTag } from '../../components/GroupTags'
@@ -21,6 +21,10 @@ export interface QuizPlayerProps {
   outcomeFor?: (quiz: QuizDetail, result: GradedAttempt) => ResultOutcome | undefined
   /** Optional back link of the page header; defaults to the quiz list. */
   backLinkFor?: (quiz: QuizDetail) => { to: string; label: string } | undefined
+  /** Optional line under the result hero (supplied by the route, e.g. the daily-goal recap). */
+  resultFooter?: ReactNode
+  /** Optional "next review" action for a review quiz's result (supplied by the route). */
+  reviewActionFor?: (quiz: QuizDetail) => ReactNode
 }
 
 const PAD = 'clamp(16px, 4vw, 28px)'
@@ -38,10 +42,14 @@ function Runner({
   quiz,
   onRestart,
   outcomeFor,
+  resultFooter,
+  reviewActionFor,
 }: {
   quiz: QuizDetail
   onRestart: () => void
   outcomeFor?: QuizPlayerProps['outcomeFor']
+  resultFooter?: ReactNode
+  reviewActionFor?: QuizPlayerProps['reviewActionFor']
 }) {
   const { shuffleQuestions, showExplanations } = useAppSelector((state) => state.settings)
   const [questions] = useState(() => prepareQuestions(quiz, shuffleQuestions))
@@ -71,6 +79,8 @@ function Runner({
         showExplanations={showExplanations}
         onRestart={onRestart}
         outcome={outcomeFor?.(quiz, result)}
+        footer={resultFooter}
+        reviewAction={reviewActionFor?.(quiz)}
       />
     )
   }
@@ -165,7 +175,7 @@ function Runner({
   )
 }
 
-export default function QuizPlayer({ id, outcomeFor, backLinkFor }: QuizPlayerProps) {
+export default function QuizPlayer({ id, outcomeFor, backLinkFor, resultFooter, reviewActionFor }: QuizPlayerProps) {
   // currentData (not data): while a different quiz id is loading, `data` would still hold the previous quiz
   const { currentData: data, error } = useGetQuizQuery({ id })
   const [run, setRun] = useState(0)
@@ -192,6 +202,8 @@ export default function QuizPlayer({ id, outcomeFor, backLinkFor }: QuizPlayerPr
           quiz={data}
           onRestart={() => setRun((n) => n + 1)}
           outcomeFor={outcomeFor}
+          resultFooter={resultFooter}
+          reviewActionFor={reviewActionFor}
         />
       </div>
     </MediaProvider>
