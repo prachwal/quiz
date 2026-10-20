@@ -832,6 +832,84 @@ try {
     await verbQuizCleanup()
   }
   // ==== END: verb quizzes and lesson completion (characterization, phase 5.C-2) ====
+  // ==== BEGIN: grade side effects (characterization, review fix) ====
+  // Characterizes what grading a verb quiz does after the attempt is saved: the spaced-repetition hook (verb_reviews,
+  // src/shared/quiz/spaced.ts) and the daily activity counters (daily_activity). The fresh user grades the same quiz
+  // twice: the second grade must add to the counters and the review state, never duplicate rows.
+  const GRADE_USER = `discord|${P}-grade`
+  const RIGHT_COUNT = 3 // the first three questions are answered correctly, the last two wrongly
+  const gradeBearer = await token(GRADE_USER, [])
+  const writerBearer = await token(`${ADMIN}-grade-writer`, ['write:quizzes'])
+  const gradeCleanup = async (quizId: string | null) => {
+    await pool().query('DELETE FROM verb_reviews WHERE user_id = $1', [GRADE_USER])
+    await pool().query('DELETE FROM daily_activity WHERE user_id = $1', [GRADE_USER])
+    await pool().query('DELETE FROM quiz_attempts WHERE user_id = $1', [GRADE_USER])
+    await pool().query('DELETE FROM user_profiles WHERE user_id = $1', [GRADE_USER])
+    if (quizId) await pool().query('DELETE FROM quizzes WHERE id = $1', [quizId])
+  }
+  await gradeCleanup(null)
+  let gradedQuizId: string | null = null
+  try {
+    // (a) a typing quiz of 5 verbs: every question is a text question whose accepted forms are the isCorrect options
+    const generatedGrade = await rest('/quizzes/generate/irregular-verbs', { method: 'POST', bearer: gradeBearer, body: JSON.stringify({ count: 5, variant: 'typing' }) })
+    check('grade side effects: typing quiz of 5 verbs generated -> 201', generatedGrade.status === 201 && generatedGrade.body?.questions?.length === 5, generatedGrade.body)
+    gradedQuizId = generatedGrade.body?.id ?? null
+    const questionIds: string[] = (generatedGrade.body?.questions ?? []).map((q: any) => q.id)
+
+    // (b) the answers view (writer) gives the accepted forms; the correct text is the first isCorrect option
+    const editorView = await rest(`/quizzes/${gradedQuizId}?include=answers`, { method: 'GET', bearer: writerBearer })
+    check('grade side effects: the answers view is readable by a writer', editorView.status === 200, editorView.status)
+    const editorById = new Map<string, any>((editorView.body?.questions ?? []).map((q: any) => [q.id, q]))
+    const answers: Record<string, { text: string }> = {}
+    questionIds.forEach((id, index) => {
+      const correctText = editorById.get(id)?.options.find((o: any) => o.isCorrect)?.text ?? ''
+      answers[id] = { text: index < RIGHT_COUNT ? correctText : 'zxqv' }
+    })
+    check('grade side effects: every question has a correct text in the answers view', questionIds.every((id) => answers[id].text !== '' && answers[id].text !== 'zxqv'), answers)
+
+    // the verb behind each question (questions.verb_id, set by buildVerbQuiz); the five verbs must be distinct
+    const verbOf = new Map((await pool().query<{ id: string; verb_id: number }>('SELECT id, verb_id FROM questions WHERE quiz_id = $1', [gradedQuizId])).rows.map((r) => [r.id, r.verb_id]))
+    const rightVerbs = questionIds.slice(0, RIGHT_COUNT).map((id) => verbOf.get(id)!).sort((a, b) => a - b)
+    const wrongVerbs = questionIds.slice(RIGHT_COUNT).map((id) => verbOf.get(id)!).sort((a, b) => a - b)
+    check('grade side effects: five distinct verb questions', new Set([...rightVerbs, ...wrongVerbs]).size === 5, [...rightVerbs, ...wrongVerbs])
+
+    const grade = () => rest(`/quizzes/${gradedQuizId}/grade`, { method: 'POST', bearer: gradeBearer, body: JSON.stringify({ answers }) })
+    const dailyTotals = async () =>
+      (await pool().query<{ answered: number; correct: number }>(
+        'SELECT COALESCE(SUM(answered), 0)::int AS answered, COALESCE(SUM(correct), 0)::int AS correct FROM daily_activity WHERE user_id = $1',
+        [GRADE_USER],
+      )).rows[0]
+    const reviewRows = async () =>
+      (await pool().query<{ verb_id: number; box: number; repetitions: number; lapses: number; attempts: number; correct: number; wrong_marked: boolean }>(
+        `SELECT verb_id, box, repetitions, lapses, attempts, correct, last_wrong_at IS NOT NULL AS wrong_marked
+         FROM verb_reviews WHERE user_id = $1 ORDER BY verb_id`,
+        [GRADE_USER],
+      )).rows
+    // src/shared/quiz/spaced.ts after round n: a right answer moves the verb to box n (repetitions, attempts and
+    // correct = n, no lapse, last_wrong_at unset); a wrong answer resets it to box 0 (one more lapse per wrong round)
+    const expectedReviews = (round: number) =>
+      [
+        ...rightVerbs.map((verb_id) => ({ verb_id, box: round, repetitions: round, lapses: 0, attempts: round, correct: round, wrong_marked: false })),
+        ...wrongVerbs.map((verb_id) => ({ verb_id, box: 0, repetitions: 0, lapses: round, attempts: round, correct: 0, wrong_marked: true })),
+      ].sort((a, b) => a.verb_id - b.verb_id)
+
+    // (c) first grade: the attempt is saved, the answered and correct counters are added once
+    const firstGrade = await grade()
+    check('grade side effects: first grade -> 200 with three correct answers', firstGrade.status === 200 && firstGrade.body?.results?.filter((r: any) => r.correct).length === RIGHT_COUNT, firstGrade.body?.results)
+    check('grade side effects: first grade: daily activity answered 5, correct 3', JSON.stringify(await dailyTotals()) === JSON.stringify({ answered: 5, correct: 3 }), await dailyTotals())
+    check('grade side effects: first grade: verb reviews match spaced.ts (one row per verb question)', JSON.stringify(await reviewRows()) === JSON.stringify(expectedReviews(1)), await reviewRows())
+
+    // (d) the same answers again: the counters double and the review state moves on, no row is duplicated
+    const secondGrade = await grade()
+    check('grade side effects: second grade -> 200', secondGrade.status === 200, secondGrade.body)
+    const attempts = (await pool().query<{ n: number }>('SELECT COUNT(*)::int AS n FROM quiz_attempts WHERE user_id = $1 AND quiz_id = $2', [GRADE_USER, gradedQuizId])).rows[0].n
+    check('grade side effects: second grade stores a second attempt', attempts === 2, attempts)
+    check('grade side effects: second grade doubles the daily totals (answered 10, correct 6)', JSON.stringify(await dailyTotals()) === JSON.stringify({ answered: 10, correct: 6 }), await dailyTotals())
+    check('grade side effects: second grade keeps one review row per verb and updates the state', JSON.stringify(await reviewRows()) === JSON.stringify(expectedReviews(2)), await reviewRows())
+  } finally {
+    await gradeCleanup(gradedQuizId)
+  }
+  // ==== END: grade side effects (characterization, review fix) ====
 
   // ==== media cleanup (Media-Storage-Plan S1, request path) — own section, keep it together on merges =========
   // A stale pending row (older than an hour) of the same author disappears, with its object, when that author starts
