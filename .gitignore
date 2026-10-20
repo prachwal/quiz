@@ -32,6 +32,8 @@ dist-ssr
 
 # Ad-hoc scripts (e.g. one-off verification helpers)
 *.tmp.mjs
+# bundle of scripts/media-smoke.ts written by `npm run media:smoke`
+.media-smoke.mjs
 
 # compiled tests
 .test-build

@@ -9,6 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test:mcp": "bash scripts/mcp-local-e2e.sh",
+    "media:smoke": "esbuild scripts/media-smoke.ts --bundle --platform=node --format=esm --packages=external --outfile=.media-smoke.mjs --log-level=error && node --env-file-if-exists=.env --env-file-if-exists=.env.local .media-smoke.mjs",
     "test": "esbuild tests/*.test.ts --bundle --platform=node --format=esm --outdir=.test-build --out-extension:.js=.mjs --log-level=warning && node --test .test-build/*.mjs",
     "test:ui": "vitest run",
     "test:ui:watch": "vitest",

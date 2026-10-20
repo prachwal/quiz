@@ -112,7 +112,7 @@ Rozpoczyna się po rozstrzygnięciu M0.
 | 4.3 | ✅ **M3** mapa `media` w odpowiedziach (zrobione 2026-10-20) | po 2.3: endpointy przez `injectEndpoints` |
 | 4.4 | ✅ **M4** renderowanie w quizie: `RichText`, `MediaImage`, `MediaProvider`, `ChoiceTile` z obrazem, `Cloze`, wynik (zrobione 2026-10-20; **nie zrobione:** wstęp lekcji (L1) i podgląd w edytorze (M6)) | po 2.2 |
 | 4.5 | ✅ **M5** narzędzia MCP do wysyłania (`media_upload`, `media_upload_from_url`, …) — zrobione 2026-10-20 (`f8cfd4a` … `a8b891e`; pobieranie z adresu za bramką `MEDIA_URL_FETCH`, domyślnie wyłączone) | najpierw testy `ssrf`; wydanie 2 narzędzi |
-| 4.6 | **M6** wysyłanie w edytorze (`ImageUpload`) | po M4 |
+| 4.6 | ✅ **M6** wysyłanie w edytorze (`ImageUpload`) — kod gotowy 2026-10-20: trasy `/api/media/uploads` i `/complete` (w trybie memory także `PUT …/content`), przycisk „Wstaw obrazek” przy treści, wyjaśnieniu i opcjach wyboru w `QuizEditor`; **weryfikacja na prawdziwym buckecie: M0** | po M4 |
 | 4.7 | ✅ **Podział, krok 5:** klasy czytają postęp lekcji przez API nauki (zrobione 2026-10-20) | przed L1, żeby narzędzia lekcji lądowały na ustalonym API |
 | 4.8 | ✅ **L1** wstęp lekcji (zrobione 2026-10-20: slajd „Wstęp” od obrazu albo >140 znaków, `lesson_get`/`lesson_update`); **L2** ilustracje czasowników — otwarte | `verb_set_image` w L2; narzędzia lekcji są już w wydaniu 2.3.0 (51) |
 | 4.9 | **S1** sprzątanie (Cron), **S2** dokumentacja i `.env.example` | na końcu |
