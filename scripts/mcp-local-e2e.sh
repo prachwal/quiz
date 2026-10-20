@@ -3,11 +3,11 @@
 # Express app on :8888), runs scripts/mcp-local-e2e.ts against it with the official MCP client, then
 # stops everything it started. Usage: npm run test:mcp
 #
-# The test writes rows prefixed with "mcp-e2e" into DATABASE_URL and removes them afterwards. It refuses a
-# database that is not on localhost unless MCP_E2E_ALLOW_REMOTE_DB=1 (there is no separate dev database when
-# .env points at Neon - then you accept that the prefixed rows are created and deleted there).
+# The test writes rows prefixed with "mcp-e2e" into the database and removes them afterwards. The database is
+# NEON_E2E_DATABASE_URL (Neon branch e2e) when that is set, else DATABASE_URL (dev branch); see scripts/e2e-env.sh.
+# It refuses a database that is not on localhost unless MCP_E2E_ALLOW_REMOTE_DB=1.
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 2
 
 # Media: the memory driver and a fixed public base keep the URLs predictable and the bucket out of the picture.
 # MEDIA_MEMORY_DIR makes the memory driver write its objects to a temporary directory, so the dev server and this
@@ -27,6 +27,7 @@ export MEDIA_MEMORY_DIR="$MEDIA_DIR"
 LOG="$(mktemp)"
 BUNDLE=".mcp-e2e.mjs"
 DEV=""
+# shellcheck disable=SC2329 # called by the EXIT trap
 cleanup() {
   [ -n "$DEV" ] && kill -- "-$DEV" 2>/dev/null
   rm -f "$BUNDLE" "$LOG"
@@ -37,6 +38,10 @@ trap cleanup EXIT
 # `.env` first, then `.env.local`; read with node (not by sourcing, which breaks on `&` in connection strings).
 # Like scripts/dev-server.mjs, variables already set in the shell win over the files.
 ENV_FLAGS=(--env-file-if-exists=.env --env-file-if-exists=.env.local)
+# NEON_E2E_DATABASE_URL (branch e2e) replaces DATABASE_URL for this run only; the production guard runs here, first.
+# shellcheck source=scripts/e2e-env.sh
+. scripts/e2e-env.sh
+e2e_select_database || exit $?
 DB_HOST="$(node "${ENV_FLAGS[@]}" -p "process.env.DATABASE_URL ? (new URL(process.env.DATABASE_URL).hostname || 'socket') : ''")"
 [ -n "$DB_HOST" ] || { echo "DATABASE_URL nie jest ustawione (.env / .env.local)." >&2; exit 2; }
 case "$DB_HOST" in

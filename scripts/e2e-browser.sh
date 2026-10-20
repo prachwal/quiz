@@ -2,9 +2,9 @@
 # Browser end-to-end suite (Playwright, tests/e2e): starts `npm run dev:full` through playwright.config.ts and drives
 # the quiz editor, the quiz player and the lesson slides in Chromium. Usage: npm run test:e2e [playwright args]
 #
-# The suite writes to the SHARED database (DATABASE_URL) and uploads to the REAL bucket under the dev/ prefix. Every
-# row and object it creates is prefixed "[E2E]" or belongs to the owner dev|mcp-e2e-browser, and it removes them again
-# (per-spec afterAll and a global teardown). It therefore refuses to start unless E2E_ALLOW_REMOTE_DB=1 is set.
+# The suite writes to the database of the e2e Neon branch (NEON_E2E_DATABASE_URL, else DATABASE_URL) and uploads to the
+# bucket of that environment under the dev/ prefix. Every row and object it creates is prefixed "[E2E]" or belongs to the
+# owner dev|mcp-e2e-browser, and it removes them again (per-spec afterAll and a global teardown). It therefore refuses to start unless E2E_ALLOW_REMOTE_DB=1 is set.
 #
 # Environment: the login bypass is switched on for the server only (DEV_AUTH_TOKEN is random for every run and is
 # never printed); .env and .env.local are read by node, not sourced, because connection strings contain `&`.
@@ -13,12 +13,17 @@ cd "$(dirname "$0")/.." || exit 2
 
 if [ "${E2E_ALLOW_REMOTE_DB:-}" != "1" ]; then
   cat >&2 <<'MSG'
-npm run test:e2e writes to the shared database (DATABASE_URL) and to the real bucket under the dev/ prefix.
+npm run test:e2e writes to the e2e database (NEON_E2E_DATABASE_URL, else DATABASE_URL) and to the bucket under dev/.
 It creates [E2E] quizzes, courses and media for the test owner dev|mcp-e2e-browser and removes them again.
 If that is intended: E2E_ALLOW_REMOTE_DB=1 npm run test:e2e
 MSG
   exit 2
 fi
+
+# NEON_E2E_DATABASE_URL (branch e2e) replaces DATABASE_URL for this run only; the production guard runs here, first.
+# shellcheck source=scripts/e2e-env.sh
+. scripts/e2e-env.sh
+e2e_select_database || exit $?
 
 # One run at a time: the suite and `npm run test:mcp` clean up the same owner and the same ports.
 LOCK_FILE="${GATE_LOCK_FILE:-/tmp/claude-1000/mcp-e2e.lock}"
