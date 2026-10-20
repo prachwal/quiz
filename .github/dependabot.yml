@@ -1,0 +1,29 @@
+# Weekly dependency updates. Minor and patch npm updates arrive as one pull request; major updates of
+# TypeScript (pinned to ~6.0.2, see CLAUDE.md Gotchas), Vite and esbuild are ignored until they are planned.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+    ignore:
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
+      - dependency-name: vite
+        update-types:
+          - version-update:semver-major
+      - dependency-name: esbuild
+        update-types:
+          - version-update:semver-major
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
